@@ -1,0 +1,23 @@
+.form-group {
+    position: relative;
+  }
+  
+  .password-eye, .password-eye_edit{
+    position: absolute;
+    right: 10px;
+    top: 55%;
+    transform: translateY(-50%);
+    cursor: pointer;
+  }
+  .password-eye{
+    top: 70%;
+  }
+  
+  .password-eye i, .password-eye_edit i{
+    font-size: 20px;
+    color: #666;
+  }
+  
+  .form-control {
+    padding-right: 30px; /* espacio para el icono del ojo */
+  }
