@@ -37,15 +37,18 @@
     
     <link rel="shortcut icon" href="img/favicon.ico">
     <link rel="stylesheet" type="text/css" href="js/sb/shadowbox.css" />
-	<!--<link rel="stylesheet" type="text/css" href="resources/pdf/fpdf.css" />-->
-    <script type="text/javascript" src="resources/alertify/lib/alertify.js"></script>
-  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet"/>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.js"></script>
     <link rel="stylesheet" href="resources/alertify/themes/alertify.core.css" />
     <link rel="stylesheet" href="resources/alertify/themes/alertify.default.css" />
+    <link rel="stylesheet" type="text/css" href="js/jquery-ui/jquery-ui.css">
 	<!-- Javascript -->
 	<!-- jQuery 2.1.4 -->
    <script src="{{ asset('js/dashboard.js') }}"></script>
-    <script src="js/jQuery-2.1.4.min.js"></script>
+   
     <script src="js/jquery.min.js"></script>
     <script src="js/jquery.validate.js" type="text/javascript"></script>
     <!-- Bootstrap 3.3.5 -->
@@ -71,7 +74,26 @@
     <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.11.2/css/bootstrap-select.min.css'>
     <script type="text/javascript" charset="utf8" src="js/stacktable.js"></script>
     <script type="text/javascript" charset="utf8" src="js/jquery-ui/jquery-ui.js"></script>
-    <link rel="stylesheet" type="text/css" href="js/jquery-ui/jquery-ui.css">
+  
+    <script>
+      toastr.options = {
+          "closeButton": true,
+          "debug": false,
+          "newestOnTop": false,
+          "progressBar": true,
+          "positionClass": "toast-top-center",
+          "preventDuplicates": false,
+          "onclick": null,
+          "showDuration": "500",
+          "hideDuration": "1000",
+          "timeOut": "5000",
+          "extendedTimeOut": "1000",
+          "showEasing": "swing",
+          "hideEasing": "linear",
+          "showMethod": "fadeIn",
+          "hideMethod": "fadeOut"
+      };
+  </script>
   </head>
   <body class="hold-transition skin-blue sidebar-mini">
    

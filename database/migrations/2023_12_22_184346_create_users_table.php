@@ -4,6 +4,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -19,7 +20,7 @@ return new class extends Migration
             $table->string('password', 255)->comment('The hashed password of the user');
             $table->foreignId('role_id')->constrained('roles','id')->comment('The role ID associated with the user');
             $table->integer('estado')->comment('State of the user');
-            $table->timestamp('created_at')->comment('Fecha creación');
+            $table->datetime('created_at')->comment('Fecha creación');
             $table->dateTime('updated_at')->nullable()->comment("Fecha actualizacion");
         });
     }

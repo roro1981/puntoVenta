@@ -8,7 +8,6 @@ $(document).ready(function() {
     }); 
     $(document).on('click', '.editar', function() {
         var rolId = $(this).data('rol'); 
-
         $('#role_id_edit option').each(function() {
             if ($(this).val() == rolId) {
                 $(this).prop('selected', true);
@@ -133,18 +132,31 @@ $('#createUserForm').submit(function(event) {
             'X-CSRF-TOKEN': '{{ csrf_token() }}' // Token de seguridad CSRF
         },
         success: function(data) {
-            console.log(data); 
+            toastr.success(data.message);
             $("#createUserModal").modal("hide");
             $('#contenido').load('/usuarios/usuarios');
         },
         error: function(xhr, status, error) {
-            console.log(error); // Mostrar errores
+            var errorCode = xhr.status;
+            var errorResponse = xhr.responseJSON;
+
+            if (errorResponse) {
+                var errorMessages = [];
+
+                $.each(errorResponse.errors, function(field, messages) {
+                    $.each(messages, function(index, message) {
+                        errorMessages.push(message+"<br>");
+                    });
+                });
+
+                toastr.error(errorMessages, "Error " + errorCode);
+            }
         }
     });
 });
 
 $('#editUserForm').submit(function(event) {
-    event.preventDefault(); // Evita que el formulario se envíe por defecto
+    event.preventDefault();
 
     var formData = {
         'name_complete_edit': $('#name_complete_edit').val(),
@@ -162,12 +174,25 @@ $('#editUserForm').submit(function(event) {
             'X-CSRF-TOKEN': $('#token').val()
         },
         success: function(data) {
-            console.log(data); 
-            $("#editUserForm").modal("hide");
+            toastr.success(data.message);
+            $("#editUserModal").modal("hide");
             $('#contenido').load('/usuarios/usuarios');
         },
         error: function(xhr, status, error) {
-            console.log(error);
+            var errorCode = xhr.status;
+            var errorResponse = xhr.responseJSON;
+
+            if (errorResponse) {
+                var errorMessages = [];
+
+                $.each(errorResponse.errors, function(field, messages) {
+                    $.each(messages, function(index, message) {
+                        errorMessages.push(message+"<br>");
+                    });
+                });
+
+                toastr.error(errorMessages, "Error " + errorCode);
+            }
         }
     });
 });
@@ -187,5 +212,39 @@ $('#editUserModal').on('show.bs.modal', function(event) {
         modal.find('#user_id').val(userId);
       }
     });
+  });
+  $(document).on('click', '.eliminar', function(event) {
+    event.preventDefault();
+    var userId = $(this).data('user'); 
+    var nombreUser = $(this).data('nameuser');
+    Swal.fire({
+        title: "¿Estás seguro?",
+        text: "¿Estás seguro de eliminar al usuario "+nombreUser+"?",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#DD6B55",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+      }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                type: 'DELETE',
+                url: '/users/' + userId + '/delete',
+                headers: {
+                    'X-CSRF-TOKEN': $('#token').val()
+                },
+                success: function(data) {
+                  toastr.success(data.message);
+                  $('#contenido').load('/usuarios/usuarios');
+                },
+                error: function(xhr, status, error) {
+                    toastr.error("Error "+xhr.responseJSON.error+"<br>"+xhr.responseJSON.message);
+                }
+            })
+        }else{
+            toastr.error("Eliminación cancelada");
+        }
+      });
+    
   });
 

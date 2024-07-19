@@ -20,15 +20,14 @@ Route::get('/', function () {
 
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+Route::post('/users/create', [UsersController::class, 'create']);
 Route::get('/users/{user}/show', [UsersController::class, 'getUser']);
 Route::put('/users/{user}/edit', [UsersController::class, 'update']);
+Route::delete('/users/{user}/delete', [UsersController::class, 'delete']);
 Route::get('/users/menus', [UsersController::class, 'getUserMenus'])->middleware('auth')->name('user.menus');
-Route::post('/users/create', [UsersController::class, 'create']);
 
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');
 
-
-Route::get('/temporal', [UsersController::class, 'temporal'])->name('temporal');
 

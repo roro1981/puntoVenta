@@ -35,11 +35,11 @@
               <form id="createUserForm" autocomplete="off">
                 @csrf
                   <div class="form-group">
-                      <label for="name">Usuario</label>
+                      <label for="name">Usuario o name</label>
                       <input type="text" class="form-control" id="name" name="name" autocomplete="off" readonly required>
                   </div>
                   <div class="form-group">
-                      <label for="name_complete">Nombre</label>
+                      <label for="name_complete">Nombre completo</label>
                       <input type="text" class="form-control" id="name_complete" name="name_complete" autocomplete="off" autocorrect="off" required>
                   </div>
                   <div class="form-group">
