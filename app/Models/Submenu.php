@@ -31,4 +31,9 @@ class Submenu extends Model
     {
         return $this->belongsToMany(Role::class, 'menu_roles', 'submenu_id', 'role_id');
     }
+
+    public function menuRoles()
+    {
+        return $this->hasMany(MenuRole::class);
+    }
 }

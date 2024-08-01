@@ -18,6 +18,7 @@ Route::get('/', function () {
     return view('index');
 })->name('inicio');
 
+//menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 Route::post('/users/create', [UsersController::class, 'create']);
@@ -25,6 +26,10 @@ Route::get('/users/{user}/show', [UsersController::class, 'getUser']);
 Route::put('/users/{user}/edit', [UsersController::class, 'update']);
 Route::delete('/users/{user}/delete', [UsersController::class, 'delete']);
 Route::get('/users/menus', [UsersController::class, 'getUserMenus'])->middleware('auth')->name('user.menus');
+Route::get('/usuarios/roles', [UsersController::class, 'indexRoles']);
+Route::get('/roles', [UsersController::class, 'rolesTable']);
+Route::get('roles/{id}/ver', [UsersController::class, 'ver'])->name('roles.ver');
+
 
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');

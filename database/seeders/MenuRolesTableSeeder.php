@@ -43,6 +43,7 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 1, 'submenu_id' => 25, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 26, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 27, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 1, 'submenu_id' => 28, 'created_at' => Carbon::now()->toDateTimeString()],
             //usuario
             ['role_id' => 2, 'submenu_id' => 11, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 2, 'submenu_id' => 12, 'created_at' => Carbon::now()->toDateTimeString()],
@@ -82,7 +83,8 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 3, 'submenu_id' => 30, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 31, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 32, 'created_at' => Carbon::now()->toDateTimeString()],
-            ['role_id' => 3, 'submenu_id' => 33, 'created_at' => Carbon::now()->toDateTimeString()]
+            ['role_id' => 3, 'submenu_id' => 33, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 3, 'submenu_id' => 34, 'created_at' => Carbon::now()->toDateTimeString()]
         ]);
     }
 }

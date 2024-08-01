@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 use Carbon\Carbon;
 
+use App\Models\Menu;
 use App\Models\Role;
 use App\Models\User;
+use Psy\Readline\Userland;
 use Illuminate\Http\Request;
 use App\Http\Requests\UserRequest;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Psy\Readline\Userland;
 
+use Illuminate\Support\Facades\Auth;
 use function PHPUnit\Framework\throwException;
 
 class UsersController extends Controller
@@ -175,12 +176,59 @@ class UsersController extends Controller
 
         return response()->json($response);
     }
+    public function rolesTable()
+    {
+        $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')
+            ->get()
+            ->map(function ($roles) {
+                $roles->asociados = '<button type="button" data-id="'.$roles->id.'" class="btn btn-primary ver-btn">
+                                            <i class="fa fa-eye"></i> Ver
+                                        </button>';
+                $roles->created_at = date('d/m/Y H:i:s', strtotime($roles->created_at));
+                $roles->updated_at = $roles->updated_at ? date('d/m/Y H:i:s', strtotime($roles->updated_at)) : 'Aún no tiene modificaciones';
+                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-rolid="'.$roles->id.'" data-namerol="'.$roles->role_name.'" title="Eliminar rol '.$roles->role_name.'"><i class="fa fa-trash"></i></a>';
+                return $roles;
+            });
+
+        $response = [
+            'data' => $roles,
+            'recordsTotal' => $roles->count(),
+            'recordsFiltered' => $roles->count()
+        ];
+        return response()->json($response);
+    }
     public function getRoles()
     {
         $roles = Role::all();
         $user = Auth::user();
         return view('users.principal', compact('roles', 'user'));
     }
+    public function indexRoles()
+    {
+        return view('users.roles');
+    }
+
+    public function ver($id)
+    {
+        $rol = Role::findOrFail($id);
+    
+        $menus = Menu::with(['submenus' => function ($query) use ($id) {
+            $query->whereHas('menuRoles', function ($query) use ($id) {
+                $query->where('role_id', $id);
+            });
+        }])
+        ->whereHas('submenus.menuRoles', function ($query) use ($id) {
+            $query->where('role_id', $id);
+        })
+        ->orderBy('id', 'asc')
+        ->get();
+
+        return response()->json([
+            'role_name' => $rol->role_name, 
+            'menus' => $menus
+        ]);
+    }
+
     public function getUser($id)
     {
         $user = User::find($id);

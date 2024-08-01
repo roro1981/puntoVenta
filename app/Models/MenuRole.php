@@ -19,4 +19,11 @@ class MenuRole extends Model
         'created_at',
         'updated_at'  
      ];
+
+
+     //Relaciones con otras tablas 
+    public function submenu()
+    {
+        return $this->belongsTo(Submenu::class);
+    }
 }

@@ -50,6 +50,8 @@ function cargaUsuarios(){
                     "extend": 'excelHtml5',
                     "text": 'Exportar a Excel',
                     className: 'btn btn-success',
+                    title: 'Listado de usuarios al '+fechaFormateada,
+                    filename: 'Listado de usuarios al '+fechaFormateada,    
                     exportOptions: {
                         columns: ':visible:not(:eq(5))'
                     }

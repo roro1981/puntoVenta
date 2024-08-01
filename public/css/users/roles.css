@@ -1,0 +1,14 @@
+.form-group {
+    position: relative;
+  }
+  
+  .form-control {
+    padding-right: 30px; /* espacio para el icono del ojo */
+  }
+
+  .text-center {
+    text-align: center;
+}
+.modal-md {
+  max-width: 50%;
+}
