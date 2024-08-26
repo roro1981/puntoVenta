@@ -5,6 +5,7 @@ use Carbon\Carbon;
 
 use App\Models\Menu;
 use App\Models\Role;
+use App\Models\Submenu;
 use App\Models\User;
 use Psy\Readline\Userland;
 use Illuminate\Http\Request;
@@ -137,6 +138,23 @@ class UsersController extends Controller
     {
         try{
             $user = User::findOrFail($id);
+            $superAdminRoleId = Role::where('role_name', 'SuperAdministrador')->first()->id;
+
+            if ($user->role_id == $superAdminRoleId) {
+                $superAdminCount = User::where('role_id', $superAdminRoleId)
+                ->where('name_complete', '<>', 'Rodrigo Panes')
+                ->where('estado', '=', 1)
+                ->count();
+    
+                if ($superAdminCount <= 1) {
+                    return response()->json([
+                        'error' => 403,
+                        'message' => "No se puede eliminar el último superadministrador, debe existir al menos 1"
+                    ], 403);
+                }
+
+            }
+
             $user->deleteUser();
 
             $response = response()->json([
@@ -179,11 +197,15 @@ class UsersController extends Controller
     public function rolesTable()
     {
         $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')
+            ->where('roles.role_name','<>','SuperAdministrador')
             ->get()
             ->map(function ($roles) {
                 $roles->asociados = '<button type="button" data-id="'.$roles->id.'" class="btn btn-primary ver-btn">
                                             <i class="fa fa-eye"></i> Ver
-                                        </button>';
+                                        </button>';     
+                $roles->usuarios = '<button type="button" data-rol="'.$roles->role_name.'" data-id="'.$roles->id.'" class="btn btn-success ver-btn_users">
+                                            <i class="fa fa-eye"></i> Ver
+                                        </button>';                                 
                 $roles->created_at = date('d/m/Y H:i:s', strtotime($roles->created_at));
                 $roles->updated_at = $roles->updated_at ? date('d/m/Y H:i:s', strtotime($roles->updated_at)) : 'Aún no tiene modificaciones';
                 $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-rolid="'.$roles->id.'" data-namerol="'.$roles->role_name.'" title="Eliminar rol '.$roles->role_name.'"><i class="fa fa-trash"></i></a>';
@@ -229,10 +251,76 @@ class UsersController extends Controller
         ]);
     }
 
+    public function ver_users($id)
+    {
+        $usuarios = User::where('role_id', $id)
+        ->with('role')
+        ->get();
+        
+        $usersList = $usuarios->map(function($user) {
+            return [
+                'user_name' => $user->name,
+                'user_name_complete' => $user->name_complete,
+            ];
+        });
+
+        return response()->json([
+            'usuarios' => $usersList
+        ]);
+    }
+
     public function getUser($id)
     {
         $user = User::find($id);
         return response()->json($user);
+    }
+    public function getRolesPermisos()
+    {
+        $roles = Role::all();
+        return view('users.permisos', compact('roles'));
+    }
+    public function getMenus(Request $request)
+    {
+        $roleId = $request->role_id;
+        $submenus = Submenu::with('menu') 
+            ->get()
+            ->groupBy('menu_id');
+
+        $selectedSubmenus = Role::find($roleId)->submenus->pluck('id')->toArray();
+
+        $submenusFormatted = $submenus->map(function ($items) {
+            return $items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'submenu_name' => $item->submenu_name,
+                    'menu_name' => $item->menu->menu_name, // Agregar el nombre del menú
+                ];
+            });
+        });
+
+        return response()->json([
+            'submenus' => $submenusFormatted,
+            'selectedSubmenus' => $selectedSubmenus
+        ]);
+    }
+
+    public function savePermissions(Request $request)
+    {
+        $roleId = $request->input('role_id');
+        $selectedSubmenus = $request->input('selected_submenus');
+
+        $role = Role::find($roleId);
+
+        if ($role) {
+        
+            $role->submenus()->detach();
+
+            $role->submenus()->attach($selectedSubmenus);
+
+            return response()->json(['success' => true, 'message' => 'Permisos guardados con éxito']);
+        } else {
+            return response()->json(['success' => false, 'message' => 'Rol no encontrado'], 404);
+        }
     }
     public function logout(Request $request)
     {

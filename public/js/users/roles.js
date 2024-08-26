@@ -23,7 +23,36 @@ $(document).ready(function() {
                 $('#roleMenusModal').modal('show');
             },
             error: function() {
-                alert('Hubo un error al obtener los menús.');
+                toastr.error("Hubo un error al obtener los menús.");
+            }
+        });
+    });
+    $(document).on('click', '.ver-btn_users', function() {
+        var rolId = $(this).data('id');
+        var rolName = $(this).data('rol');
+        $.ajax({
+            url: '/roles/users-associated/' + rolId + '/ver',
+            method: 'GET',
+            success: function(response) {
+                var roleName = response.role_name; // Obtener el nombre del rol
+                var content = '';
+                content += '<div class="list-group-item">';
+                content += '<ul class="ml-3">';
+                if(response.usuarios.length==0){
+                    content += '<li class="mb-1">ROL SIN USUARIOS ASOCIADOS</li>'
+                }else{
+                    response.usuarios.forEach(function(users) {
+                        content += '<li class="mb-1">Usuario: ' + users.user_name + ' | Nombre: '+users.user_name_complete+'</li>';
+                    });
+                }
+                content += '</ul>';
+                content += '</div>';
+                $('#roleUsersContent').html(content);
+                $('#roleUsersModalLabel').text('Usuarios asociados al Rol: ' + rolName);
+                $('#roleUsersModal').modal('show');
+            },
+            error: function() {
+                alert('Hubo un error al obtener los usuarios.');
             }
         });
     });
@@ -46,8 +75,9 @@ function cargaRoles(){
       "columns": [
         { "data": "role_name", "width": "25%" },
         { "data": "asociados", "width": "20%", "className": "text-center" },
-        { "data": "created_at", "width": "20%" },
-        { "data": "updated_at", "width": "20%" },
+        { "data": "usuarios", "width": "15%", "className": "text-center" },
+        { "data": "created_at", "width": "15%" },
+        { "data": "updated_at", "width": "15%" },
         { "data": "actions", "width": "10%", "className": "text-center" }
       ],
       "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
@@ -67,7 +97,7 @@ function cargaRoles(){
                     exportOptions: {
                         columns: function (idx, data, node) {
                             // Ocultar columnas de índice 1 y 4
-                            return (idx !== 1 && idx !== 4);
+                            return (idx !== 1 && idx !== 2 && idx !== 5);
                         }
                     }
                 },
@@ -78,7 +108,7 @@ function cargaRoles(){
                     exportOptions: {
                         columns: function (idx, data, node) {
                             // Ocultar columnas de índice 1 y 4
-                            return (idx !== 1 && idx !== 4);
+                            return (idx !== 1 && idx !== 2 && idx !== 5);
                         }
                     },
                     title: 'Listado de roles al '+fechaFormateada,
@@ -110,7 +140,7 @@ function cargaRoles(){
                     exportOptions: {
                         columns: function (idx, data, node) {
                             // Ocultar columnas de índice 1 y 4
-                            return (idx !== 1 && idx !== 4);
+                            return (idx !== 1 && idx !== 2 && idx !== 5);
                         }
                     },
                     title: 'Listado de roles al '+fechaFormateada,

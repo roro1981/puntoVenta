@@ -29,7 +29,10 @@ Route::get('/users/menus', [UsersController::class, 'getUserMenus'])->middleware
 Route::get('/usuarios/roles', [UsersController::class, 'indexRoles']);
 Route::get('/roles', [UsersController::class, 'rolesTable']);
 Route::get('roles/{id}/ver', [UsersController::class, 'ver'])->name('roles.ver');
-
+Route::get('roles/users-associated/{id}/ver', [UsersController::class, 'ver_users'])->name('roles.ver_users');
+Route::get('/usuarios/permisos', [UsersController::class, 'getRolesPermisos']);
+Route::post('/permisos/get-menus', [UsersController::class, 'getMenus'])->name('get-menus');
+Route::post('/permisos/save', [UsersController::class, 'savePermissions']);
 
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');

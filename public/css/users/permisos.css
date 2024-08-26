@@ -1,0 +1,6 @@
+.card-with-border {
+    border: 2px solid #ddd; /* Ajusta el color y grosor del borde según tu preferencia */
+    border-radius: 10px; /* Agrega bordes redondeados para un estilo más elegante */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Agrega una sombra sutil para más profundidad */
+  }
+  

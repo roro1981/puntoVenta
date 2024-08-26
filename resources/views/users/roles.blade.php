@@ -11,7 +11,7 @@
         <table id='tabla_roles' class="display" style="width:100%">
           <thead>
           <tr style="background-color: #01338d;color:white">
-              <th>ROL</th><th>MODULOS ASOCIADOS</th><th>FECHA CREACIÓN</th><th>ULTIMA MODIFICACIÓN</th><th>ACCIONES</th>
+              <th>ROL</th><th>MENUS ASOCIADOS</th><th>USUARIOS ASOCIADOS</th><th>FECHA CREACIÓN</th><th>ULTIMA MODIFICACIÓN</th><th>ACCIONES</th>
           </tr>
           </thead>
           <tbody class="datos">
@@ -69,7 +69,26 @@
     </div>
 </div>
 <!-- Fin Modal Ver -->
-
+<!-- Modal Usuarios asociados al rol -->
+<div class="modal fade" id="roleUsersModal" tabindex="-1" role="dialog" aria-labelledby="roleUsersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="roleUsersModalLabel"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="roleUsersContent" class="list-group"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Fin Modal Usuarios asociados al rol -->
 
 
         
