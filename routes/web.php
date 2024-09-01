@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\ConfigurationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +34,13 @@ Route::get('roles/users-associated/{id}/ver', [UsersController::class, 'ver_user
 Route::get('/usuarios/permisos', [UsersController::class, 'getRolesPermisos']);
 Route::post('/permisos/get-menus', [UsersController::class, 'getMenus'])->name('get-menus');
 Route::post('/permisos/save', [UsersController::class, 'savePermissions']);
+
+//menu configuracion
+Route::get('/configuracion/datos_corp', [ConfigurationController::class, 'index']);
+//Route::get('/configuration/get-comunas', [ConfigurationController::class, 'getDataCorporate']);
+Route::post('/configuracion/upload-logo',  [ConfigurationController::class, 'uploadLogo']);
+Route::post('/configuracion/update-corporate-data',  [ConfigurationController::class, 'updateCorporateData']);
+
 
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');

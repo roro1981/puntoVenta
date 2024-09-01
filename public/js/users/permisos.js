@@ -78,6 +78,7 @@ $(document).ready(function() {
                         'X-CSRF-TOKEN': $("#token").val()
                     },
                     success: function(response) {
+                        $('#contenido').load('/usuarios/permisos');
                         toastr.success(response.message);
                     },
                     error: function(xhr, status, error) {
