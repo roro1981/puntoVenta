@@ -1,82 +1,104 @@
 
 <!DOCTYPE html>
 <html>
-     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <link href='js/fullcalendar-4.4.2/packages/core/main.css' rel='stylesheet' />
-    <link href='js/fullcalendar-4.4.2/packages/daygrid/main.css' rel='stylesheet' />
-    <link href='js/fullcalendar-4.4.2/packages/timegrid/main.css' rel='stylesheet' />
-    <link href='js/fullcalendar-4.4.2/packages/list/main.css' rel='stylesheet' />
-    <script src='js/fullcalendar-4.4.2/packages/core/main.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/core/locales-all.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/interaction/main.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/daygrid/main.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/timegrid/main.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/list/main.js'></script>
-    <script src='js/fullcalendar-4.4.2/packages/google-calendar/main.js'></script>
-    <script src="js/jsPDF/examples/libs/jspdf.umd.js"></script>
-    <script src="js/jsPDF/dist/jspdf.plugin.autotable.js"></script>
-    <script type="text/javascript" src="js/excel_js/table_export/libs/FileSaver/FileSaver.min.js"></script>
-    <script type="text/javascript" src="js/excel_js/table_export/tableExport.js"></script>
-    <script type="text/javascript" src="js/excel_js/table_export/libs/js-xlsx/xlsx.core.min.js"></script>
-    <script src="js/excel_js/table2excel/src/jquery.table2excel.js"></script>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>CONTROL-TOTAL | Principal</title>
-    <!-- Tell the browser to be responsive to screen width -->
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-	<!-- Css -->
-    <!-- Bootstrap 3.3.5 -->
-    <link rel="stylesheet" href="css/bootstrap.min.css">
+     <!-- Meta tags -->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="css/font-awesome.css">
-    <!-- Theme style -->
-    <link rel="stylesheet" href="css/AdminLTE.min.css">
-    <!-- AdminLTE Skins. Choose a skin from the css/skins
-         folder instead of downloading all of them to reduce the load. -->
-    <link rel="stylesheet" href="css/_all-skins.min.css">
-    
-    <link rel="shortcut icon" href="img/favicon.ico">
-    <link rel="stylesheet" type="text/css" href="js/sb/shadowbox.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/bootstrap-select.min.js"></script>
-    <link rel="stylesheet" href="resources/alertify/themes/alertify.core.css" />
-    <link rel="stylesheet" href="resources/alertify/themes/alertify.default.css" />
-    <link rel="stylesheet" type="text/css" href="js/jquery-ui/jquery-ui.css">
-	<!-- Javascript -->
-	<!-- jQuery 2.1.4 -->
-   <script src="{{ asset('js/dashboard.js') }}"></script>
-   
-    <script src="js/jquery.min.js"></script>
-    <script src="js/jquery.validate.js" type="text/javascript"></script>
-    <!-- Bootstrap 3.3.5 -->
-    <script src="js/bootstrap.min.js"></script>
-    <!-- AdminLTE App -->
-    <script src="js/app.min.js"></script>
-    <script type="text/javascript" src="js/sb/shadowbox.js"></script>
-    <script type="text/javascript" src="js/js.js?<?php echo date("YmdHis")+1; ?>"></script>
-    <link rel="stylesheet" type="text/css" href="js/DataTables/datatables.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
-    <script type="text/javascript" charset="utf8" src="js/DataTables/datatables.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.flash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>	
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.bundle.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="css/stacktable.css">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.3/js/bootstrap-select.min.js"></script>
-    <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.11.2/css/bootstrap-select.min.css'>
-    <script type="text/javascript" charset="utf8" src="js/stacktable.js"></script>
-    <script type="text/javascript" charset="utf8" src="js/jquery-ui/jquery-ui.js"></script>
+<!-- Title -->
+<title>CONTROL-TOTAL | Principal</title>
+
+<!-- Favicon -->
+<link rel="shortcut icon" href="img/favicon.ico">
+
+<!-- CSS Files -->
+<!-- Bootstrap -->
+<link rel="stylesheet" href="css/bootstrap.min.css">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="css/font-awesome.css">
+<!-- AdminLTE -->
+<link rel="stylesheet" href="css/AdminLTE.min.css">
+<link rel="stylesheet" href="css/_all-skins.min.css">
+<!-- FullCalendar -->
+<link href='js/fullcalendar-4.4.2/packages/core/main.css' rel='stylesheet'>
+<link href='js/fullcalendar-4.4.2/packages/daygrid/main.css' rel='stylesheet'>
+<link href='js/fullcalendar-4.4.2/packages/timegrid/main.css' rel='stylesheet'>
+<link href='js/fullcalendar-4.4.2/packages/list/main.css' rel='stylesheet'>
+<!-- Shadowbox -->
+<link rel="stylesheet" type="text/css" href="js/sb/shadowbox.css">
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.css">
+<!-- Toastr -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
+<!-- Bootstrap-select -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css" rel="stylesheet">
+<!-- Alertify -->
+<link rel="stylesheet" href="resources/alertify/themes/alertify.core.css">
+<link rel="stylesheet" href="resources/alertify/themes/alertify.default.css">
+<!-- jQuery UI -->
+<link rel="stylesheet" type="text/css" href="js/jquery-ui/jquery-ui.css">
+<!-- DataTables -->
+<link rel="stylesheet" type="text/css" href="js/DataTables/datatables.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+<!-- Stacktable -->
+<link rel="stylesheet" type="text/css" href="css/stacktable.css">
+
+<!-- JavaScript Files -->
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Bootstrap -->
+<script src="js/bootstrap.min.js"></script>
+<!-- AdminLTE -->
+<script src="js/app.min.js"></>
+<!-- FullCalendar -->
+<script src='js/fullcalendar-4.4.2/packages/core/main.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/core/locales-all.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/interaction/main.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/daygrid/main.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/timegrid/main.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/list/main.js'></script>
+<script src='js/fullcalendar-4.4.2/packages/google-calendar/main.js'></script>
+<!-- jsPDF -->
+<script src="js/jsPDF/examples/libs/jspdf.umd.js"></script>
+<script src="js/jsPDF/dist/jspdf.plugin.autotable.js"></script>
+<!-- FileSaver -->
+<script type="text/javascript" src="js/excel_js/table_export/libs/FileSaver/FileSaver.min.js"></script>
+<!-- TableExport -->
+<script type="text/javascript" src="js/excel_js/table_export/tableExport.js"></script>
+<script type="text/javascript" src="js/excel_js/table_export/libs/js-xlsx/xlsx.core.min.js"></script>
+<!-- Table2Excel -->
+<script src="js/excel_js/table2excel/src/jquery.table2excel.js"></script>
+<!-- Shadowbox -->
+<script type="text/javascript" src="js/sb/shadowbox.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.js"></script>
+<!-- Toastr -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<!-- Bootstrap-select -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/bootstrap-select.min.js"></script>
+<!-- jQuery Validate -->
+<script src="js/jquery.validate.js" type="text/javascript"></script>
+<!-- DataTables -->
+<script type="text/javascript" charset="utf8" src="js/DataTables/datatables.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.flash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>	
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.bundle.min.js"></script>
+<!-- jQuery UI -->
+<script type="text/javascript" charset="utf8" src="js/jquery-ui/jquery-ui.js"></script>
+<!-- Stacktable -->
+<script type="text/javascript" charset="utf8" src="js/stacktable.js"></script>
+<!-- Custom Scripts -->
+<script src="{{ asset('js/dashboard.js') }}"></script>
+<script type="text/javascript" src="js/js.js?<?php echo date("YmdHis")+1; ?>"></script>
+
   
     <script>
       toastr.options = {

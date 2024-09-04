@@ -1,5 +1,6 @@
 <link rel="stylesheet" href="css/users/roles.css" />
 <script type="text/javascript" src="js/users/roles.js"></script>
+<input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
 <div class='row'>
   <div class='col-xs-12'>
       <div style="width:100%">
@@ -50,7 +51,7 @@
 <!-- Fin Modal para crear nuevo rol -->
 
 <!-- Modal Ver -->
-<div class="modal fade" id="roleMenusModal" tabindex="-1" role="dialog" aria-labelledby="roleMenusModalLabel" aria-hidden="true">
+<div class="modal fade" id="roleMenusModal" tabindex="-1"  role="dialog" aria-labelledby="roleMenusModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">

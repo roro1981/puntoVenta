@@ -22,7 +22,7 @@
 </div>
 
 <!-- Modal para crear nuevo usuario -->
-<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true" data-dismiss="modal" data-backdrop="false">
   <div class="modal-dialog">
       <div class="modal-content">
           <div class="modal-header">
@@ -71,8 +71,8 @@
 
 
 <!-- Modal para editar usuario -->
-<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true" data-dismiss="modal" data-backdrop="false">
+ <div class="modal-dialog">
       <div class="modal-content">
           <div class="modal-header">
               <h5 class="modal-title" id="editUserModalLabel">Editar usuario</h5>

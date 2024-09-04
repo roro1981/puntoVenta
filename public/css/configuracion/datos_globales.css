@@ -3,13 +3,9 @@
   }
   
   .form-control {
-    padding-right: 30px; /* espacio para el icono del ojo */
+    padding-right: 30px; 
   }
 
   .text-center {
     text-align: center;
 }
-.modal-md {
-  max-width: 50%;
-}
-

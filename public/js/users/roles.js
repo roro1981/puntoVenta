@@ -1,23 +1,28 @@
 $(document).ready(function() {
     cargaRoles();   
     $(document).on('click', '.ver-btn', function() {
+
         var rolId = $(this).data('id');
         $.ajax({
             url: '/roles/' + rolId + '/ver',
             method: 'GET',
             success: function(response) {
-                var roleName = response.role_name; // Obtener el nombre del rol
+                var roleName = response.role_name;
                 var content = '';
-                response.menus.forEach(function(menu) {
-                    content += '<div class="list-group-item">';
-                    content += '<h5 style="font-weight:bold" class="mb-1">' + menu.menu_name + '</h5>';
-                    content += '<ul class="ml-3">';
-                    menu.submenus.forEach(function(submenu) {
-                        content += '<li class="mb-1">' + submenu.submenu_name + '</li>';
+                if(response.menus.length==0){
+                    content += '<li class="mb-1">ROL SIN MENUS ASOCIADOS</li>'
+                }else{
+                    response.menus.forEach(function(menu) {
+                        content += '<div class="list-group-item">';
+                        content += '<h5 style="font-weight:bold" class="mb-1">' + menu.menu_name + '</h5>';
+                        content += '<ul class="ml-3">';
+                        menu.submenus.forEach(function(submenu) {
+                            content += '<li class="mb-1">' + submenu.submenu_name + '</li>';
+                        });
+                        content += '</ul>';
+                        content += '</div>';
                     });
-                    content += '</ul>';
-                    content += '</div>';
-                });
+                }
                 $('#roleMenusContent').html(content);
                 $('#roleMenusModalLabel').text('Menús y Submenús del Rol: ' + roleName);
                 $('#roleMenusModal').modal('show');
@@ -52,9 +57,33 @@ $(document).ready(function() {
                 $('#roleUsersModal').modal('show');
             },
             error: function() {
-                alert('Hubo un error al obtener los usuarios.');
+                toastr.error('Hubo un error al obtener los usuarios.');
             }
         });
+    });
+});
+$('#createRolForm').submit(function(event) {
+    event.preventDefault();
+
+    var formData = {
+        'role_name': $('#nombre_rol').val()
+    };
+
+    $.ajax({
+        type: 'POST',
+        url: '/roles/create',
+        data: formData,
+        headers: {
+            'X-CSRF-TOKEN': $("#token").val()
+        },
+        success: function(data) {
+            toastr.success(data.message);
+            $("#createRolModal").modal("hide");
+            $('#contenido').load('/usuarios/roles');
+        },
+        error: function(xhr, status, error) {
+            toastr.error("Error "+xhr.responseJSON.error+"<br>"+xhr.responseJSON.message);
+        }
     });
 });
 function cargaRoles(){

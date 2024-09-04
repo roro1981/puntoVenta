@@ -19,5 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call(UsersTableSeeder::class);
         $this->call(CorporateDataTableSeeder::class);
         $this->call(ComunasTableSeeder::class);
+        $this->call(GlobalesTableSeeder::class);
+        $this->call(ImpuestosTableSeeder::class);
     }
 }

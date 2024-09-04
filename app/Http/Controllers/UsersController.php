@@ -194,6 +194,33 @@ class UsersController extends Controller
 
         return response()->json($response);
     }
+    public function createRole(Request $request)
+    {
+        try{
+            $validated = $request->validate([
+                'role_name' => 'required|string|max:50'
+            ]);
+            $roleName = ucfirst(strtolower($validated['role_name']));
+            $role=Role::create([
+                'role_name' => $roleName,
+                'created_at' => now()
+            ]);
+
+            $role->save();
+            $response = response()->json([
+                'error' => 200,
+                'message' => "Rol creado correctamente"
+            ], 200); 
+        }catch (\Exception $e){
+            Log::error("Error al crear rol ". $e->getMessage());
+            $response = response()->json([
+                'error' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }    
+
+        return $response;
+    }
     public function rolesTable()
     {
         $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')

@@ -1,4 +1,4 @@
-<script type="text/javascript" src="js/configuration/datos_corporativos.js"></script>
+<script type="text/javascript" src="js/configuracion/datos_corporativos.js"></script>
 <form id="corporateDataForm">
     <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
     @foreach($corporateData as $data)
