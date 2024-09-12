@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ConfigurationController;
+use App\Http\Controllers\ProductosController;
+use App\Http\Controllers\UsersController;
+use Illuminate\Support\Facades\Route;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +20,12 @@ use App\Http\Controllers\ConfigurationController;
 Route::get('/', function () {
     return view('index');
 })->name('inicio');
+
+//menu almacen
+Route::get('/almacen/productos', [ProductosController::class, 'index']);
+
+
+
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
