@@ -1,77 +1,117 @@
 <script type="text/javascript" src="js/almacen/productos.js"></script>
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="mb-4">Gestión de Productos</h1>
-            <!-- Botón para agregar un nuevo producto -->
-            <button class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#createProductModal">
-                Crear Producto
-            </button>
-            <!-- Tabla de productos -->
-            <table id="productsTable" class="table table-striped table-bordered" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Precio</th>
-                        <th>Cantidad</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Ejemplo de datos para productos -->
-                    <tr>
-                        <td>1</td>
-                        <td>Producto A</td>
-                        <td>$10.00</td>
-                        <td>100</td>
-                        <td>
-                            <button class="btn btn-warning btn-sm me-1">Editar</button>
-                            <button class="btn btn-danger btn-sm">Eliminar</button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>2</td>
-                        <td>Producto B</td>
-                        <td>$20.00</td>
-                        <td>50</td>
-                        <td>
-                            <button class="btn btn-warning btn-sm me-1">Editar</button>
-                            <button class="btn btn-danger btn-sm">Eliminar</button>
-                        </td>
-                    </tr>
-                    <!-- Aquí se agregarán más filas dinámicamente -->
-                </tbody>
-            </table>
+<div class='row'>
+  <div class='col-xs-12'>
+      <div style="width:100%">
+        <div class='box-header' style="width:100%">
+            <button class="btn btn-success" data-toggle="modal" id="nuevo_user" data-target="#createUserModal"><i class='fa fa fa-save'></i>Nuevo Producto</button>
+            <hr style="height:1px;background-color: brown;width:100%;margin-top: 2pt;" />
         </div>
-    </div>
+        
+        <table id='tabla_productos' class="display" style="width:100%">
+          <thead>
+          <tr style="background-color: #2ab9f7;color:white">
+              <th>USUARIO</th><th>NOMBRE</th><th>ROL</th><th>FECHA CREACIÓN</th><th>ULTIMA MODIFICACIÓN</th><th>ACCIONES</th>
+          </tr>
+          </thead>
+          <tbody class="datos">
+          </tbody>
+        </table>
+      </div>
+  </div>
 </div>
 
-<!-- Modal para crear producto -->
-<div class="modal fade" id="createProductModal" tabindex="-1" aria-labelledby="createProductModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createProductModalLabel">Crear Producto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createProductForm">
-                    <div class="mb-3">
-                        <label for="productName" class="form-label">Nombre del Producto</label>
-                        <input type="text" class="form-control" id="productName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="productPrice" class="form-label">Precio</label>
-                        <input type="number" step="0.01" class="form-control" id="productPrice" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="productQuantity" class="form-label">Cantidad</label>
-                        <input type="number" class="form-control" id="productQuantity" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </form>
-            </div>
-        </div>
-    </div>
+<!-- Modal para crear nuevo usuario -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true" data-dismiss="modal" data-backdrop="false">
+  <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="createUserModalLabel">Crear nuevo usuario</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+              </button>
+          </div>
+          <div class="modal-body">
+              <form id="createUserForm" autocomplete="off">
+                @csrf
+                  <div class="form-group">
+                      <label for="name">Usuario o name</label>
+                      <input type="text" class="form-control" id="name" name="name" autocomplete="off" readonly required>
+                  </div>
+                  <div class="form-group">
+                      <label for="name_complete">Nombre completo</label>
+                      <input type="text" class="form-control" id="name_complete" name="name_complete" autocomplete="off" autocorrect="off" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" class="form-control" id="password" name="password" autocomplete="off" autocorrect="off" required>
+                    <span class="password-eye" onclick="togglePasswordVisibility(document.getElementById('password'),document.getElementById('password-eye-icon'))">
+                      <i class="fa fa-eye-slash" id="password-eye-icon"></i>
+                    </span>
+                  </div>
+                  <div class="form-group">
+                      <label for="role_id">Rol</label>
+                      <select class="form-control" id="role_id" name="role_id" required>
+                        <option value="" selected disabled>Seleccione rol</option>
+                      
+                      </select>
+                  </div>
+              </form>
+          </div>
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary" form="createUserForm">Crear usuario</button>
+          </div>
+      </div>
+  </div>
 </div>
+<!-- Fin Modal para crear nuevo usuario -->
+
+
+<!-- Modal para editar usuario -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true" data-dismiss="modal" data-backdrop="false">
+ <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="editUserModalLabel">Editar usuario</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+              </button>
+          </div>
+          <div class="modal-body">
+              <form id="editUserForm" autocomplete="off">
+                @csrf
+                <input type="hidden" id="user_id">
+                <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+                  <div class="form-group">
+                      <label for="name_edit">Usuario</label>
+                      <input type="text" class="form-control" id="name_edit" name="name_edit" readonly>
+                  </div>
+                  <div class="form-group">
+                      <label for="name_complete_edit">Nombre</label>
+                      <input type="text" class="form-control" id="name_complete_edit" name="name_complete_edit" autocomplete="off" autocorrect="off" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="password_edit">Contraseña</label>
+                    <input type="password" class="form-control" id="password_edit" name="password_edit" autocomplete="off" readonly autocorrect="off">
+                    <small class="text-muted">Dejar en blanco para no cambiar la contraseña</small>
+                    <span class="password-eye_edit" onclick="togglePasswordVisibility(document.getElementById('password_edit'),document.getElementById('password-eye-icon_edit'))">
+                      <i class="fa fa-eye-slash" id="password-eye-icon_edit"></i>
+                    </span>
+                </div>
+                <div class="form-group">
+                  <label for="role_id_edit">Rol</label>
+                  <select class="form-control" id="role_id_edit" name="role_id_edit" required>
+                  
+                  </select>
+                </div>
+              </form>
+          </div>
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary" form="editUserForm">Guardar cambios</button>
+          </div>
+      </div>
+  </div>
+ <!-- Fin Modal para editar usuario -->
+        
+

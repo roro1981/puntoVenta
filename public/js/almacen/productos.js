@@ -1,5 +1,5 @@
 $(document).ready(function() {
     // Inicializar el DataTable
-    $('#productsTable').DataTable();
+    $('#tabla_productos').DataTable();
 
 });
