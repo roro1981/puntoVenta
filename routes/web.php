@@ -23,9 +23,12 @@ Route::get('/', function () {
 
 //menu almacen
 Route::get('/almacen/productos', [ProductosController::class, 'index']);
-
-
-
+Route::get('/almacen/categorias', [ProductosController::class, 'indexCat']);
+Route::get('/almacen/traeCategorias', [ProductosController::class, 'showCategories']);
+Route::post('/almacen/createCat', [ProductosController::class, 'CreateCategory']);
+Route::get('/almacen/{cat}/show', [ProductosController::class, 'getCategory']);
+Route::put('/almacen/{cat}/edit', [ProductosController::class, 'updateCategory']);
+Route::delete('/almacen/{cat}/delete', [ProductosController::class, 'deleteCat']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

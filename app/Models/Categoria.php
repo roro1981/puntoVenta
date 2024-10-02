@@ -22,4 +22,27 @@ class Categoria extends Model
     {
         return $this->hasMany(Producto::class);
     }
+
+    public static function storeCategory($categoriaRequest)
+    {
+         return Categoria::create([
+             'descripcion_categoria' => strtoupper($categoriaRequest['descripcion_categoria']),
+             'estado_categoria' => 1
+         ]);
+    } 
+    
+    public function updateCategory($categoriaRequest)
+    {
+        $data = [
+            'descripcion_categoria' => strtoupper($categoriaRequest['descripcion_categoria'])
+        ];
+        $this->update($data);
+    }
+
+    public function deleteCategory()
+     {
+         $this->update([
+             'estado_categoria' => 0
+         ]);
+     }
 }
