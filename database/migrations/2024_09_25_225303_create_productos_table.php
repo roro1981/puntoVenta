@@ -22,8 +22,8 @@ return new class extends Migration
             $table->decimal('stock_minimo',3,1)->comment('Stock minimo producto');
             $table->foreignId('categoria_id')->constrained('categorias','id')->comment('Id de categoria asociada a producto');
             $table->enum('tipo', ['P', 'S', 'I', 'PR', 'R'])->comment('Tipo de producto');
-            $table->decimal('impuesto1', 3,1)->comment('Primer impuesto');
-            $table->decimal('impuesto2', 3,1)->nullable()->comment('Segundo impuesto');
+            $table->integer('impuesto1')->comment('Primer impuesto');
+            $table->integer('impuesto2')->nullable()->comment('Segundo impuesto');
             $table->string('imagen', 255)->nullable()->comment('Imagen producto');
             $table->string('estado', 10)->comment('Estado producto: Activo | Inactivo');
             $table->text('descrip_receta')->nullable()->comment('Descripcion de receta');

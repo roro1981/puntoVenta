@@ -7,11 +7,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoriaRequest;
+use App\Models\Impuestos;
 
 class ProductosController extends Controller
 {
     public function index(){
-        return view('almacen.productos');
+        $impuesto_iva = Impuestos::where('id', 1)->get();
+        $impuesto_ad = Impuestos::where('id', '!=', 1)->get();
+        $categorias = Categoria::where('estado_categoria', 1)->get();
+        return view('almacen.productos', compact("impuesto_iva", "impuesto_ad", "categorias"));
     }
 
     public function indexCat(){
@@ -93,7 +97,7 @@ class ProductosController extends Controller
     {
         try{
             $category = Categoria::findOrFail($id);
-            
+
             if ($category->productos()->count() > 0) {
                 $response = response()->json([
                     'error' => 400,
@@ -117,5 +121,25 @@ class ProductosController extends Controller
         }
 
         return $response;
+    }
+
+    public function uploadPhotoProduct(Request $request)
+    {
+        $fec = date("dmYHis");
+        $nom = "foto_prod_" . $fec;
+
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,jpg',
+        ]);
+     
+        $image = $request->file('file');
+        $extension = $image->getClientOriginalExtension();
+        $filename = $nom . '.' . $extension;
+
+        if ($image->move(public_path('img/fotos_prod'), $filename)) {
+            return asset('img/fotos_prod/' . $filename);
+        } else {
+            return 0;
+        }
     }
 }
