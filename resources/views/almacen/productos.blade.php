@@ -32,22 +32,23 @@
         </button>
       </div>
       <div class="modal-body">
-        <form>
+        <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+        <form id="createProdForm" autocomplete="off">
           <div class="form-group">
             <label for="codigo">Código</label>
-            <input type="text" class="form-control" id="codigo" name="codigo" maxlength="255">
+            <input type="text" class="form-control" id="codigo" name="codigo" maxlength="255" required oninvalid="this.setCustomValidity('Por favor, ingrese un código')" oninput="this.setCustomValidity('')">
           </div>
           <div class="form-group">
             <label for="descripcion">Descripción</label>
-            <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="255">
+            <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="255" required oninvalid="this.setCustomValidity('Por favor, ingrese descripción del producto')" oninput="this.setCustomValidity('')">
           </div>
           <div class="form-group">
             <label for="precio_compra_neto">Precio Compra Neto</label>
-            <input type="number" class="form-control" id="precio_compra_neto" name="precio_compra_neto" step="0.01">
+            <input type="number" class="form-control" id="precio_compra_neto" name="precio_compra_neto" step="0.01" required oninvalid="this.setCustomValidity('Por favor, ingrese precio compra neto')" oninput="this.setCustomValidity('')">
           </div>
           <div class="form-group">
             <label for="impuesto_1">Impuesto</label>
-            <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1">
+            <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1" required oninvalid="this.setCustomValidity('Por favor, seleccione impuesto')" oninput="this.setCustomValidity('')">
               <option value="0">Seleccione opción</option>
               @foreach($impuesto_iva as $impuesto)
                 <option value="{{ $impuesto->id }}_{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
@@ -65,7 +66,7 @@
           </div>
           <div class="form-group">
             <label for="precio_compra_bruto">Precio Compra Bruto</label>
-            <input type="number" class="form-control" id="precio_compra_bruto" name="precio_compra_bruto" step="1" disabled>
+            <input type="number" class="form-control" id="precio_compra_bruto" name="precio_compra_bruto" disabled required oninvalid="this.setCustomValidity('Por favor, genere precio venta bruto')" oninput="this.setCustomValidity('')">
           </div>
           <div class="form-group">
             <label for="margen">Margen</label>
@@ -77,11 +78,11 @@
           </div>
           <div class="form-group">
             <label for="precio_venta_publico">Precio Venta Público</label>
-            <input type="number" class="form-control" id="precio_venta_publico" name="precio_venta_publico" step="1">
+            <input type="number" class="form-control" id="precio_venta" name="precio_venta" step="1" required oninvalid="this.setCustomValidity('Por favor, ingrese precio venta publico')" oninput="this.setCustomValidity('')">
           </div>
           <div class="form-group">
             <label for="categoria">Categoría</label>
-            <select class="form-control" id="categoria" name="categoria">
+            <select class="form-control" id="categoria" name="categoria" required oninvalid="this.setCustomValidity('Por favor, seleccione categoria')" oninput="this.setCustomValidity('')">
               <option value="0">Seleccione opción</option>
               @foreach($categorias as $categoria)
               <option value="{{ $categoria->id }}">{{ $categoria->descripcion_categoria }}</option>
@@ -94,7 +95,7 @@
           </div>
           <div class="form-group">
             <label for="tipo">Tipo</label>
-            <select class="form-control" id="tipo" name="tipo">
+            <select class="form-control" id="tipo" name="tipo" required oninvalid="this.setCustomValidity('Por favor, seleccione tipo de producto')" oninput="this.setCustomValidity('')">
               <option value="0">Seleccione opción</option>
               <option value="P">PRODUCTO</option>
               <option value="S">NO AFECTO A STOCK</option>
@@ -110,7 +111,7 @@
                 </div>
                 <div class="form-group" style="text-align: center;">
                   <input type="button" style="margin-top:10px" class="btn btn-success upload" value="Subir">
-                  <input type="hidden" id="nom_foto">
+                  <input type="hidden" id="nom_foto" name="nom_foto">
                 </div> 
             </div>
           </div>
@@ -118,7 +119,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-        <button type="button" class="btn btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary" form="createProdForm">Guardar</button>
       </div>
     </div>
   </div>

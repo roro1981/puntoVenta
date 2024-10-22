@@ -13,17 +13,17 @@ return new class extends Migration
     {
         Schema::create('productos', function (Blueprint $table) {
             $table->id();
-            $table->string('codigo', 255)->comment('Codigo producto');
+            $table->string('codigo', 100)->comment('Codigo producto');
             $table->string('descripcion', 255)->comment('Descripcion producto');
-            $table->decimal('precio_compra_neto', 3,1)->comment('Precio compra neto');
-            $table->integer('precio_compra_bruto')->comment('Precio compra bruto');
-            $table->integer('precio_venta')->comment('Precio venta publico');
+            $table->decimal('precio_compra_neto', 10,1)->comment('Precio compra neto');
+            $table->bigInteger('precio_compra_bruto')->comment('Precio compra bruto');
+            $table->bigInteger('precio_venta')->comment('Precio venta publico');
             $table->decimal('stock',6,1)->default(0.0)->comment('Stock producto');
-            $table->decimal('stock_minimo',3,1)->comment('Stock minimo producto');
+            $table->decimal('stock_minimo',6,1)->comment('Stock minimo producto');
             $table->foreignId('categoria_id')->constrained('categorias','id')->comment('Id de categoria asociada a producto');
             $table->enum('tipo', ['P', 'S', 'I', 'PR', 'R'])->comment('Tipo de producto');
-            $table->integer('impuesto1')->comment('Primer impuesto');
-            $table->integer('impuesto2')->nullable()->comment('Segundo impuesto');
+            $table->decimal('impuesto1',3,1)->comment('Primer impuesto');
+            $table->decimal('impuesto2',3,1)->nullable()->comment('Segundo impuesto');
             $table->string('imagen', 255)->nullable()->comment('Imagen producto');
             $table->string('estado', 10)->comment('Estado producto: Activo | Inactivo');
             $table->text('descrip_receta')->nullable()->comment('Descripcion de receta');

@@ -37,4 +37,26 @@ class Producto extends Model
     {
         return $this->belongsTo(Categoria::class);
     }
+
+    public function crearProducto(array $data)
+    {
+        $this->codigo = strtoupper($data['codigo']);
+        $this->descripcion = strtoupper($data['descripcion']);
+        $this->precio_compra_neto = $data['precio_compra_neto'];
+        $this->precio_compra_bruto = $data['precio_compra_bruto'];
+        $this->precio_venta = $data['precio_venta'];
+        $this->impuesto1 = $data['impuesto_1'];
+        $this->impuesto2 = $data['impuesto_2'];
+        $this->categoria_id = $data['categoria'];
+        $this->stock_minimo = $data['stock_minimo'] ?? 0;
+        $this->tipo = $data['tipo'];
+        $this->imagen = $data['nom_foto'];
+        $this->estado = 'Activo';
+        $this->fec_creacion = now();
+        $this->user_creacion = auth()->user()->name;
+
+        $this->save();
+
+        return $this;
+    }
 }

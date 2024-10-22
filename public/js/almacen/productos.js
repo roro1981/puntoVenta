@@ -49,6 +49,37 @@ $(document).ready(function() {
 
 });
 
+$('#createProdForm').submit(function(event) {
+    event.preventDefault();
+
+    var formData = new FormData(this);
+    const impuestoUnido = $("#impuesto_1").val();
+    const imp1 = impuestoUnido.split("_");
+    const impuesto2Unido = $("#impuesto_2").val();
+    const imp2 = impuesto2Unido.split("_");
+    formData.set('impuesto_1', imp1[1]);
+    formData.set('impuesto_2', imp2[1]);
+    formData.append("precio_compra_bruto",$("#precio_compra_bruto").val())
+    $.ajax({
+        type: 'POST',
+        url: '/almacen/productos/create',
+        data: formData,
+        headers: {
+            'X-CSRF-TOKEN': $("#token").val()
+        },
+        contentType: false,
+        processData: false,
+        success: function(data) {
+            $('#modalNuevoProducto').modal('hide');
+            toastr.success(data.message);
+            $('#contenido').load('/almacen/productos');
+        },
+        error: function(xhr, status, error) {
+            toastr.error('Error al crear producto');
+        }
+    });
+});
+
 function calcula(valor){
     if($("#precio_compra_neto").val()==0 || $("#precio_compra_neto").val()==""){
           $("#precio_compra_bruto").val(0); 

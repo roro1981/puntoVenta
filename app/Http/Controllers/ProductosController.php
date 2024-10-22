@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Categoria;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoriaRequest;
+use App\Http\Requests\ProductoRequest;
+use App\Models\Categoria;
 use App\Models\Impuestos;
+use App\Models\Producto;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use PhpParser\Node\Stmt\TryCatch;
 
 class ProductosController extends Controller
 {
@@ -141,5 +144,28 @@ class ProductosController extends Controller
         } else {
             return 0;
         }
+    }
+
+    public function storeProduct(ProductoRequest $request)
+    {
+        try {
+
+            $validated = $request->validated();
+            $producto = new Producto();
+            $producto = $producto->crearProducto($validated);
+
+            $response = response()->json([
+                'error' => 200,
+                'message' => "Producto creado correctamente"
+            ], 200);   
+        }catch (\Exception $e){
+            Log::error("Error al grabar producto ". $e->getMessage());
+            $response = response()->json([
+                'error' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        return $response;
     }
 }
