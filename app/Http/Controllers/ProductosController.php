@@ -149,7 +149,6 @@ class ProductosController extends Controller
     public function storeProduct(ProductoRequest $request)
     {
         try {
-
             $validated = $request->validated();
             $producto = new Producto();
             $producto = $producto->crearProducto($validated);

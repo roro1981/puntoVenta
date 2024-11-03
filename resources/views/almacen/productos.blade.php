@@ -36,19 +36,19 @@
         <form id="createProdForm" autocomplete="off">
           <div class="form-group">
             <label for="codigo">Código</label>
-            <input type="text" class="form-control" id="codigo" name="codigo" maxlength="255" required oninvalid="this.setCustomValidity('Por favor, ingrese un código')" oninput="this.setCustomValidity('')">
+            <input type="text" class="form-control" id="codigo" name="codigo" maxlength="255">
           </div>
           <div class="form-group">
             <label for="descripcion">Descripción</label>
-            <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="255" required oninvalid="this.setCustomValidity('Por favor, ingrese descripción del producto')" oninput="this.setCustomValidity('')">
+            <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="255">
           </div>
           <div class="form-group">
             <label for="precio_compra_neto">Precio Compra Neto</label>
-            <input type="number" class="form-control" id="precio_compra_neto" name="precio_compra_neto" step="0.01" required oninvalid="this.setCustomValidity('Por favor, ingrese precio compra neto')" oninput="this.setCustomValidity('')">
+            <input type="number" class="form-control" id="precio_compra_neto" name="precio_compra_neto" step="0.01" >
           </div>
           <div class="form-group">
             <label for="impuesto_1">Impuesto</label>
-            <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1" required oninvalid="this.setCustomValidity('Por favor, seleccione impuesto')" oninput="this.setCustomValidity('')">
+            <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1" >
               <option value="0">Seleccione opción</option>
               @foreach($impuesto_iva as $impuesto)
                 <option value="{{ $impuesto->id }}_{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
@@ -58,7 +58,7 @@
           <div class="form-group">
             <label for="impuesto_2">Impuesto adicional</label>
             <select class="form-control" onchange="calcula2(this.value);" id="impuesto_2" name="impuesto_2">
-              <option value="0">Seleccione opción</option>
+              <option value="0" selected>Seleccione opción</option>
               @foreach($impuesto_ad as $impuesto)
                 <option value="{{ $impuesto->id }}_{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
               @endforeach
@@ -66,24 +66,24 @@
           </div>
           <div class="form-group">
             <label for="precio_compra_bruto">Precio Compra Bruto</label>
-            <input type="number" class="form-control" id="precio_compra_bruto" name="precio_compra_bruto" disabled required oninvalid="this.setCustomValidity('Por favor, genere precio venta bruto')" oninput="this.setCustomValidity('')">
+            <input type="number" class="form-control" id="precio_compra_bruto" name="precio_compra_bruto" disabled >
           </div>
           <div class="form-group">
             <label for="margen">Margen</label>
             <div style="display: flex">
-              <input type="number" class="form-control" id="margen" name="margen" step="0.01">
+              <input type="number" class="form-control" id="margen" step="0.01">
               <button type="button" class="btn btn-success" id="calcular-margen">Calcular</button>
             </div>
            
           </div>
           <div class="form-group">
-            <label for="precio_venta_publico">Precio Venta Público</label>
-            <input type="number" class="form-control" id="precio_venta" name="precio_venta" step="1" required oninvalid="this.setCustomValidity('Por favor, ingrese precio venta publico')" oninput="this.setCustomValidity('')">
+            <label for="precio_venta">Precio Venta Público</label>
+            <input type="number" class="form-control" id="precio_venta" name="precio_venta" step="1" >
           </div>
           <div class="form-group">
             <label for="categoria">Categoría</label>
-            <select class="form-control" id="categoria" name="categoria" required oninvalid="this.setCustomValidity('Por favor, seleccione categoria')" oninput="this.setCustomValidity('')">
-              <option value="0">Seleccione opción</option>
+            <select class="form-control" id="categoria" name="categoria">
+              <option value="">Seleccione opción</option>
               @foreach($categorias as $categoria)
               <option value="{{ $categoria->id }}">{{ $categoria->descripcion_categoria }}</option>
             @endforeach
@@ -95,7 +95,7 @@
           </div>
           <div class="form-group">
             <label for="tipo">Tipo</label>
-            <select class="form-control" id="tipo" name="tipo" required oninvalid="this.setCustomValidity('Por favor, seleccione tipo de producto')" oninput="this.setCustomValidity('')">
+            <select class="form-control" id="tipo" name="tipo" >
               <option value="0">Seleccione opción</option>
               <option value="P">PRODUCTO</option>
               <option value="S">NO AFECTO A STOCK</option>

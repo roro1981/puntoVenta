@@ -6,34 +6,53 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ProductoRequest extends FormRequest
 {
-    
+    /*public function withValidator($validator)
+    {
+        dd($this->all());
+    }*/
     public function rules(): array
     {
         return [
-            'codigo' => 'required|string|max:100',
-            'descripcion' => 'required|string|max:255',
+            'codigo' => 'required|unique:productos,codigo|string|max:100',
+            'descripcion' => 'required|unique:productos,descripcion|string|max:255',
             'precio_compra_neto' => 'required|integer|min:0',
-            'impuesto_1' => 'required|numeric|min:0|max:99.9',
-            'impuesto_2' => 'nullable|numeric|min:0|max:99.9',
-            'precio_compra_bruto' => 'required|integer|min:0',
-            'precio_venta' => 'required|integer|min:0',
-            'stock_minimo' => 'required|numeric|min:0|max:999.9',
+            'impuesto_1' => 'required|numeric|min:1|max:99.9',
+            'impuesto_2' => 'nullable|numeric|min:1|max:99.9',
+            'precio_compra_bruto' => 'required|integer|min:1',
+            'precio_venta' => 'required|integer|min:1',
+            'stock_minimo' => 'nullable|numeric|min:0|max:999.9',
             'categoria' => 'required|exists:categorias,id',
             'tipo' => 'required|in:P,S,I,PR,R',
-            'nom_foto' => 'nullable|string|max:255',
-            'descrip_receta' => 'nullable|string'
+            'nom_foto' => 'nullable|string|max:255'
         ];
     }
 
     public function messages()
     {
         return [
+            'codigo.required' => 'El código es obligatorio',
+            'codigo.unique' => 'Codigo de producto ya existe',
+            'descripcion.required' => 'La descripción es obligatoria',
+            'descripcion.unique' => 'Descripcion de producto ya existe',
+            'precio_compra_neto.required' => 'El precio de compra neto es obligatorio',
+            'impuesto_1.required' => 'El impuesto 1 es obligatorio.',
+            'impuesto_1.numeric' => 'El impuesto 1 debe ser numérico.',
+            'impuesto_1.min' => 'El impuesto 1 debe ser al menos 1.',
+            'impuesto_1.max' => 'El impuesto 1 no puede superar 99.9.',
+            'impuesto_2.numeric' => 'El impuesto 2 debe ser numérico.',
+            'impuesto_2.min' => 'El impuesto 2 debe ser al menos 1.',
+            'impuesto_2.max' => 'El impuesto 2 no puede superar 99.9.',
             'precio_compra_bruto.required' => 'El precio de compra bruto es obligatorio.',
-            'precio_venta.required' => 'El precio de venta es obligatorio.',
+            'precio_compra_bruto.integer' => 'El precio de compra bruto debe ser numérico.',
+            'precio_compra_bruto.min' => 'El precio de compra bruto debe ser al menos 1.',
+            'precio_venta.required' => 'El precio de venta público es obligatorio.',
+            'precio_venta.integer' => 'El precio de venta público debe ser numérico.',
+            'precio_venta.min' => 'El precio de venta público debe ser al menos 1.',
             'categoria.required' => 'La categoría es obligatoria.',
+            'categoria.exists' => 'Categoria no existe.',
             'tipo.required' => 'El tipo de producto es obligatorio.',
             'tipo.in' => 'El tipo de producto debe ser uno de los siguientes: PRODUCTO, NO AFECTO A STOCK, INSUMO.',
-            'impuesto_1.required' => 'El primer impuesto es obligatorio.'
+            'nom_foto.max' => 'El nombre de la foto no puede sobrepasar los 255 caracteres',
         ];
     }
 }

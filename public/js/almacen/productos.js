@@ -3,7 +3,7 @@ $(document).ready(function() {
     $('#tabla_productos').DataTable();
 
     $("#calcular-margen").click(calcularPrecioVenta);
-    $("#precio_venta_publico").on("input", calcularMargen);
+    $("#precio_venta").on("input", calcularMargen);
 
     $(".upload").on('click', function() {
         var formData = new FormData();
@@ -54,11 +54,11 @@ $('#createProdForm').submit(function(event) {
 
     var formData = new FormData(this);
     const impuestoUnido = $("#impuesto_1").val();
-    const imp1 = impuestoUnido.split("_");
+    const imp1 = impuestoUnido ? impuestoUnido.split("_") : ["", ""];
     const impuesto2Unido = $("#impuesto_2").val();
-    const imp2 = impuesto2Unido.split("_");
-    formData.set('impuesto_1', imp1[1]);
-    formData.set('impuesto_2', imp2[1]);
+    const imp2 = impuesto2Unido ? impuesto2Unido.split("_") : ["", ""];
+    formData.set('impuesto_1', imp1[1] || "");
+    formData.set('impuesto_2', imp2[1] || "");
     formData.append("precio_compra_bruto",$("#precio_compra_bruto").val())
     $.ajax({
         type: 'POST',
@@ -75,7 +75,17 @@ $('#createProdForm').submit(function(event) {
             $('#contenido').load('/almacen/productos');
         },
         error: function(xhr, status, error) {
-            toastr.error('Error al crear producto');
+            if (xhr.status === 422) { 
+                let errorMessages = '';
+                
+                $.each(xhr.responseJSON.errors, function(key, messages) {
+                    errorMessages += messages.join('<br>') + '<br>';
+                });
+        
+                toastr.warning(errorMessages, 'Campos obligatorios', {timeOut: 7000});
+            } else {
+                toastr.error('Error al crear producto');
+            }
         }
     });
 });
@@ -96,27 +106,28 @@ function calcula(valor){
     }
   }
 
-function calcula2(valor){
-    if($("#precio_compra_neto").val()==0 || $("#precio_compra_neto").val()==""){
+  function calcula2(valor) {
+    if ($("#precio_compra_neto").val() == 0 || $("#precio_compra_neto").val() == "") {
         $("#precio_compra_bruto").val(0); 
-    }else{  
-        var trozos=valor.split("_"); 
+    } else {  
+        var trozos = valor.split("_"); 
         
-        if($("#impuesto_1").val()==0){
+        // Verifica si el impuesto_1 está seleccionado
+        if ($("#impuesto_1").val() == 0) {
             toastr.error("Seleccione impuesto 1");
-            $("#impuesto_2").val(0);
-        }else{
-            iva=$("#impuesto_1").val();
-            var trozos2=iva.split("_");
-            valor_imp1=parseInt($("#precio_compra_neto").val() * trozos2[1])/100;
-            if(valor==0){
-                valor_imp2=0;  
-            }else{
-                valor_imp2=parseInt($("#precio_compra_neto").val() * trozos[1])/100;
-            }
-            console.log(valor_imp1);
-            console.log(valor_imp2);
-            calculo2=Math.round(parseInt($("#precio_compra_neto").val())+valor_imp1+valor_imp2);
+            $("#impuesto_2").val(0);  // Si no hay impuesto 1, impuesto_2 se establece en 0
+        } else {
+            let iva = $("#impuesto_1").val();
+            var trozos2 = iva.split("_");
+
+            // Calcula el valor del impuesto 1
+            let valor_imp1 = parseInt($("#precio_compra_neto").val() * trozos2[1]) / 100;
+
+            // Calcula el valor del impuesto 2 si está seleccionado, si no, se toma como 0
+            let valor_imp2 = (valor == 0) ? 0 : parseInt($("#precio_compra_neto").val() * trozos[1]) / 100;
+
+            // Calcula el precio de compra bruto y lo asigna al campo correspondiente
+            let calculo2 = Math.round(parseInt($("#precio_compra_neto").val()) + valor_imp1 + valor_imp2);
             $("#precio_compra_bruto").val(calculo2);
         }
     }
@@ -132,12 +143,12 @@ function calcularPrecioVenta() {
     }
     
     var precioVentaPublico = Math.round(precioCompraBruto + (precioCompraBruto * (margen / 100)));
-    $("#precio_venta_publico").val(precioVentaPublico);
+    $("#precio_venta").val(precioVentaPublico);
 }
 
 function calcularMargen() {
     var precioCompraBruto = parseFloat($("#precio_compra_bruto").val());
-    var precioVentaPublico = parseFloat($("#precio_venta_publico").val());
+    var precioVentaPublico = parseFloat($("#precio_venta").val());
     
     if (isNaN(precioCompraBruto) || isNaN(precioVentaPublico)) {
       toastr.error("Por favor, ingrese un número válido para el precio de compra bruto y el precio de venta público.");
