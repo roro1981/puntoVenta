@@ -2,29 +2,39 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Validation\Rule;
+
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProductoRequest extends FormRequest
 {
-    /*public function withValidator($validator)
-    {
-        dd($this->all());
-    }*/
     public function rules(): array
     {
-        return [
-            'codigo' => 'required|unique:productos,codigo|string|max:100',
-            'descripcion' => 'required|unique:productos,descripcion|string|max:255',
-            'precio_compra_neto' => 'required|integer|min:0',
-            'impuesto_1' => 'required|numeric|min:1|max:99.9',
-            'impuesto_2' => 'nullable|numeric|min:1|max:99.9',
-            'precio_compra_bruto' => 'required|integer|min:1',
-            'precio_venta' => 'required|integer|min:1',
-            'stock_minimo' => 'nullable|numeric|min:0|max:999.9',
-            'categoria' => 'required|exists:categorias,id',
-            'tipo' => 'required|in:P,S,I,PR,R',
-            'nom_foto' => 'nullable|string|max:255'
+        $rules = [
+            'codigo' => ['required', 'string', 'max:100'],
+            'descripcion' => ['required', 'string', 'max:255'],
+            'precio_compra_neto' => ['required', 'integer', 'min:0'],
+            'impuesto_1' => ['required', 'numeric', 'min:1', 'max:99.9'],
+            'impuesto_2' => ['nullable', 'numeric', 'min:1', 'max:99.9'],
+            'precio_compra_bruto' => ['required', 'integer', 'min:1'],
+            'precio_venta' => ['required', 'integer', 'min:1'],
+            'stock_minimo' => ['nullable', 'numeric', 'min:0', 'max:999.9'],
+            'categoria' => ['required', 'exists:categorias,id'],
+            'tipo' => ['required', 'in:P,S,I,PR,R'],
+            'nom_foto' => ['nullable', 'string', 'max:255']
         ];
+
+        if ($this->isMethod('POST')) {
+            $rules['codigo'][] = Rule::unique('productos', 'codigo');
+            $rules['descripcion'][] = Rule::unique('productos', 'descripcion');
+        }
+
+        if ($this->isMethod('PUT')) {
+            $rules['codigo'] = ['string', 'max:100'];
+            $rules['descripcion'] = ['required', 'string', 'max:255'];
+        }
+
+        return $rules;
     }
 
     public function messages()

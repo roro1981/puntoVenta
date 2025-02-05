@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Carbon\Carbon;
 
 use App\Models\Menu;
@@ -25,7 +26,7 @@ class UsersController extends Controller
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
             $user = Auth::user();
-           
+
             Carbon::setLocale('es');
             $date = Carbon::now();
             $fechaEnPalabras = $date->isoFormat('dddd, D MMMM YYYY');
@@ -33,14 +34,13 @@ class UsersController extends Controller
             // Guardar datos en la sesión
             session(['fechaEnPalabras' => $fechaEnPalabras]);
             $horaActual = Carbon::now()->format('H:i');
-            
+
 
             return response()->json([
                 'authenticated' => true,
                 'redirectTo' => route('dashboard'),
                 'message' => '<strong>Inicio de sesión exitoso!</strong> Bienvenido, ' . $user->name . '.',
             ]);
-       
         }
 
         return response()->json([
@@ -48,12 +48,12 @@ class UsersController extends Controller
             'message' => 'Las credenciales no coinciden'
         ], 422);
     }
-    
+
     public function dashboard()
     {
         $fechaEnPalabras = session('fechaEnPalabras', '');
         $horaActual = session('horaActual', '');
-     
+
         return view('menu', compact('fechaEnPalabras', 'horaActual'));
     }
     public function getUserMenus()
@@ -94,17 +94,16 @@ class UsersController extends Controller
     public function create(UserRequest $request)
     {
         $validated = $request->validated();
-        
-        try { 
-            $user = User::storeUser($validated);
-            
+
+        try {
+            User::storeUser($validated);
+
             $response = response()->json([
                 'error' => 200,
                 'message' => "Usuario creado correctamente"
-            ], 200);    
-
+            ], 200);
         } catch (\Exception $e) {
-            Log::error("Error al crear usuario ". $e->getMessage());
+            Log::error("Error al crear usuario " . $e->getMessage());
             $response = response()->json([
                 'error' => 500,
                 'message' => $e->getMessage()
@@ -115,17 +114,17 @@ class UsersController extends Controller
     }
     public function update(UserRequest $request, $id)
     {
-        $validated = $request->validated();
-        try{
+        $request->validated();
+        try {
             $user = User::findOrFail($id);
             $user->updateUser($request);
 
             $response = response()->json([
                 'error' => 200,
                 'message' => "Usuario modificado correctamente"
-            ], 200); 
-        }catch (\Exception $e){
-            Log::error("Error al modificar usuario ". $e->getMessage());
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al modificar usuario " . $e->getMessage());
             $response = response()->json([
                 'error' => 500,
                 'message' => $e->getMessage()
@@ -136,23 +135,22 @@ class UsersController extends Controller
     }
     public function delete($id)
     {
-        try{
+        try {
             $user = User::findOrFail($id);
             $superAdminRoleId = Role::where('role_name', 'SuperAdministrador')->first()->id;
 
             if ($user->role_id == $superAdminRoleId) {
                 $superAdminCount = User::where('role_id', $superAdminRoleId)
-                ->where('name_complete', '<>', 'Rodrigo Panes')
-                ->where('estado', '=', 1)
-                ->count();
-    
+                    ->where('name_complete', '<>', 'Rodrigo Panes')
+                    ->where('estado', '=', 1)
+                    ->count();
+
                 if ($superAdminCount <= 1) {
                     return response()->json([
                         'error' => 403,
                         'message' => "No se puede eliminar el último superadministrador, debe existir al menos 1"
                     ], 403);
                 }
-
             }
 
             $user->deleteUser();
@@ -160,9 +158,9 @@ class UsersController extends Controller
             $response = response()->json([
                 'error' => 200,
                 'message' => "Usuario eliminado correctamente"
-            ], 200); 
-        }catch (\Exception $e){
-            Log::error("Error al eliminar usuario ". $e->getMessage());
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al eliminar usuario " . $e->getMessage());
             $response = response()->json([
                 'error' => 500,
                 'message' => $e->getMessage()
@@ -181,8 +179,8 @@ class UsersController extends Controller
             ->map(function ($user) {
                 $user->created_at = date('d/m/Y H:i:s', strtotime($user->created_at));
                 $user->updated_at = $user->updated_at ? date('d/m/Y H:i:s', strtotime($user->updated_at)) : 'Aún no tiene modificaciones';
-                $user->actions = '<a href="" class="btn btn-sm btn-primary editar" data-rol="'.$user->role_id.'" data-target="#editUserModal" data-user="'.$user->id.'" data-toggle="modal" title="Editar usuario '.$user->name.'"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-user="'.$user->id.'" data-nameuser="'.$user->name.'" title="Eliminar usuario '.$user->name.'"><i class="fa fa-trash"></i></a>';
+                $user->actions = '<a href="" class="btn btn-sm btn-primary editar" data-rol="' . $user->role_id . '" data-target="#editUserModal" data-user="' . $user->id . '" data-toggle="modal" title="Editar usuario ' . $user->name . '"><i class="fa fa-edit"></i></a>
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-user="' . $user->id . '" data-nameuser="' . $user->name . '" title="Eliminar usuario ' . $user->name . '"><i class="fa fa-trash"></i></a>';
                 return $user;
             });
 
@@ -196,12 +194,12 @@ class UsersController extends Controller
     }
     public function createRole(Request $request)
     {
-        try{
+        try {
             $validated = $request->validate([
                 'role_name' => 'required|string|max:50'
             ]);
             $roleName = ucfirst(strtolower($validated['role_name']));
-            $role=Role::create([
+            $role = Role::create([
                 'role_name' => $roleName,
                 'created_at' => now()
             ]);
@@ -210,32 +208,32 @@ class UsersController extends Controller
             $response = response()->json([
                 'error' => 200,
                 'message' => "Rol creado correctamente"
-            ], 200); 
-        }catch (\Exception $e){
-            Log::error("Error al crear rol ". $e->getMessage());
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al crear rol " . $e->getMessage());
             $response = response()->json([
                 'error' => 500,
                 'message' => $e->getMessage()
             ], 500);
-        }    
+        }
 
         return $response;
     }
     public function rolesTable()
     {
         $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')
-            ->where('roles.role_name','<>','SuperAdministrador')
+            ->where('roles.role_name', '<>', 'SuperAdministrador')
             ->get()
             ->map(function ($roles) {
-                $roles->asociados = '<button type="button" data-id="'.$roles->id.'" class="btn btn-primary ver-btn">
+                $roles->asociados = '<button type="button" data-id="' . $roles->id . '" class="btn btn-primary ver-btn">
                                             <i class="fa fa-eye"></i> Ver
-                                        </button>';     
-                $roles->usuarios = '<button type="button" data-rol="'.$roles->role_name.'" data-id="'.$roles->id.'" class="btn btn-success ver-btn_users">
+                                        </button>';
+                $roles->usuarios = '<button type="button" data-rol="' . $roles->role_name . '" data-id="' . $roles->id . '" class="btn btn-success ver-btn_users">
                                             <i class="fa fa-eye"></i> Ver
-                                        </button>';                                 
+                                        </button>';
                 $roles->created_at = date('d/m/Y H:i:s', strtotime($roles->created_at));
                 $roles->updated_at = $roles->updated_at ? date('d/m/Y H:i:s', strtotime($roles->updated_at)) : 'Aún no tiene modificaciones';
-                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-rolid="'.$roles->id.'" data-namerol="'.$roles->role_name.'" title="Eliminar rol '.$roles->role_name.'"><i class="fa fa-trash"></i></a>';
+                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-rolid="' . $roles->id . '" data-namerol="' . $roles->role_name . '" title="Eliminar rol ' . $roles->role_name . '"><i class="fa fa-trash"></i></a>';
                 return $roles;
             });
 
@@ -260,20 +258,20 @@ class UsersController extends Controller
     public function ver($id)
     {
         $rol = Role::findOrFail($id);
-    
+
         $menus = Menu::with(['submenus' => function ($query) use ($id) {
             $query->whereHas('menuRoles', function ($query) use ($id) {
                 $query->where('role_id', $id);
             });
         }])
-        ->whereHas('submenus.menuRoles', function ($query) use ($id) {
-            $query->where('role_id', $id);
-        })
-        ->orderBy('id', 'asc')
-        ->get();
+            ->whereHas('submenus.menuRoles', function ($query) use ($id) {
+                $query->where('role_id', $id);
+            })
+            ->orderBy('id', 'asc')
+            ->get();
 
         return response()->json([
-            'role_name' => $rol->role_name, 
+            'role_name' => $rol->role_name,
             'menus' => $menus
         ]);
     }
@@ -281,10 +279,10 @@ class UsersController extends Controller
     public function ver_users($id)
     {
         $usuarios = User::where('role_id', $id)
-        ->with('role')
-        ->get();
-        
-        $usersList = $usuarios->map(function($user) {
+            ->with('role')
+            ->get();
+
+        $usersList = $usuarios->map(function ($user) {
             return [
                 'user_name' => $user->name,
                 'user_name_complete' => $user->name_complete,
@@ -309,7 +307,7 @@ class UsersController extends Controller
     public function getMenus(Request $request)
     {
         $roleId = $request->role_id;
-        $submenus = Submenu::with('menu') 
+        $submenus = Submenu::with('menu')
             ->get()
             ->groupBy('menu_id');
 
@@ -339,7 +337,7 @@ class UsersController extends Controller
         $role = Role::find($roleId);
 
         if ($role) {
-        
+
             $role->submenus()->detach();
 
             $role->submenus()->attach($selectedSubmenus);
@@ -356,4 +354,4 @@ class UsersController extends Controller
         $request->session()->regenerateToken();
         return redirect(route('inicio'));
     }
-}    
+}

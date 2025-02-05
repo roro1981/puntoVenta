@@ -23,6 +23,10 @@ Route::get('/', function () {
 
 //menu almacen
 Route::get('/almacen/productos', [ProductosController::class, 'index']);
+Route::get('/almacen/productosCarga', [ProductosController::class, 'listProducts']);
+Route::get('/almacen/productos/{id}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
+Route::put('/almacen/productos/{producto}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
+Route::delete('/almacen/productos/{prod}/delete', [ProductosController::class, 'deleteProd']);
 Route::get('/almacen/categorias', [ProductosController::class, 'indexCat']);
 Route::get('/almacen/traeCategorias', [ProductosController::class, 'showCategories']);
 Route::post('/almacen/createCat', [ProductosController::class, 'CreateCategory']);
@@ -63,5 +67,3 @@ Route::put('/configuracion/update-impuesto/{id}', [ConfigurationController::clas
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');
-
-

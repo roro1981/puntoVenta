@@ -67,6 +67,7 @@
 <!-- TableExport -->
 <script type="text/javascript" src="js/excel_js/table_export/tableExport.js"></script>
 <script type="text/javascript" src="js/excel_js/table_export/libs/js-xlsx/xlsx.core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Table2Excel -->
 <script src="js/excel_js/table2excel/src/jquery.table2excel.js"></script>
 <!-- Shadowbox -->
@@ -83,7 +84,7 @@
 <script type="text/javascript" charset="utf8" src="js/DataTables/datatables.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.flash.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
