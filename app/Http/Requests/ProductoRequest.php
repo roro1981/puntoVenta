@@ -20,6 +20,7 @@ class ProductoRequest extends FormRequest
             'precio_venta' => ['required', 'integer', 'min:1'],
             'stock_minimo' => ['nullable', 'numeric', 'min:0', 'max:999.9'],
             'categoria' => ['required', 'exists:categorias,id'],
+            'unidad_medida' => ['required', 'in:UN,L,KG,CJ'],
             'tipo' => ['required', 'in:P,S,I,PR,R'],
             'nom_foto' => ['nullable', 'string', 'max:255']
         ];

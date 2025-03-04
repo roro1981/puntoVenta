@@ -56,6 +56,32 @@ $(document).ready(function () {
     });
 
 });
+$('#modalNuevoProducto').on('show.bs.modal', function (event) {
+    $('#producto_id').val('');
+
+    // Limpiar campos de texto y numéricos
+    $('#codigo_editar').val('');
+    $('#descripcion_editar').val('');
+    $('#precio_compra_neto_editar').val('');
+    $('#precio_compra_bruto_editar').val('');
+    $('#precio_venta_editar').val('');
+    $('#margen_editar').val('');
+    $('#stock_minimo_editar').val('');
+
+    // Restaurar selects a "valor 0" (o el que desees)
+    $('#impuesto_1_editar').val('0');
+    $('#impuesto_2_editar').val('0');
+    $('#categoria_editar').val('');
+    $('#unidad_medida_editar').val('0');
+    $('#tipo_editar').val('0');
+
+    // Dejar la imagen en la URL por defecto
+    $('#imagen_editar').attr('src', 'https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg');
+
+    // Limpiar el input de archivo y campo oculto de nombre
+    $('#image_editar').val('');
+    $('#nom_foto_editar').val('');
+});
 $(document).on('click', '.editar', function () {
     var productoId = $(this).data('prod');
 
@@ -82,6 +108,7 @@ $(document).on('click', '.editar', function () {
             $('#categoria_editar').val(response.categoria_id);
             $('#stock_minimo_editar').val(parseInt(response.stock_minimo));
             $('#tipo_editar').val(response.tipo);
+            $('#unidad_medida_editar').val(response.unidad_medida);
             $('#imagen_editar').attr('src', response.imagen ? response.imagen : "https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg");
             $('#nom_foto_editar').val(response.imagen);
 
@@ -117,10 +144,11 @@ $('#guardarCambios').click(function (event) {
         precio_venta: $('#precio_venta_editar').val(),
         categoria: $('#categoria_editar').val(),
         stock_minimo: $('#stock_minimo_editar').val(),
+        unidad_medida: $('#unidad_medida_editar').val(),
         tipo: $('#tipo_editar').val(),
         nom_foto: $('#nom_foto_editar').val()
     };
-    console.log(window.valoresOriginales);
+
     let hayCambios = false;
 
     for (let key in datosProducto) {

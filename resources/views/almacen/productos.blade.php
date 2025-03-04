@@ -94,6 +94,16 @@
             <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" step="1">
           </div>
           <div class="form-group">
+            <label for="unidad_medida">Unidad de medida</label>
+            <select class="form-control" id="unidad_medida" name="unidad_medida" >
+              <option value="0">Seleccione opción</option>
+              <option value="UN">UNIDAD</option>
+              <option value="L">LITRO</option>
+              <option value="KG">KILOGRAMO</option>
+              <option value="CJ">CAJA</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="tipo">Tipo</label>
             <select class="form-control" id="tipo" name="tipo" >
               <option value="0">Seleccione opción</option>
@@ -196,6 +206,16 @@
           <div class="form-group">
             <label for="stock_minimo_editar">Stock Mínimo</label>
             <input type="number" class="form-control" id="stock_minimo_editar" name="stock_minimo_editar" step="1">
+          </div>
+          <div class="form-group">
+            <label for="unidad_medida_editar">Unidad de medida</label>
+            <select class="form-control" id="unidad_medida_editar" name="unidad_medida_editar" >
+              <option value="0">Seleccione opción</option>
+              <option value="UN">UNIDAD</option>
+              <option value="L">LITRO</option>
+              <option value="KG">KILOGRAMO</option>
+              <option value="CJ">CAJA</option>
+            </select>
           </div>
           <div class="form-group">
             <label for="tipo_editar">Tipo</label>

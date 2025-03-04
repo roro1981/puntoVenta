@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+
+use App\Models\Categoria;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -21,5 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ComunasTableSeeder::class);
         $this->call(GlobalesTableSeeder::class);
         $this->call(ImpuestosTableSeeder::class);
+        $this->call(CategoriasTableSeeder::class);
+        $this->call(InsumosSeeder::class);
     }
 }

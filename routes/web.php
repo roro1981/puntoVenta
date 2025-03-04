@@ -35,6 +35,8 @@ Route::put('/almacen/{cat}/edit', [ProductosController::class, 'updateCategory']
 Route::delete('/almacen/{cat}/delete', [ProductosController::class, 'deleteCat']);
 Route::post('/almacen/upload-foto',  [ProductosController::class, 'uploadPhotoProduct']);
 Route::post('/almacen/productos/create', [ProductosController::class, 'storeProduct']);
+Route::get('/almacen/recetas', [ProductosController::class, 'indexReceipes']);
+Route::get('/almacen/recetasCarga', [ProductosController::class, 'listReceipes']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

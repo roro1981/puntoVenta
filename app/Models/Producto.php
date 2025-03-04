@@ -26,6 +26,7 @@ class Producto extends Model
         'impuesto2',
         'imagen',
         'estado',
+        'unidad_medida',
         'descrip_receta',
         'fec_creacion',
         'user_creacion',
@@ -53,6 +54,7 @@ class Producto extends Model
         $this->impuesto2 = $data['impuesto_2'];
         $this->categoria_id = $data['categoria'];
         $this->stock_minimo = $data['stock_minimo'] ?? 0;
+        $this->unidad_medida = $data['unidad_medida'];
         $this->tipo = $data['tipo'];
         $this->imagen = $data['nom_foto'];
         $this->estado = 'Activo';
@@ -75,6 +77,7 @@ class Producto extends Model
         $this->categoria_id = $data['categoria'];
         $this->stock_minimo = $data['stock_minimo'] ?? 0;
         $this->tipo = $data['tipo'];
+        $this->unidad_medida = $data['unidad_medida'];
         $this->imagen = $data['nom_foto'];
         $this->fec_modificacion = now();
         $this->user_modificacion = auth()->user()->name;

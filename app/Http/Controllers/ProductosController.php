@@ -8,10 +8,11 @@ use App\Http\Requests\ProductoRequest;
 use App\Models\Categoria;
 use App\Models\Impuestos;
 use App\Models\Producto;
+use App\Models\Receta;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use PhpParser\Node\Stmt\TryCatch;
-use Carbon\Carbon;
 
 class ProductosController extends Controller
 {
@@ -136,6 +137,7 @@ class ProductosController extends Controller
         $categories = Categoria::select('categorias.id', 'categorias.descripcion_categoria')
             ->withCount('productos as prods_asociados')
             ->where('categorias.estado_categoria', 1)
+            ->where('categorias.id', '<>', 1)
             ->get()
             ->map(function ($categories) {
                 $categories->actions = '<a href="" class="btn btn-sm btn-primary editar" data-target="#editCatModal" data-cat="' . $categories->id . '" data-toggle="modal" title="Editar categoria ' . $categories->descripcion_categoria . '"><i class="fa fa-edit"></i></a>
@@ -248,5 +250,40 @@ class ProductosController extends Controller
         } else {
             return 0;
         }
+    }
+
+    public function indexReceipes()
+    {
+        return view('almacen.recetas');
+    }
+
+    public function listReceipes()
+    {
+        $receipes = Receta::select(
+            'uuid',
+            'imagen',
+            'nombre',
+            'descripcion'
+        )
+            ->where('estado', 'Activo')
+            ->get();
+        $receipes = $receipes->map(function ($receipe) {
+            return [
+                'uuid' => $receipe->uuid,
+                'imagen' => $receipe->imagen ? '<img src="' . $receipe->imagen . '" width="80" height="80">' : '<img src="https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg" width="80" height="80">',
+                'nombre' => $receipe->nombre,
+                'descripcion' => $receipe->descripcion,
+                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditaReceta" data-uuid="' . $receipe->uuid . '" data-toggle="modal" title="Editar receta ' . $receipe->nombre . '"><i class="fa fa-edit"></i></a>
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $receipe->uuid . '" data-namerec="' . $receipe->nombre . '" title="Eliminar receta ' . $receipe->nombre . '"><i class="fa fa-trash"></i></a>'
+            ];
+        });
+
+        $response = [
+            'data' => $receipes,
+            'recordsTotal' => $receipes->count(),
+            'recordsFiltered' => $receipes->count()
+        ];
+
+        return response()->json($response);
     }
 }
