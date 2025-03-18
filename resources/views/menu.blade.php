@@ -126,7 +126,7 @@
     <div class="wrapper">
 
       <header class="main-header">
-        <a href="inicio.php" class="logo">
+        <a href="/dashboard" class="logo">
           <span class="logo-mini"><b>P</b>V</span>
           <span class="logo-lg"><b>Punto Venta</b></span>
         </a>

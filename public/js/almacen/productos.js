@@ -31,7 +31,7 @@ $(document).ready(function () {
                     $("#" + foto).val("");
                     toastr.error('Formato de imagen incorrecto.');
                     $('#' + image).val(null);
-                    $(".card-img-top").attr("src", "https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg");
+                    $(".card-img-top").attr("src", "/img/fotos_prod/sin_imagen.jpg");
                 }
             },
             error: function (jqXHR) {
@@ -46,7 +46,7 @@ $(document).ready(function () {
                     });
                     $("#" + foto).val("");
                     $('#' + image).val(null);
-                    $(".card-img-top").attr("src", "https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg");
+                    $(".card-img-top").attr("src", "/img/fotos_prod/sin_imagen.jpg");
                 } else {
                     toastr.error('Ocurrió un error inesperado. Intenta nuevamente.');
                 }
@@ -58,8 +58,6 @@ $(document).ready(function () {
 });
 $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#producto_id').val('');
-
-    // Limpiar campos de texto y numéricos
     $('#codigo_editar').val('');
     $('#descripcion_editar').val('');
     $('#precio_compra_neto_editar').val('');
@@ -67,18 +65,12 @@ $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#precio_venta_editar').val('');
     $('#margen_editar').val('');
     $('#stock_minimo_editar').val('');
-
-    // Restaurar selects a "valor 0" (o el que desees)
     $('#impuesto_1_editar').val('0');
     $('#impuesto_2_editar').val('0');
     $('#categoria_editar').val('');
     $('#unidad_medida_editar').val('0');
     $('#tipo_editar').val('0');
-
-    // Dejar la imagen en la URL por defecto
-    $('#imagen_editar').attr('src', 'https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg');
-
-    // Limpiar el input de archivo y campo oculto de nombre
+    $('#imagen_editar').attr('src', '/img/fotos_prod/sin_imagen.jpg');
     $('#image_editar').val('');
     $('#nom_foto_editar').val('');
 });
@@ -109,7 +101,7 @@ $(document).on('click', '.editar', function () {
             $('#stock_minimo_editar').val(parseInt(response.stock_minimo));
             $('#tipo_editar').val(response.tipo);
             $('#unidad_medida_editar').val(response.unidad_medida);
-            $('#imagen_editar').attr('src', response.imagen ? response.imagen : "https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg");
+            $('#imagen_editar').attr('src', response.imagen ? response.imagen : "/img/fotos_prod/sin_imagen.jpg");
             $('#nom_foto_editar').val(response.imagen);
 
             window.valoresOriginales = {

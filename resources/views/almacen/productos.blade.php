@@ -116,7 +116,7 @@
             <label for="image">Foto producto</label>
             <div class="card" style="width: auto;">
                 <div style="display: flex;gap: 20px;">
-                  <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" src="https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg" width="200" height="100" >
+                  <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" src="/img/fotos_prod/sin_imagen.jpg" width="200" height="100" >
                   <input type="file" style="margin-top:30px" title="Solo formato jpg,png o gif" class="form-control-file" id="image">
                 </div>
                 <div class="form-group" style="text-align: center;">
@@ -230,7 +230,7 @@
             <label for="image_editar">Foto producto</label>
             <div class="card" style="width: auto;">
               <div style="display: flex;gap: 20px;">
-                <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" id="imagen_editar" src="https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg" width="200" height="100">
+                <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" id="imagen_editar" src="/img/fotos_prod/sin_imagen.jpg" width="200" height="100">
                 <input type="file" style="margin-top:30px" title="Solo formato jpg,png o gif" class="form-control-file" id="image_editar">
               </div>
               <div class="form-group" style="text-align: center;">

@@ -38,6 +38,7 @@ Route::post('/almacen/productos/create', [ProductosController::class, 'storeProd
 Route::get('/almacen/recetas_crear', [ProductosController::class, 'indexReceipesCreate']);
 Route::get('/almacen/recetas', [ProductosController::class, 'indexReceipes']);
 Route::get('/almacen/recetasCarga', [ProductosController::class, 'listReceipes']);
+Route::post('/almacen/upload-foto-receta',  [ProductosController::class, 'uploadPhotoReceipe']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

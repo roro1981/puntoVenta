@@ -44,7 +44,7 @@ class ProductosController extends Controller
                 'descripcion' => $product->descripcion,
                 'precio_venta' => $product->precio_venta,
                 'categoria' => $product->descripcion_categoria,
-                'imagen' => $product->imagen ? '<img src="' . $product->imagen . '" width="80" height="80">' : '<img src="https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg" width="80" height="80">',
+                'imagen' => $product->imagen ? '<img src="' . $product->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
                 'fec_creacion' => $product->fec_creacion ? Carbon::parse($product->fec_creacion)->format('d-m-Y | H:i:s') : '',
                 'fec_modificacion' => $product->fec_modificacion ? Carbon::parse($product->fec_modificacion)->format('d-m-Y | H:i:s') : '',
                 'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditarProducto" data-prod="' . $product->id . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
@@ -253,13 +253,14 @@ class ProductosController extends Controller
     }
 
     public function indexReceipes()
-    {
+    {   
         return view('almacen.recetas');
     }
 
     public function indexReceipesCreate()
     {
-        return view('almacen.crear_recetas');
+        $categorias = Categoria::where('estado_categoria', 1)->get();
+        return view('almacen.crear_recetas', compact("categorias"));
     }
 
     public function listReceipes()
@@ -275,7 +276,7 @@ class ProductosController extends Controller
         $receipes = $receipes->map(function ($receipe) {
             return [
                 'uuid' => $receipe->uuid,
-                'imagen' => $receipe->imagen ? '<img src="' . $receipe->imagen . '" width="80" height="80">' : '<img src="https://www.edelar.com.ar/static/theme/images/sin_imagen.jpg" width="80" height="80">',
+                'imagen' => $receipe->imagen ? '<img src="' . $receipe->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
                 'nombre' => $receipe->nombre,
                 'descripcion' => $receipe->descripcion,
                 'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditaReceta" data-uuid="' . $receipe->uuid . '" data-toggle="modal" title="Editar receta ' . $receipe->nombre . '"><i class="fa fa-edit"></i></a>
@@ -290,5 +291,25 @@ class ProductosController extends Controller
         ];
 
         return response()->json($response);
+    }
+
+    public function uploadPhotoReceipe(Request $request)
+    {
+        $fec = date("dmYHis");
+        $nom = "foto_receta_" . $fec;
+
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,jpg',
+        ]);
+
+        $image = $request->file('file');
+        $extension = $image->getClientOriginalExtension();
+        $filename = $nom . '.' . $extension;
+
+        if ($image->move(public_path('img/fotos_prod/recetas'), $filename)) {
+            return asset('img/fotos_prod/recetas/' . $filename);
+        } else {
+            return 0;
+        }
     }
 }
