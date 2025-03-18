@@ -257,6 +257,11 @@ class ProductosController extends Controller
         return view('almacen.recetas');
     }
 
+    public function indexReceipesCreate()
+    {
+        return view('almacen.crear_recetas');
+    }
+
     public function listReceipes()
     {
         $receipes = Receta::select(

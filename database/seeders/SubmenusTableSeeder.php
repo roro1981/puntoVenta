@@ -17,6 +17,7 @@ class SubmenusTableSeeder extends Seeder
         DB::table('submenus')->insert([
             ['menu_id' => 1, 'submenu_name' => 'Productos', 'submenu_route' => '/productos', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 1, 'submenu_name' => 'Categorías', 'submenu_route' => '/categorias', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 1, 'submenu_name' => 'Crear Recetas', 'submenu_route' => '/recetas_crear', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 1, 'submenu_name' => 'Recetas', 'submenu_route' => '/recetas', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 1, 'submenu_name' => 'Promociones', 'submenu_route' => '/promociones', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 1, 'submenu_name' => 'Promociones temporales', 'submenu_route' => '/promo_temporal', 'created_at' => Carbon::now()->toDateTimeString()],
