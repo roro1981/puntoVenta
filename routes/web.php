@@ -39,6 +39,12 @@ Route::get('/almacen/recetas_crear', [ProductosController::class, 'indexReceipes
 Route::get('/almacen/recetas', [ProductosController::class, 'indexReceipes']);
 Route::get('/almacen/recetasCarga', [ProductosController::class, 'listReceipes']);
 Route::post('/almacen/upload-foto-receta',  [ProductosController::class, 'uploadPhotoReceipe']);
+Route::get('/almacen/searchInsumos', [ProductosController::class, 'searchInsumos']);
+Route::get('/almacen/findInsumo', [ProductosController::class, 'findInsumo']);
+Route::post('/almacen/crearReceta', [ProductosController::class, 'storeReceipe']);
+Route::get('/almacen/recetas/{uuid}/edit', [ProductosController::class, 'editReceipe']);
+Route::put('/almacen/recetas/{uuid}/update', [ProductosController::class, 'updateReceipe']);
+Route::put('/almacen/recetas/{uuid}/delete', [ProductosController::class, 'deleteReceipe']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

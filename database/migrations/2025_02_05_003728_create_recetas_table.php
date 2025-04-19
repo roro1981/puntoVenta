@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('estado', 10)->comment('Estado receta: Activo | Inactivo');
             $table->datetime('fec_creacion')->comment('Fecha creación receta');
             $table->string('user_creacion', 100)->comment('Usuario que crea receta');
+            $table->datetime('fec_modificacion')->nullable()->comment('Fecha modificacion receta');
+            $table->string('user_modificacion', 100)->nullable()->comment('Usuario que modifica receta');
         });
     }
 

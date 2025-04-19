@@ -1,6 +1,7 @@
 <?php
 
 namespace Database\Seeders;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -18,7 +19,7 @@ class CorporateDataTableSeeder extends Seeder
             ['item' => 'address_enterprise'],
             ['item' => 'comuna_enterprise'],
             ['item' => 'phone_enterprise'],
-            ['item' => 'logo_enterprise'],
+            ['item' => 'logo_enterprise', 'description_item' => '/img/fotos_prod/sin_imagen.jpg'],
         ]);
     }
 }

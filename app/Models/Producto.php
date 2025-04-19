@@ -43,6 +43,16 @@ class Producto extends Model
         return $this->belongsTo(Categoria::class, 'categoria_id', 'id');
     }
 
+    public function receta()
+    {
+        return $this->belongsTo(Receta::class, 'receta_id');
+    }
+
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'producto_id');
+    }
+
     public function crearProducto(array $data)
     {
         $this->codigo = strtoupper($data['codigo']);

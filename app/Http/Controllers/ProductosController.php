@@ -141,7 +141,7 @@ class ProductosController extends Controller
             ->get()
             ->map(function ($categories) {
                 $categories->actions = '<a href="" class="btn btn-sm btn-primary editar" data-target="#editCatModal" data-cat="' . $categories->id . '" data-toggle="modal" title="Editar categoria ' . $categories->descripcion_categoria . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-cat="' . $categories->id . '" data-namecat="' . $categories->descripcion_categoria . '" title="Eliminar usuario ' . $categories->descripcion_categoria . '"><i class="fa fa-trash"></i></a>';
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-cat="' . $categories->id . '" data-namecat="' . $categories->descripcion_categoria . '" title="Eliminar categoria ' . $categories->descripcion_categoria . '"><i class="fa fa-trash"></i></a>';
                 return $categories;
             });
 
@@ -253,34 +253,34 @@ class ProductosController extends Controller
     }
 
     public function indexReceipes()
-    {   
-        return view('almacen.recetas');
+    {
+        $categorias = Categoria::whereHas('recetas', function ($query) {
+            $query->where('estado', 'Activo');
+        })->get();
+        return view('almacen.recetas', compact("categorias"));
     }
 
     public function indexReceipesCreate()
     {
-        $categorias = Categoria::where('estado_categoria', 1)->get();
+        $categorias = Categoria::where('estado_categoria', 1)->where('id', '<>', 1)->get();
         return view('almacen.crear_recetas', compact("categorias"));
     }
 
-    public function listReceipes()
+    public function listReceipes(Request $request)
     {
-        $receipes = Receta::select(
-            'uuid',
-            'imagen',
-            'nombre',
-            'descripcion'
-        )
-            ->where('estado', 'Activo')
-            ->get();
+        $query = Receta::select('uuid', 'imagen', 'nombre', 'descripcion')->where('estado', 'Activo');
+        if ($request->has('categoria_id') && $request->categoria_id != 0) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+        $receipes = $query->get();
         $receipes = $receipes->map(function ($receipe) {
             return [
                 'uuid' => $receipe->uuid,
-                'imagen' => $receipe->imagen ? '<img src="' . $receipe->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
+                'imagen' => $receipe->imagen ? '<img src="' . $receipe->imagen . '" style="width: 280px; height: 160px;">' : '<img src="/img/fotos_prod/sin_imagen.jpg" style="width: 280px; height: 160px;">',
                 'nombre' => $receipe->nombre,
                 'descripcion' => $receipe->descripcion,
-                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditaReceta" data-uuid="' . $receipe->uuid . '" data-toggle="modal" title="Editar receta ' . $receipe->nombre . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $receipe->uuid . '" data-namerec="' . $receipe->nombre . '" title="Eliminar receta ' . $receipe->nombre . '"><i class="fa fa-trash"></i></a>'
+                'actions' => '<button id="editarReceta" class="btn btn-sm btn-primary" data-uuid="' . $receipe->uuid . '" title="Editar receta ' . $receipe->nombre . '"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $receipe->uuid . '" data-namerec="' . $receipe->nombre . '" title="Eliminar receta ' . $receipe->nombre . '"><i class="fa fa-trash"></i></a></button>'
             ];
         });
 
@@ -310,6 +310,107 @@ class ProductosController extends Controller
             return asset('img/fotos_prod/recetas/' . $filename);
         } else {
             return 0;
+        }
+    }
+    public function searchInsumos(Request $request)
+    {
+        $term = $request->input('q');
+
+        $products = Producto::where('codigo', 'like', "%{$term}%")
+            ->orWhere('descripcion', 'like', "%{$term}%")
+            ->where('tipo', '=', 'I')
+            ->limit(10)
+            ->get();
+
+        return response()->json($products);
+    }
+    public function findInsumo(Request $request)
+    {
+        $codigo = $request->input('codigo');
+
+        $producto = Producto::where('codigo', $codigo)->first();
+
+        if (!$producto) {
+            return response()->json([
+                'status' => 404,
+                'mensaje' => 'No se encontró el producto'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data' => [
+                'codigo' => $producto->codigo,
+                'descripcion' => $producto->descripcion,
+                'precio_unit' => $producto->precio_compra_neto,
+                'unidad_medida' => $producto->unidad_medida
+            ]
+        ]);
+    }
+
+    public function storeReceipe(Request $request)
+    {
+        try {
+            $data = $request->all();
+            Receta::crearRecetaConIngredientes($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => "Receta creada exitosamente"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function editReceipe($uuid)
+    {
+        $receta = Receta::with('ingredientes.producto')->where('uuid', $uuid)->firstOrFail();
+        $categorias = Categoria::select('id', 'descripcion_categoria')
+            ->where('estado_categoria', 1)
+            ->where('id', '<>', 1)
+            ->get();
+        return view('almacen.editar_recetas', [
+            'receta' => $receta,
+            'categorias' => $categorias,
+        ]);
+    }
+
+    public function updateReceipe(Request $request, $uuid)
+    {
+        try {
+            $data = $request->all();
+            Receta::actualizarRecetaConIngredientes($uuid, $data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => "Receta modificada exitosamente"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteReceipe($uuid)
+    {
+        try {
+            Receta::eliminarReceta($uuid);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Receta eliminada correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error al eliminar la receta.'
+            ]);
         }
     }
 }
