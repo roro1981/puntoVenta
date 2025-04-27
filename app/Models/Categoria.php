@@ -28,6 +28,11 @@ class Categoria extends Model
         return $this->hasMany(Receta::class, 'categoria_id');
     }
 
+    public function promociones()
+    {
+        return $this->hasMany(Promocion::class, 'categoria_id');
+    }
+
     public static function storeCategory($categoriaRequest)
     {
         return Categoria::create([

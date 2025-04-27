@@ -43,12 +43,12 @@
            <h3 class='box-title'>Detalle de receta</h3>
            </div>
            
-           <div class='box-body table-responsive' >
-              
-           <table id='tabla_recetas' class="table table-striped table-hover" >
-            <thead>
+           <div class="box-body table-responsive" style="max-height: calc(100vh - 250px); overflow-y: auto;">
+            
+            <table id="tabla_recetas" class="table table-striped table-hover mb-0">
+                <thead class="sticky-top bg-light">
             <tr>
-            <th class='center col-xs-2'>COD</th><th class='center col-xs-5'>DESCRIP</th><th class='center col-xs-1'>CANT</th><th class='center col-xs-2'>UNITARIO</th><th class='center col-xs-1'>TOTAL</th><th class="col-xs-1">ACCIONES</th>
+            <th class='center col-xs-2'>COD</th><th class='center col-xs-4'>DESCRIP</th><th title="Unidad de medida" class='center col-xs-1'>UM</th><th class='center col-xs-1'>CANT</th><th class='center col-xs-2'>UNITARIO</th><th class='center col-xs-1'>TOTAL</th><th class="col-xs-1">ACCIONES</th>
             </tr>
             </thead>
             <tbody class="listado">

@@ -1,16 +1,41 @@
 $(document).ready(function () {
-    $('#cant_insumo').off('keydown.enterHandler').on('keydown.enterHandler', function (e) {
+
+    const hoy = new Date();
+
+    function formatearFecha(fecha) {
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    const fechaInicioDefault = formatearFecha(hoy);
+    const fechaFinDefault = formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth() + 1, hoy.getDate()));
+
+    $('#sin_fecha').on('change', function () {
+        const isChecked = $(this).is(':checked');
+
+        if (isChecked) {
+            $('#fecha_inicio').val(null).prop('disabled', true);
+            $('#fecha_termino').val(null).prop('disabled', true);
+        } else {
+            $('#fecha_inicio').val(fechaInicioDefault).prop('disabled', false);
+            $('#fecha_termino').val(fechaFinDefault).prop('disabled', false);
+        }
+    });
+
+    $('#cant_producto').off('keydown.enterHandler').on('keydown.enterHandler', function (e) {
         if (e.which === 13) {
             e.preventDefault();
             agregarProducto();
         }
     });
-    $('#insumo').on('keyup', function () {
+    $('#producto').on('keyup', function () {
         let query = $(this).val().trim();
 
         if (query.length >= 2) {
             $.ajax({
-                url: "/almacen/searchInsumos", // /products/search
+                url: "/almacen/searchProductos",
                 type: "GET",
                 data: { q: query },
                 success: function (data) {
@@ -21,7 +46,7 @@ $(document).ready(function () {
                 }
             });
         } else {
-            $('#listaResultados').empty();
+            $('#listaProductos').empty();
         }
     });
 
@@ -47,19 +72,19 @@ $(document).ready(function () {
             html += '</tbody></table>';
         }
 
-        $('#listaResultados').html(html).show();
+        $('#listaProductos').html(html).show();
 
         $('.fila-sugerencia').on('click', function () {
             const codigo = $(this).data('codigo');
-            $('#insumo').val(codigo);
-            $("#cant_insumo").focus();
-            $('#listaResultados').hide();
+            $('#producto').val(codigo);
+            $("#cant_producto").focus();
+            $('#listaProductos').hide();
         });
     }
 
     function agregarProducto() {
-        let codigo = $('#insumo').val().trim();
-        let cantidad = $('#cant_insumo').val().trim();
+        let codigo = $('#producto').val().trim();
+        let cantidad = $('#cant_producto').val().trim();
 
         if (cantidad === '') {
             cantidad = '1';
@@ -77,7 +102,7 @@ $(document).ready(function () {
         }
 
         $.ajax({
-            url: '/almacen/findInsumo',
+            url: '/almacen/findProducto',
             type: 'GET',
             data: { codigo: codigo },
             success: function (response) {
@@ -91,7 +116,7 @@ $(document).ready(function () {
                 let precioUnit = parseFloat(response.data.precio_unit);
                 let unidad = response.data.unidad_medida;
 
-                let filaExistente = $('#tabla_ingredientes tbody tr[data-codigo="' + cod + '"]');
+                let filaExistente = $('#tabla_detalle tbody tr[data-codigo="' + cod + '"]');
                 if (filaExistente.length > 0) {
                     let tdCantidad = filaExistente.find('.td-cantidad');
                     let cantActual = parseFloat(tdCantidad.text());
@@ -119,12 +144,12 @@ $(document).ready(function () {
                             </td>
                         </tr>
                     `;
-                    $('#tabla_ingredientes tbody').append(nuevaFila);
+                    $('#tabla_detalle tbody').append(nuevaFila);
                 }
-
-                $('#insumo').val('');
-                $('#cant_insumo').val('');
-                $('#insumo').focus();
+                $('#listaProductos').hide();
+                $('#producto').val('');
+                $('#cant_producto').val('');
+                $('#producto').focus();
                 recalcularCosto();
 
                 const margenVal = parseFloat($('#margen').val());
@@ -144,7 +169,7 @@ $(document).ready(function () {
     }
     function recalcularCosto() {
         let total = 0;
-        $('#tabla_ingredientes tbody tr').each(function () {
+        $('#tabla_detalle tbody tr').each(function () {
             let tot = $(this).find('.td-total').text().trim();
             let tota = parseFloat(tot) || 0;
             total += tota;
@@ -170,7 +195,7 @@ $(document).ready(function () {
         }
     }
 
-    $('#tabla_ingredientes').on('click', '.btnEliminar', function () {
+    $('#tabla_detalle').on('click', '.btnEliminar', function () {
         $(this).closest('tr').remove();
         recalcularCosto();
         calcularPrecioVentaPorMargen();
@@ -184,82 +209,41 @@ $(document).ready(function () {
     $('#volver').on('click', function (e) {
         e.preventDefault();
         console.log("Click en #volver detectado");
-        $('#contenido').load("/almacen/recetas");
+        $('#contenido').load("/almacen/promociones");
     });
 
-    $(".upload").on('click', function () {
-        var formData = new FormData();
-        var files = $('#image')[0].files[0];
-        formData.append('file', files);
-        formData.append('_token', $('#token').val());
-        $.ajax({
-            url: '/almacen/upload-foto-receta',
-            type: 'POST',
-            data: formData,
-            contentType: false,
-            processData: false,
-            success: function (response) {
-                if (response != 0) {
-                    $(".card-img-top").attr("src", response);
-                    var nombre_foto = $.trim(response.replace(/^.*\/\/[^\/]+/, ''));
-                    $("#foto_receta").val(nombre_foto);
-                } else {
-                    $("#foto_receta").val("");
-                    toastr.error('Formato de imagen incorrecto.');
-                    $('#foto_receta').val(null);
-                    $(".card-img-top").attr("src", "/img/fotos_prod/sin_imagen.jpg");
-                }
-            },
-            error: function (jqXHR) {
-                if (jqXHR.status === 422) {
-                    let errors = jqXHR.responseJSON.errors;
-
-                    $.each(errors, function (key, value) {
-                        let mensajeError = value.join('<br>')
-                            .replace(/El file/g, 'La imagen')
-                            .replace(/el file/g, 'la imagen');
-                        toastr.error(mensajeError);
-                    });
-                    $("#" + foto).val("");
-                    $('#' + image).val(null);
-                    $(".card-img-top").attr("src", "/img/fotos_prod/sin_imagen.jpg");
-                } else {
-                    toastr.error('Ocurrió un error inesperado. Intenta nuevamente.');
-                }
-            }
-        });
-        return false;
-    });
-
-    $(document).off('click', '#act_receta').on('click', '#act_receta', function () {
+    $(document).off('click', '#act_promo').on('click', '#act_promo', function () {
         let codigo = $('#codigo').val().trim();
         let nombre = $('#nombre').val().trim();
         let precioVenta = $('#precio_venta').val().trim();
         let precioCosto = $('#precio_costo').val().trim();
         let categoria = $('#categoria_id').val();
-        let descripcion = $('#descripcion').val().trim();
-        let foto = $('#foto_receta').val().trim();
+
+        let sinFechas = $('#sin_fecha').is(':checked');
+
+        let fechaInicio = sinFechas ? null : $('#fecha_inicio').val();
+        let fechaFin = sinFechas ? null : $('#fecha_termino').val();
 
         if (!nombre || !precioVenta || isNaN(parseFloat(precioVenta)) || categoria == 0) {
             toastr.error('Debe ingresar los campos obligatorios');
             return;
         }
 
-        const $filas = $('#tabla_ingredientes tbody tr');
+        const $filas = $('#tabla_detalle tbody tr');
         if ($filas.length === 0) {
-            toastr.error('Debes agregar al menos 1 ingrediente.');
+            toastr.error('Debes agregar al menos 1 producto.');
             return;
         }
 
-        let dataReceta = {
+        let dataPromo = {
             codigo: codigo,
             nombre: nombre,
             precio_venta: parseFloat(precioVenta),
             precio_costo: parseFloat(precioCosto),
             categoria: categoria,
-            descripcion: descripcion, // opcional
-            foto: foto,               // opcional
-            ingredientes: []
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            productos: []
         };
 
         $filas.each(function () {
@@ -267,16 +251,16 @@ $(document).ready(function () {
             let cantStr = $(this).find('td').eq(3).text().trim();
             let cantidad = parseFloat(cantStr);
 
-            dataReceta.ingredientes.push({
+            dataPromo.productos.push({
                 codigo: codProducto,
                 cantidad: cantidad,
             });
         });
-        let uuid = $("#uuid_receta").val();
+        let uuid = $("#uuid_promo").val();
         $.ajax({
-            url: '/almacen/recetas/' + uuid + '/update',
+            url: '/almacen/promociones/' + uuid + '/update',
             type: 'PUT',
-            data: JSON.stringify(dataReceta),
+            data: JSON.stringify(dataPromo),
             headers: {
                 'X-CSRF-TOKEN': $("#token").val()
             },
@@ -285,14 +269,14 @@ $(document).ready(function () {
             success: function (response) {
                 if (response.status == 200) {
                     toastr.success(response.message);
-                    $('#contenido').load('/almacen/recetas');
+                    $('#contenido').load('/almacen/promociones');
                 } else {
-                    toastr.error('Error al modificar la receta: ' + (response.message));
+                    toastr.error('Error al modificar la promoción: ' + (response.message));
                 }
             },
             error: function (xhr, status, error) {
                 console.error(xhr, status, error);
-                toastr.error('Error al guardar la receta.');
+                toastr.error('Error al actualizar promoción.');
             }
         });
     });

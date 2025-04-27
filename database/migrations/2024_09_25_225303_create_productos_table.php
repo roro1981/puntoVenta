@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('productos', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid');
             $table->string('codigo', 100)->comment('Codigo producto');
             $table->string('descripcion', 255)->comment('Descripcion producto');
             $table->decimal('precio_compra_neto', 10, 1)->comment('Precio compra neto');

@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Categoria;
+use App\Models\Receta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Producto extends Model
 {
@@ -13,6 +16,7 @@ class Producto extends Model
 
     protected $fillable = [
         'id',
+        'uuid',
         'descripcion',
         'codigo',
         'precio_compra_bruto',
@@ -52,9 +56,14 @@ class Producto extends Model
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
+    public function rangosPrecios()
+    {
+        return $this->hasMany(RangoPrecio::class);
+    }
 
     public function crearProducto(array $data)
     {
+        $this->uuid = Str::uuid();
         $this->codigo = strtoupper($data['codigo']);
         $this->descripcion = strtoupper($data['descripcion']);
         $this->precio_compra_neto = $data['precio_compra_neto'];

@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class InsumosSeeder extends Seeder
 {
@@ -16,48 +17,24 @@ class InsumosSeeder extends Seeder
     {
         $lower = strtolower($ingredient);
 
-        // Si aparece algo vinculado a carnes, pescados o mariscos
-        if (
-            str_contains($lower, 'carne') ||
-            str_contains($lower, 'pollo') ||
-            str_contains($lower, 'cerdo') ||
-            str_contains($lower, 'chancho') ||
-            str_contains($lower, 'pescado') ||
-            str_contains($lower, 'merluza') ||
-            str_contains($lower, 'reineta') ||
-            str_contains($lower, 'salmón') ||
-            str_contains($lower, 'costilla') ||
-            str_contains($lower, 'marisco') ||
-            str_contains($lower, 'chunchules') ||
-            str_contains($lower, 'mollejas') ||
-            str_contains($lower, 'prieta') ||
-            str_contains($lower, 'pulpo') ||
-            str_contains($lower, 'choritos') ||
-            str_contains($lower, 'almejas') ||
-            str_contains($lower, 'camarones') ||
-            str_contains($lower, 'salsa') ||
-            str_contains($lower, 'mostaza') ||
-            str_contains($lower, 'ketchup') ||
-            str_contains($lower, 'mayonesa') ||
-            str_contains($lower, 'sal ') ||
-            str_contains($lower, 'ostiones')
-        ) {
-            return 'KG';  // Se asume venta/peso en kilogramos
-        }
-
-        // Si aparece algo vinculado a líquidos (aceites, salsas, lácteos líquidos, vinagres)
+        // Si el nombre contiene algo relacionado a líquidos, usar LT
         if (
             str_contains($lower, 'aceite') ||
             str_contains($lower, 'vinagre') ||
             str_contains($lower, 'leche') ||
             str_contains($lower, 'crema') ||
-            str_contains($lower, 'bebida')
+            str_contains($lower, 'bebida') ||
+            str_contains($lower, 'salsa') ||
+            str_contains($lower, 'mostaza') ||
+            str_contains($lower, 'ketchup') ||
+            str_contains($lower, 'mayonesa') ||
+            str_contains($lower, 'soya') ||
+            str_contains($lower, 'miel')
         ) {
-            return 'L';   // Se asume venta/medida en litros
+            return 'LT';
         }
 
-        // Por defecto, se maneja por unidad
-        return 'UN';
+        return 'KG';
     }
 
     public function run()
@@ -181,6 +158,7 @@ class InsumosSeeder extends Seeder
 
         foreach ($chileanIngredients as $ingredient) {
             $productosData[] = [
+                'uuid'                 => Str::uuid(),
                 'codigo'               => $codigoActual++,
                 'descripcion'          => $ingredient,
                 'precio_compra_neto'   => 1,

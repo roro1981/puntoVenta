@@ -45,6 +45,21 @@ Route::post('/almacen/crearReceta', [ProductosController::class, 'storeReceipe']
 Route::get('/almacen/recetas/{uuid}/edit', [ProductosController::class, 'editReceipe']);
 Route::put('/almacen/recetas/{uuid}/update', [ProductosController::class, 'updateReceipe']);
 Route::put('/almacen/recetas/{uuid}/delete', [ProductosController::class, 'deleteReceipe']);
+Route::get('/almacen/promociones_crear', [ProductosController::class, 'indexPromoCreate']);
+Route::get('/almacen/searchProductos', [ProductosController::class, 'searchProductos']);
+Route::get('/almacen/findProducto', [ProductosController::class, 'findProducto']);
+Route::post('/almacen/crearPromocion', [ProductosController::class, 'storePromo']);
+Route::get('/almacen/promocionesCarga', [ProductosController::class, 'listPromos']);
+Route::get('/almacen/promociones', [ProductosController::class, 'indexPromos']);
+Route::get('/almacen/promociones/{uuid}/edit', [ProductosController::class, 'editPromos']);
+Route::put('/almacen/promociones/{uuid}/update', [ProductosController::class, 'updatePromo']);
+Route::put('/almacen/promociones/{uuid}/delete', [ProductosController::class, 'deletePromo']);
+Route::get('/almacen/precio_segun_cant', [ProductosController::class, 'indexRange']);
+Route::get('/almacen/productosRangoCarga', [ProductosController::class, 'listProductsRange']);
+Route::post('/almacen/precio_segun_cant/create', [ProductosController::class, 'storeRange']);
+Route::get('/almacen/precio_segun_cant/{uuid}/editar', [ProductosController::class, 'showProductRange']);
+Route::put('/almacen/precio_segun_cant/{uuid}/actualizar', [ProductosController::class, 'updateRange']);
+Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::class, 'deleteRange']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

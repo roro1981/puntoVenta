@@ -14,11 +14,11 @@ class CorporateDataTableSeeder extends Seeder
     public function run(): void
     {
         DB::table('corporate_data')->insert([
-            ['item' => 'name_enterprise'],
-            ['item' => 'fantasy_name_enterprise'],
-            ['item' => 'address_enterprise'],
-            ['item' => 'comuna_enterprise'],
-            ['item' => 'phone_enterprise'],
+            ['item' => 'name_enterprise', 'description_item' => null],
+            ['item' => 'fantasy_name_enterprise', 'description_item' => null],
+            ['item' => 'address_enterprise', 'description_item' => null],
+            ['item' => 'comuna_enterprise', 'description_item' => null],
+            ['item' => 'phone_enterprise', 'description_item' => null],
             ['item' => 'logo_enterprise', 'description_item' => '/img/fotos_prod/sin_imagen.jpg'],
         ]);
     }

@@ -8,6 +8,8 @@ use App\Http\Requests\ProductoRequest;
 use App\Models\Categoria;
 use App\Models\Impuestos;
 use App\Models\Producto;
+use App\Models\Promocion;
+use App\Models\RangoPrecio;
 use App\Models\Receta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -316,8 +318,10 @@ class ProductosController extends Controller
     {
         $term = $request->input('q');
 
-        $products = Producto::where('codigo', 'like', "%{$term}%")
-            ->orWhere('descripcion', 'like', "%{$term}%")
+        $products = Producto::where(function ($query) use ($term) {
+            $query->where('codigo', 'like', "%{$term}%")
+                ->orWhere('descripcion', 'like', "%{$term}%");
+        })
             ->where('tipo', '=', 'I')
             ->limit(10)
             ->get();
@@ -328,7 +332,7 @@ class ProductosController extends Controller
     {
         $codigo = $request->input('codigo');
 
-        $producto = Producto::where('codigo', $codigo)->first();
+        $producto = Producto::where('codigo', $codigo)->where('tipo', '=', 'I')->first();
 
         if (!$producto) {
             return response()->json([
@@ -411,6 +415,289 @@ class ProductosController extends Controller
                 'status' => 500,
                 'message' => 'Error al eliminar la receta.'
             ]);
+        }
+    }
+
+    public function indexPromoCreate()
+    {
+        $categorias = Categoria::where('estado_categoria', 1)->where('id', '<>', 1)->get();
+        return view('almacen.crear_promocion', compact("categorias"));
+    }
+
+    public function searchProductos(Request $request)
+    {
+        $term = $request->input('q');
+
+        $products = Producto::where(function ($query) use ($term) {
+            $query->where('codigo', 'like', "%{$term}%")
+                ->orWhere('descripcion', 'like', "%{$term}%");
+        })
+            ->where('tipo', '<>', 'I')
+            ->limit(10)
+            ->get();
+
+        return response()->json($products);
+    }
+    public function findProducto(Request $request)
+    {
+        $codigo = $request->input('codigo');
+
+        $producto = Producto::where('codigo', $codigo)->where('tipo', '<>', 'I')->first();
+
+        if (!$producto) {
+            return response()->json([
+                'status' => 404,
+                'mensaje' => 'No se encontró el producto'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data' => [
+                'codigo' => $producto->codigo,
+                'descripcion' => $producto->descripcion,
+                'precio_unit' => $producto->precio_compra_neto,
+                'unidad_medida' => $producto->unidad_medida
+            ]
+        ]);
+    }
+    public function storePromo(Request $request)
+    {
+        try {
+            $data = $request->all();
+            Promocion::crearPromocionConProductos($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => "Promoción creada exitosamente"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function listPromos(Request $request)
+    {
+        $query = Promocion::select('uuid', 'codigo', 'nombre', 'precio_costo', 'precio_venta')->where('estado', 'Activo');
+        if ($request->has('categoria_id') && $request->categoria_id != 0) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+        $promos = $query->get();
+        $promos = $promos->map(function ($promo) {
+            return [
+                'codigo' => $promo->codigo,
+                'nombre' => $promo->nombre,
+                'precio_costo' => $promo->precio_costo,
+                'precio_venta' => $promo->precio_venta,
+                'actions' => '<button id="editarPromo" class="btn btn-sm btn-primary" data-uuid="' . $promo->uuid . '" title="Editar promoción ' . $promo->nombre . '"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $promo->uuid . '" data-namepromo="' . $promo->nombre . '" title="Eliminar promoción ' . $promo->nombre . '"><i class="fa fa-trash"></i></a></button>'
+            ];
+        });
+
+        $response = [
+            'data' => $promos,
+            'recordsTotal' => $promos->count(),
+            'recordsFiltered' => $promos->count()
+        ];
+
+        return response()->json($response);
+    }
+
+    public function indexPromos()
+    {
+        $categorias = Categoria::whereHas('promociones', function ($query) {
+            $query->where('estado', 'Activo');
+        })->get();
+        return view('almacen.promociones', compact("categorias"));
+    }
+
+    public function editPromos($uuid)
+    {
+        $promo = Promocion::with('detallePromocion.producto')->where('uuid', $uuid)->firstOrFail();
+        $categorias = Categoria::select('id', 'descripcion_categoria')
+            ->where('estado_categoria', 1)
+            ->where('id', '<>', 1)
+            ->get();
+        return view('almacen.editar_promociones', [
+            'promo' => $promo,
+            'categorias' => $categorias,
+        ]);
+    }
+
+    public function updatePromo(Request $request, $uuid)
+    {
+        try {
+            $data = $request->all();
+            Promocion::actualizarPromocionConProductos($uuid, $data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => "Promoción modificada exitosamente"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deletePromo($uuid)
+    {
+        try {
+            Promocion::eliminarPromocion($uuid);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Promoción eliminada correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error al eliminar la promoción.'
+            ]);
+        }
+    }
+
+    public function indexRange()
+    {
+        return view('almacen.rango_precios');
+    }
+
+    public function listProductsRange()
+    {
+        $ranges = RangoPrecio::select(
+            'rangos_precios.uuid',
+            'productos.codigo',
+            'productos.descripcion',
+            'rangos_precios.cantidad_minima',
+            'rangos_precios.cantidad_maxima',
+            'rangos_precios.precio_unitario',
+            'rangos_precios.fec_modificacion'
+        )
+            ->join('productos', 'rangos_precios.producto_id', '=', 'productos.id')
+            ->get();
+        $ranges = $ranges->map(function ($range) {
+            return [
+                'codigo' => $range->codigo,
+                'descripcion' => $range->descripcion,
+                'cantidad_minima' => intval($range->cantidad_minima),
+                'cantidad_maxima' => $range->cantidad_maxima ? intval($range->cantidad_maxima) : '',
+                'precio_unitario' => intval($range->precio_unitario),
+                'fec_modificacion' => $range->fec_modificacion ? Carbon::parse($range->fec_modificacion)->format('d-m-Y | H:i:s') : '',
+                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditarRango" data-uuid="' . $range->uuid . '" data-toggle="modal" title="Editar rango ' . $range->descripcion . '"><i class="fa fa-edit"></i></a>
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $range->uuid . '" data-nameprod="' . $range->descripcion . '" title="Eliminar rango ' . $range->descripcion . '"><i class="fa fa-trash"></i></a>'
+            ];
+        });
+
+        $response = [
+            'data' => $ranges,
+            'recordsTotal' => $ranges->count(),
+            'recordsFiltered' => $ranges->count()
+        ];
+
+        return response()->json($response);
+    }
+
+    public function storeRange(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $rango = new RangoPrecio();
+
+            $producto = Producto::where('uuid', $data['uuid'])->first();
+
+            $yaExiste = RangoPrecio::where('producto_id', $producto->id)
+                ->where('cantidad_minima', $data['cantidad_minima'])
+                ->where('cantidad_maxima', $data['cantidad_maxima'])
+                ->exists();
+
+            if ($yaExiste) {
+                return response()->json([
+                    'error' => 400,
+                    'message' => 'Ya existe un rango para ese producto con ese rango de cantidades.'
+                ], 400);
+            }
+            $rango->crearRango($data);
+
+            $response = response()->json([
+                'error' => 200,
+                'message' => "Rango creado correctamente"
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al grabar rango " . $e->getMessage());
+            $response = response()->json([
+                'error' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        return $response;
+    }
+
+    public function showProductRange($uuid)
+    {
+        $range = RangoPrecio::with(['producto:id,codigo,descripcion,precio_venta,uuid'])->where('uuid', $uuid)->firstOrFail();
+        return response()->json($range);
+    }
+
+    public function updateRange(Request $request, $uuid)
+    {
+        try {
+            $data = $request->all();
+
+            $rango = RangoPrecio::where('uuid', $uuid)->firstOrFail();
+            $producto = Producto::where('uuid', $data['uuid'])->firstOrFail();
+
+            $existe = RangoPrecio::where('producto_id', $producto->id)
+                ->where('uuid', '!=', $uuid)
+                ->where('cantidad_minima', $data['cantidad_minima'])
+                ->where('cantidad_maxima', $data['cantidad_maxima'])
+                ->exists();
+
+            if ($existe) {
+                return response()->json([
+                    'error' => 400,
+                    'message' => 'Ya existe un rango para ese producto con esas cantidades.'
+                ], 400);
+            }
+            $rango->actualizarRango($data);
+
+            $response = response()->json([
+                'error' => 200,
+                'message' => "Rango modificado exitosamente"
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al modificar producto " . $e->getMessage());
+            $response = response()->json([
+                'error' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        return $response;
+    }
+
+    public function deleteRange($uuid)
+    {
+        try {
+            $rango = RangoPrecio::where('uuid', $uuid)->firstOrFail();
+            $rango->delete();
+
+            return response()->json([
+                'error' => 200,
+                'message' => 'Rango eliminado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el rango: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 500,
+                'message' => 'No se pudo eliminar el rango.'
+            ], 500);
         }
     }
 }
