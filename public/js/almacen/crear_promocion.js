@@ -291,16 +291,15 @@ $(document).ready(function () {
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function (response) {
-                if (response.status == 200) {
-                    toastr.success(response.message);
-                    $('#contenido').load('/almacen/promociones_crear');
-                } else {
-                    toastr.error('Error al guardar la promoción: ' + (response.message));
-                }
+                toastr.success(response.message);
+                $('#contenido').load('/almacen/promociones_crear');
             },
             error: function (xhr, status, error) {
-                console.error(xhr, status, error);
-                toastr.error('Error al guardar la promoción.');
+                if (xhr.status === 400) {
+                    toastr.warning(xhr.responseJSON.message, 'Validación', { timeOut: 7000 });
+                } else {
+                    toastr.error('Error al guardar la promocion.');
+                }
             }
         });
     });

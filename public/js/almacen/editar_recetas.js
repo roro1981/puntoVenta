@@ -10,7 +10,7 @@ $(document).ready(function () {
 
         if (query.length >= 2) {
             $.ajax({
-                url: "/almacen/searchInsumos", // /products/search
+                url: "/almacen/searchInsumos",
                 type: "GET",
                 data: { q: query },
                 success: function (data) {
@@ -150,7 +150,7 @@ $(document).ready(function () {
             total += tota;
         });
 
-        $('#precio_costo').val(total);
+        $('#precio_costo').val(total.toFixed(1));
         return total;
     }
 
@@ -183,7 +183,6 @@ $(document).ready(function () {
 
     $('#volver').on('click', function (e) {
         e.preventDefault();
-        console.log("Click en #volver detectado");
         $('#contenido').load("/almacen/recetas");
     });
 

@@ -75,10 +75,10 @@ $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#nom_foto_editar').val('');
 });
 $(document).on('click', '.editar', function () {
-    var productoId = $(this).data('prod');
+    var uuid = $(this).data('uuid');
 
     $.ajax({
-        url: '/almacen/productos/' + productoId + '/editar',
+        url: '/almacen/productos/' + uuid + '/editar',
         method: 'GET',
         success: function (response) {
             var precioCompraBruto = parseFloat(response.precio_compra_bruto) || 0;
@@ -88,7 +88,7 @@ $(document).on('click', '.editar', function () {
             if (precioCompraBruto > 0) {
                 margenGanancia = (ganancia / precioCompraBruto) * 100;
             }
-            $('#producto_id').val(response.id);
+            $('#producto_uuid').val(response.uuid);
             $('#codigo_editar').val(response.codigo);
             $('#descripcion_editar').val(response.descripcion);
             $('#precio_compra_neto_editar').val(parseInt(response.precio_compra_neto));
@@ -126,7 +126,7 @@ $(document).on('click', '.editar', function () {
 });
 $('#guardarCambios').click(function (event) {
     event.preventDefault();
-    var productoId = $('#producto_id').val();
+    var uuid = $('#producto_uuid').val();
     var datosProducto = {
         descripcion: $('#descripcion_editar').val(),
         precio_compra_neto: $('#precio_compra_neto_editar').val(),
@@ -144,7 +144,6 @@ $('#guardarCambios').click(function (event) {
     let hayCambios = false;
 
     for (let key in datosProducto) {
-        console.log(datosProducto[key], window.valoresOriginales[key]);
         if (datosProducto[key] != window.valoresOriginales[key]) {
             hayCambios = true;
             break;
@@ -158,7 +157,7 @@ $('#guardarCambios').click(function (event) {
     }
 
     $.ajax({
-        url: '/almacen/productos/' + productoId + '/actualizar',
+        url: '/almacen/productos/' + uuid + '/actualizar',
         method: 'PUT',
         data: datosProducto,
         headers: {

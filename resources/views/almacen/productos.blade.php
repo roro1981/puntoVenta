@@ -147,7 +147,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" name="_token" id="token_editar" value="{{ csrf_token() }}">
-        <input type="hidden" id="producto_id" name="producto_id"> <!-- Campo oculto para el ID del producto -->
+        <input type="hidden" id="producto_uuid" name="producto_uuid"> <!-- Campo oculto para el ID del producto -->
         <form id="editProdForm" autocomplete="off">
           <div class="form-group">
             <label for="codigo_editar">Código</label>

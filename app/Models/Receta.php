@@ -16,7 +16,7 @@ class Receta extends Model
     public $timestamps = false;
 
     protected $table = 'recetas';
-
+    protected $casts = ['precio_costo' => 'decimal:1'];
     protected $fillable = [
         'uuid',
         'codigo',
@@ -69,7 +69,7 @@ class Receta extends Model
                         'uuid' => Str::uuid(),
                         'receta_id' => $receta->id,
                         'producto_id' => $producto->id,
-                        'cantidad' => $ing['cantidad'] ?? 1,
+                        'cantidad' => $ing['cantidad'],
                         'unidad' => $producto->unidad_medida
                     ]);
                 }

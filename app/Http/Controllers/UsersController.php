@@ -112,11 +112,11 @@ class UsersController extends Controller
 
         return $response;
     }
-    public function update(UserRequest $request, $id)
+    public function update(UserRequest $request, $uuid)
     {
         $request->validated();
         try {
-            $user = User::findOrFail($id);
+            $user = User::where('uuid', $uuid)->firstOrFail();
             $user->updateUser($request);
 
             $response = response()->json([
@@ -133,10 +133,10 @@ class UsersController extends Controller
 
         return $response;
     }
-    public function delete($id)
+    public function delete($uuid)
     {
         try {
-            $user = User::findOrFail($id);
+            $user = User::where('uuid', $uuid)->firstOrFail();
             $superAdminRoleId = Role::where('role_name', 'SuperAdministrador')->first()->id;
 
             if ($user->role_id == $superAdminRoleId) {
@@ -171,7 +171,7 @@ class UsersController extends Controller
     }
     public function index()
     {
-        $users = User::select('users.id', 'users.name', 'users.name_complete', 'users.role_id', 'roles.role_name', 'users.created_at', 'users.updated_at')
+        $users = User::select('users.uuid', 'users.id', 'users.name', 'users.name_complete', 'users.role_id', 'roles.role_name', 'users.created_at', 'users.updated_at')
             ->join('roles', 'users.role_id', '=', 'roles.id')
             ->where('users.estado', 1)
             ->where('users.name_complete', '<>', 'Rodrigo Panes')
@@ -179,8 +179,8 @@ class UsersController extends Controller
             ->map(function ($user) {
                 $user->created_at = date('d/m/Y H:i:s', strtotime($user->created_at));
                 $user->updated_at = $user->updated_at ? date('d/m/Y H:i:s', strtotime($user->updated_at)) : 'Aún no tiene modificaciones';
-                $user->actions = '<a href="" class="btn btn-sm btn-primary editar" data-rol="' . $user->role_id . '" data-target="#editUserModal" data-user="' . $user->id . '" data-toggle="modal" title="Editar usuario ' . $user->name . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-user="' . $user->id . '" data-nameuser="' . $user->name . '" title="Eliminar usuario ' . $user->name . '"><i class="fa fa-trash"></i></a>';
+                $user->actions = '<a href="" class="btn btn-sm btn-primary editar" data-rol="' . $user->role_id . '" data-target="#editUserModal" data-uuid="' . $user->uuid . '" data-toggle="modal" title="Editar usuario ' . $user->name . '"><i class="fa fa-edit"></i></a>
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $user->uuid . '" data-nameuser="' . $user->name . '" title="Eliminar usuario ' . $user->name . '"><i class="fa fa-trash"></i></a>';
                 return $user;
             });
 
@@ -294,9 +294,9 @@ class UsersController extends Controller
         ]);
     }
 
-    public function getUser($id)
+    public function getUser($uuid)
     {
-        $user = User::find($id);
+        $user = User::where('uuid', $uuid)->firstOrFail();
         return response()->json($user);
     }
     public function getRolesPermisos()

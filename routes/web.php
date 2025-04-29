@@ -24,8 +24,8 @@ Route::get('/', function () {
 //menu almacen
 Route::get('/almacen/productos', [ProductosController::class, 'index']);
 Route::get('/almacen/productosCarga', [ProductosController::class, 'listProducts']);
-Route::get('/almacen/productos/{id}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
-Route::put('/almacen/productos/{producto}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
+Route::get('/almacen/productos/{uuid}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
+Route::put('/almacen/productos/{uuid}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
 Route::delete('/almacen/productos/{prod}/delete', [ProductosController::class, 'deleteProd']);
 Route::get('/almacen/categorias', [ProductosController::class, 'indexCat']);
 Route::get('/almacen/traeCategorias', [ProductosController::class, 'showCategories']);
@@ -65,9 +65,9 @@ Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 Route::post('/users/create', [UsersController::class, 'create']);
-Route::get('/users/{user}/show', [UsersController::class, 'getUser']);
-Route::put('/users/{user}/edit', [UsersController::class, 'update']);
-Route::delete('/users/{user}/delete', [UsersController::class, 'delete']);
+Route::get('/users/{uuid}/show', [UsersController::class, 'getUser']);
+Route::put('/users/{uuid}/edit', [UsersController::class, 'update']);
+Route::delete('/users/{uuid}/delete', [UsersController::class, 'delete']);
 Route::get('/users/menus', [UsersController::class, 'getUserMenus'])->middleware('auth')->name('user.menus');
 Route::get('/usuarios/roles', [UsersController::class, 'indexRoles']);
 Route::get('/roles', [UsersController::class, 'rolesTable']);

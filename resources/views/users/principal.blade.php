@@ -83,7 +83,7 @@
           <div class="modal-body">
               <form id="editUserForm" autocomplete="off">
                 @csrf
-                <input type="hidden" id="user_id">
+                <input type="hidden" id="user_uuid">
                 <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
                   <div class="form-group">
                       <label for="name_edit">Usuario</label>

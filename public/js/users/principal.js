@@ -166,11 +166,11 @@ $('#editUserForm').submit(function (event) {
         'role_id_edit': $('#role_id_edit').val()
     };
 
-    var user_id = $("#user_id").val();
+    var uuid = $("#user_uuid").val();
 
     $.ajax({
         type: 'PUT',
-        url: '/users/' + user_id + '/edit',
+        url: '/users/' + uuid + '/edit',
         data: formData,
         headers: {
             'X-CSRF-TOKEN': $('#token').val()
@@ -200,24 +200,23 @@ $('#editUserForm').submit(function (event) {
 });
 $('#editUserModal').on('show.bs.modal', function (event) {
     var button = $(event.relatedTarget);
-    var userId = button.data('user');
+    var uuid = button.data('uuid');
     var modal = $(this);
 
-    // Llena el formulario con los datos del usuario seleccionado
     $.ajax({
         type: 'GET',
-        url: '/users/' + userId + '/show',
+        url: '/users/' + uuid + '/show',
         success: function (data) {
             modal.find('#name_edit').val(data.name);
             modal.find('#name_complete_edit').val(data.name_complete);
             modal.find('#role_id_edit').val(data.role_id);
-            modal.find('#user_id').val(userId);
+            modal.find('#user_uuid').val(uuid);
         }
     });
 });
 $(document).on('click', '.eliminar', function (event) {
     event.preventDefault();
-    var userId = $(this).data('user');
+    var uuid = $(this).data('uuid');
     var nombreUser = $(this).data('nameuser');
     Swal.fire({
         title: "¿Estás seguro?",
@@ -231,7 +230,7 @@ $(document).on('click', '.eliminar', function (event) {
         if (result.isConfirmed) {
             $.ajax({
                 type: 'DELETE',
-                url: '/users/' + userId + '/delete',
+                url: '/users/' + uuid + '/delete',
                 headers: {
                     'X-CSRF-TOKEN': $('#token').val()
                 },

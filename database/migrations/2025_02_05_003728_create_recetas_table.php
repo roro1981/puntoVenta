@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('nombre')->comment('Nombre receta');
             $table->text('descripcion')->nullable()->comment('Descripción más detallada o instrucciones de preparación');
             $table->foreignId('categoria_id')->constrained('categorias', 'id')->comment('Id de categoria asociada a receta');
-            $table->bigInteger('precio_costo')->comment('Costo receta');
+            $table->decimal('precio_costo', 8, 1)->comment('Costo receta');
             $table->bigInteger('precio_venta')->comment('Precio publico receta');
             $table->string('imagen', 255)->nullable()->comment('Imagen receta');
             $table->string('estado', 10)->comment('Estado receta: Activo | Inactivo');

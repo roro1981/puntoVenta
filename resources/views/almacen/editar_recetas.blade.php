@@ -56,7 +56,7 @@
                 <div class="form-group mb-3">
                     <label for="precio_costo">Precio Costo</label>
                     <input type="text" name="precio_costo" id="precio_costo" class="form-control"
-                           value="{{ old('precio_costo', $receta->precio_costo) }}" 
+                           value="{{ old('precio_costo', $receta->precio_costo) }}"
                            readonly>
                 </div>
 

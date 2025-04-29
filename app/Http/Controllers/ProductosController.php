@@ -28,7 +28,7 @@ class ProductosController extends Controller
     public function listProducts()
     {
         $products = Producto::select(
-            'productos.id',
+            'productos.uuid',
             'productos.codigo',
             'productos.descripcion',
             'productos.precio_venta',
@@ -49,8 +49,8 @@ class ProductosController extends Controller
                 'imagen' => $product->imagen ? '<img src="' . $product->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
                 'fec_creacion' => $product->fec_creacion ? Carbon::parse($product->fec_creacion)->format('d-m-Y | H:i:s') : '',
                 'fec_modificacion' => $product->fec_modificacion ? Carbon::parse($product->fec_modificacion)->format('d-m-Y | H:i:s') : '',
-                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditarProducto" data-prod="' . $product->id . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-prod="' . $product->id . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
+                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditarProducto" data-uuid="' . $product->uuid . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $product->uuid . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
             ];
         });
 
@@ -83,16 +83,16 @@ class ProductosController extends Controller
 
         return $response;
     }
-    public function showProduct($id)
+    public function showProduct($uuid)
     {
-        $producto = Producto::find($id);
+        $producto = Producto::where('uuid', $uuid)->firstOrFail();
         return response()->json($producto);
     }
-    public function updateProduct(ProductoRequest $request, $producto)
+    public function updateProduct(ProductoRequest $request, $uuid)
     {
         try {
             $validated = $request->validated();
-            $product = Producto::findOrFail($producto);
+            $product = Producto::where('uuid', $uuid)->firstOrFail();
             $product = $product->editarProducto($validated);
 
             $response = response()->json([
@@ -356,6 +356,21 @@ class ProductosController extends Controller
     {
         try {
             $data = $request->all();
+
+            $codigoExisteEnRecetas = Receta::where('codigo', $data['codigo'])->exists();
+            $codigoExisteEnProductos = Producto::where('codigo', $data['codigo'])->exists();
+            $codigoExisteEnPromociones = Promocion::where('codigo', $data['codigo'])->exists();
+            $nombreExisteEnRecetas = Receta::where('nombre', $data['nombre'])->exists();
+            $nombreExisteEnProductos = Producto::where('descripcion', $data['nombre'])->exists();
+            $nombreExisteEnPromociones = Promocion::where('nombre', $data['nombre'])->exists();
+
+            if ($codigoExisteEnRecetas || $codigoExisteEnProductos || $codigoExisteEnPromociones || $nombreExisteEnRecetas || $nombreExisteEnProductos || $nombreExisteEnPromociones) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'El código o el nombre ya está registrado en recetas, productos o promociones.'
+                ], 400);
+            }
+
             Receta::crearRecetaConIngredientes($data);
 
             return response()->json([
@@ -465,6 +480,21 @@ class ProductosController extends Controller
     {
         try {
             $data = $request->all();
+
+            $codigoExisteEnRecetas = Receta::where('codigo', $data['codigo'])->exists();
+            $codigoExisteEnProductos = Producto::where('codigo', $data['codigo'])->exists();
+            $codigoExisteEnPromociones = Promocion::where('codigo', $data['codigo'])->exists();
+            $nombreExisteEnRecetas = Receta::where('nombre', $data['nombre'])->exists();
+            $nombreExisteEnProductos = Producto::where('descripcion', $data['nombre'])->exists();
+            $nombreExisteEnPromociones = Promocion::where('nombre', $data['nombre'])->exists();
+
+            if ($codigoExisteEnRecetas || $codigoExisteEnProductos || $codigoExisteEnPromociones || $nombreExisteEnRecetas || $nombreExisteEnProductos || $nombreExisteEnPromociones) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'El código o el nombre ya está registrado en promociones, productos o recetas.'
+                ], 400);
+            }
+
             Promocion::crearPromocionConProductos($data);
 
             return response()->json([

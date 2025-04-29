@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Validation\Rule;
-
 use Illuminate\Foundation\Http\FormRequest;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProductoRequest extends FormRequest
 {
@@ -65,5 +66,29 @@ class ProductoRequest extends FormRequest
             'tipo.in' => 'El tipo de producto debe ser uno de los siguientes: PRODUCTO, NO AFECTO A STOCK, INSUMO.',
             'nom_foto.max' => 'El nombre de la foto no puede sobrepasar los 255 caracteres',
         ];
+    }
+
+    protected function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $codigo = $this->input('codigo');
+            $descripcion = $this->input('descripcion');
+
+            if ($this->isMethod('POST')) {
+                $existeEnRecetas = DB::table('recetas')->where('codigo', $codigo)->exists();
+                $existeEnPromociones = DB::table('promociones')->where('codigo', $codigo)->exists();
+
+                if ($existeEnRecetas || $existeEnPromociones) {
+                    $validator->errors()->add('codigo', 'El código ya existe en recetas o promociones.');
+                }
+
+                $existeEnRecetasDesc = DB::table('recetas')->where('nombre', $descripcion)->exists();
+                $existeEnPromocionesDesc = DB::table('promociones')->where('nombre', $descripcion)->exists();
+
+                if ($existeEnRecetasDesc || $existeEnPromocionesDesc) {
+                    $validator->errors()->add('descripcion', 'La descripción ya existe en recetas o promociones.');
+                }
+            }
+        });
     }
 }

@@ -242,12 +242,12 @@ $(document).ready(function () {
 
         $filas.each(function () {
             let codProducto = $(this).data('codigo');
-            let cantStr = $(this).find('td').eq(2).text().trim();
+            let cantStr = $(this).find('td').eq(3).text().trim();
             let cantidad = parseFloat(cantStr);
 
             dataReceta.ingredientes.push({
                 codigo: codProducto,
-                cantidad: cantidad,
+                cantidad: parseFloat(cantidad),
             });
         });
 
@@ -261,16 +261,15 @@ $(document).ready(function () {
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function (response) {
-                if (response.status == 200) {
-                    toastr.success(response.message);
-                    $('#contenido').load('/almacen/recetas_crear');
-                } else {
-                    toastr.error('Error al guardar la receta: ' + (response.message));
-                }
+                toastr.success(response.message);
+                $('#contenido').load('/almacen/recetas_crear');
             },
             error: function (xhr, status, error) {
-                console.error(xhr, status, error);
-                toastr.error('Error al guardar la receta.');
+                if (xhr.status === 400) {
+                    toastr.warning(xhr.responseJSON.message, 'Validación', { timeOut: 7000 });
+                } else {
+                    toastr.error('Error al guardar la receta.');
+                }
             }
         });
     });
