@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\ComprasController;
 use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\ProductosController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
+
 
 
 /*
@@ -60,6 +62,11 @@ Route::post('/almacen/precio_segun_cant/create', [ProductosController::class, 's
 Route::get('/almacen/precio_segun_cant/{uuid}/editar', [ProductosController::class, 'showProductRange']);
 Route::put('/almacen/precio_segun_cant/{uuid}/actualizar', [ProductosController::class, 'updateRange']);
 Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::class, 'deleteRange']);
+
+//menu compras
+Route::get('/compras/proveedores', [ComprasController::class, 'indexProveedores']);
+Route::get('/compras/proveedores_list', [ComprasController::class, 'listProveedores']);
+Route::get('/compras/{region}/comunas', [ComprasController::class, 'getComunas']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

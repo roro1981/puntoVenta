@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('comunas', function (Blueprint $table) {
+        Schema::create('regiones', function (Blueprint $table) {
             $table->id();
-            $table->string('nom_comuna', 255);
-            $table->integer('id_region');
+            $table->string('nom_region', 255);
         });
     }
 
@@ -23,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('comunas');
+        Schema::dropIfExists('regiones');
     }
 };

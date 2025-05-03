@@ -25,5 +25,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ImpuestosTableSeeder::class);
         $this->call(CategoriasTableSeeder::class);
         $this->call(InsumosSeeder::class);
+        $this->call(RegionSeeder::class);
     }
 }
