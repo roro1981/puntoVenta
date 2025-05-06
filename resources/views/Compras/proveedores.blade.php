@@ -36,7 +36,7 @@
                 @csrf
                   <div class="form-group">
                       <label for="name">Rut (*)</label>
-                      <input type="text" class="form-control" id="rut" name="rut" autocomplete="off" required>
+                      <input type="text" class="form-control" id="rut" name="rut" autocomplete="off" placeholder="12345789-9" required>
                       <small id="rutFeedback" class="text-danger d-none">RUT no válido</small>
                   </div>
                   <div class="form-group">
@@ -48,8 +48,8 @@
                     <input type="text" class="form-control" id="nombre_fantasia" name="nombre_fantasia" autocomplete="off" autocorrect="off">
                   </div>
                   <div class="form-group">
-                    <label for="giro">Giro</label>
-                    <input type="text" class="form-control" id="giro" name="giro" autocomplete="off" autocorrect="off">
+                    <label for="giro">Giro (*)</label>
+                    <input type="text" class="form-control" id="giro" name="giro" autocomplete="off" autocorrect="off" required>
                   </div>
                   <div class="form-group">
                     <label for="direccion">Dirección (*)</label>
@@ -75,12 +75,12 @@
                   </div>
                   <div class="form-group">
                     <label for="email">E-mail</label>
-                    <input type="email" class="form-control campo-mail" id="email" name="email" autocomplete="off" autocorrect="off" pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$">
+                    <input type="email" class="form-control campo-mail" id="email" name="email" autocomplete="off" autocorrect="off" placeholder="ejemplo@mail.com" pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$">
                     <small class="text-danger d-none feedback-mail">Correo no válido</small>
                   </div>
                   <div class="form-group">
                     <label for="pagina_web">Pagina Web</label>
-                    <input type="text" class="form-control campo-url" id="pagina_web" name="pagina_web" autocomplete="off" autocorrect="off" pattern="^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[^\s]*)?$">
+                    <input type="text" class="form-control campo-url" id="pagina_web" name="pagina_web" autocomplete="off" autocorrect="off" placeholder="www.ejemplo.com" pattern="^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[^\s]*)?$">
                     <small class="text-danger d-none feedback-url">URL no válida</small>
                   </div>
                   <div class="form-group">
@@ -89,7 +89,7 @@
                   </div>
                   <div class="form-group">
                     <label for="contacto_email">Email contacto</label>
-                    <input type="email" class="form-control campo-mail" id="contacto_email" name="contacto_email" autocomplete="off" pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$" autocorrect="off">
+                    <input type="email" class="form-control campo-mail" id="contacto_email" name="contacto_email" autocomplete="off" placeholder="ejemplo@mail.com" pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$" autocorrect="off">
                     <small class="text-danger d-none feedback-mail">Correo no válido</small>
                  </div>
                   <div class="form-group">
@@ -106,54 +106,135 @@
       </div>
   </div>
 </div>
-<!-- Fin Modal para crear nuevo proveedor -->
+<!-- Fin Modal para crear nuevo proveedor
 
+<!-- Modal Editar Proveedor -->
+<div class="modal fade" id="editProveedorModal" tabindex="-1"
+aria-labelledby="editProveedorModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+<div class="modal-content">
 
-<!-- Modal para editar usuario 
-<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true" data-dismiss="modal" data-backdrop="false">
- <div class="modal-dialog">
-      <div class="modal-content">
-          <div class="modal-header">
-              <h5 class="modal-title" id="editUserModalLabel">Editar usuario</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true">&times;</span>
-              </button>
-          </div>
-          <div class="modal-body">
-              <form id="editUserForm" autocomplete="off">
-                @csrf
-                <input type="hidden" id="user_uuid">
-                <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
-                  <div class="form-group">
-                      <label for="name_edit">Usuario</label>
-                      <input type="text" class="form-control" id="name_edit" name="name_edit" readonly>
-                  </div>
-                  <div class="form-group">
-                      <label for="name_complete_edit">Nombre</label>
-                      <input type="text" class="form-control" id="name_complete_edit" name="name_complete_edit" autocomplete="off" autocorrect="off" required>
-                  </div>
-                  <div class="form-group">
-                    <label for="password_edit">Contraseña</label>
-                    <input type="password" class="form-control" id="password_edit" name="password_edit" autocomplete="off" readonly autocorrect="off">
-                    <small class="text-muted">Dejar en blanco para no cambiar la contraseña</small>
-                    <span class="password-eye_edit" onclick="togglePasswordVisibility(document.getElementById('password_edit'),document.getElementById('password-eye-icon_edit'))">
-                      <i class="fa fa-eye-slash" id="password-eye-icon_edit"></i>
-                    </span>
-                </div>
-                <div class="form-group">
-                  <label for="role_id_edit">Rol</label>
-                  <select class="form-control" id="role_id_edit" name="role_id_edit" required>
-            
-                  </select>
-                </div>
-              </form>
-          </div>
-          <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary" form="editUserForm">Guardar cambios</button>
-          </div>
-      </div>
-  </div>-->
- <!-- Fin Modal para editar usuario -->
+ <div class="modal-header">
+   <h2 class="modal-title" id="editProveedorModalLabel">Editar proveedor</h2>
+   <button type="button" class="close" data-dismiss="modal">
+     <span aria-hidden="true">&times;</span>
+   </button>
+ </div>
+ <form id="editProveedorForm" autocomplete="off">
+   @csrf
+   @method('PUT')
+   <input type="hidden" id="edit_uuid" name="uuid">
+
+   <div class="modal-body">
+
+     <div class="form-group">
+       <label for="edit_rut">RUT</label>
+       <input type="text" class="form-control" id="edit_rut"
+              name="edit_rut" disabled>
+     </div>
+
+     <div class="form-group">
+       <label for="razon_social">Razón social (*)</label>
+       <input type="text" class="form-control" id="edit_razon_social"
+              name="razon_social" required>
+     </div>
+
+     <div class="form-group">
+       <label for="nombre_fantasia">Nombre fantasía</label>
+       <input type="text" class="form-control" id="edit_nombre_fantasia"
+              name="nombre_fantasia">
+     </div>
+
+     <div class="form-group">
+       <label for="giro">Giro (*)</label>
+       <input type="text" class="form-control" id="edit_giro"
+              name="giro" required>
+     </div>
+
+     <div class="form-group">
+       <label for="direccion">Dirección (*)</label>
+       <input type="text" class="form-control" id="edit_direccion"
+              name="direccion" required>
+     </div>
+
+     <div class="form-group">
+       <label for="region">Región (*)</label>
+       <select id="edit_region" name="region"
+               class="form-control" required>
+         <option value="" disabled>Seleccione Región</option>
+         @foreach($regiones as $region)
+            <option value="{{ $region->id }}">{{ $region->nom_region }}</option>
+         @endforeach
+       </select>
+     </div>
+
+     <div class="form-group">
+       <label for="comuna">Comuna (*)</label>
+       <select id="edit_comuna" name="comuna"
+               class="form-control" required></select>
+     </div>
+
+     <div class="form-group">
+       <label for="telefono">Teléfono</label>
+       <input type="text" class="form-control" id="edit_telefono"
+              name="telefono">
+     </div>
+
+     <div class="form-group">
+       <label for="email">E‑mail</label>
+       <input type="email" class="form-control campo-mail"
+              id="edit_email" name="email"
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$">
+       <small class="text-danger hidden feedback-mail">
+         Correo no válido
+       </small>
+     </div>
+
+     <div class="form-group">
+       <label for="pagina_web">Página web</label>
+       <input type="url" class="form-control campo-url"
+              id="edit_pagina_web" name="pagina_web"
+              pattern="^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[^\s]*)?$">
+       <small class="text-danger hidden feedback-url">
+         URL no válida
+       </small>
+     </div>
+
+     <div class="form-group">
+       <label for="contacto_nombre">Nombre contacto</label>
+       <input type="text" class="form-control" id="edit_contacto_nombre"
+              name="contacto_nombre">
+     </div>
+
+     <div class="form-group">
+       <label for="contacto_email">E‑mail contacto</label>
+       <input type="email" class="form-control campo-mail"
+              id="edit_contacto_email" name="contacto_email"
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$">
+       <small class="text-danger hidden feedback-mail">
+         Correo no válido
+       </small>
+     </div>
+
+     <div class="form-group">
+       <label for="contacto_telefono">Teléfono contacto</label>
+       <input type="text" class="form-control" id="edit_contacto_telefono"
+              name="contacto_telefono">
+     </div>
+
+     <p class="text-primary">(*) Campos obligatorios</p>
+   </div>
+
+   <div class="modal-footer">
+     <button type="button" class="btn btn-secondary"
+             data-dismiss="modal">Cancelar</button>
+     <button type="submit" class="btn btn-primary">
+         Guardar cambios
+     </button>
+   </div>
+ </form>
+</div>
+</div>
+</div>
         
 

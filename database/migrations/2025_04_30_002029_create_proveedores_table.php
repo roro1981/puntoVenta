@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('rut', 12)->unique()->comment('RUT del proveedor');
             $table->string('razon_social', 255)->comment('Razón social (nombre legal)');
             $table->string('nombre_fantasia', 255)->nullable()->comment('Nombre de fantasía (opcional)');
-            $table->string('giro', 255)->nullable()->comment('Actividad económica o giro SII');
+            $table->string('giro', 255)->comment('Actividad económica o giro SII');
             $table->string('direccion', 255)->nullable()->comment('Dirección fiscal o de despacho');
             $table->foreignId('region_id')->constrained('regiones', 'id')->comment('Region proveedor');
             $table->foreignId('comuna_id')->constrained('comunas', 'id')->comment('Comuna proveedor');

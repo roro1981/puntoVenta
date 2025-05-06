@@ -67,6 +67,10 @@ Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::
 Route::get('/compras/proveedores', [ComprasController::class, 'indexProveedores']);
 Route::get('/compras/proveedores_list', [ComprasController::class, 'listProveedores']);
 Route::get('/compras/{region}/comunas', [ComprasController::class, 'getComunas']);
+Route::post('/compras/createProveedor', [ComprasController::class, 'createProveedor']);
+Route::get('/compras/{proveedor}/edit', [ComprasController::class, 'editProveedor']);
+Route::put('/compras/{proveedor}/update', [ComprasController::class, 'updateProveedor']);
+Route::delete('/compras/{uuid}/delete', [ComprasController::class, 'deleteProveedor']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
