@@ -52,6 +52,15 @@
                     <input type="text" class="form-control" id="giro" name="giro" autocomplete="off" autocorrect="off" required>
                   </div>
                   <div class="form-group">
+                    <label for="forma_pago">Forma de pago (*)</label>
+                    <select class="form-control" id="fpago" name="fpago" required>
+                      <option value="" selected disabled>Seleccione Forma de pago</option>
+                        @foreach($formasPago as $fpago)
+                            <option value="{{ $fpago->id }}">{{ $fpago->descripcion_pago }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                  <div class="form-group">
                     <label for="direccion">Dirección (*)</label>
                     <input type="text" class="form-control" id="direccion" name="direccion" autocomplete="off" autocorrect="off" required>
                   </div>
@@ -150,6 +159,16 @@ aria-labelledby="editProveedorModalLabel" aria-hidden="true">
        <input type="text" class="form-control" id="edit_giro"
               name="giro" required>
      </div>
+
+     <div class="form-group">
+      <label for="fpago">Forma de pago (*)</label>
+      <select class="form-control" id="edit_fpago" name="fpago" required>
+        <option value="" selected disabled>Seleccione Forma de pago</option>
+          @foreach($formasPago as $fpago)
+              <option value="{{ $fpago->id }}">{{ $fpago->descripcion_pago }}</option>
+          @endforeach
+          </select>
+      </div>
 
      <div class="form-group">
        <label for="direccion">Dirección (*)</label>

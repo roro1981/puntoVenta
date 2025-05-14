@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
-use App\Models\Categoria;
+use App\Models\FormaPago;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -26,5 +26,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CategoriasTableSeeder::class);
         $this->call(InsumosSeeder::class);
         $this->call(RegionSeeder::class);
+        $this->call(FormasPagoTableSeeder::class);
     }
 }

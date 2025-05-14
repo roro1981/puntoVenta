@@ -228,6 +228,7 @@ $(document).ready(function () {
                 $('#edit_razon_social').val(data.razon_social);
                 $('#edit_nombre_fantasia').val(data.nombre_fantasia);
                 $('#edit_giro').val(data.giro);
+                $('#edit_fpago').val(data.fpago_id);
                 $('#edit_direccion').val(data.direccion);
                 $('#edit_telefono').val(data.telefono);
                 $('#edit_email').val(data.email);

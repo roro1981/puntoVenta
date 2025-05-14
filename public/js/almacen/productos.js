@@ -278,12 +278,6 @@ $('#createProdForm').submit(function (event) {
     event.preventDefault();
 
     var formData = new FormData(this);
-    const impuestoUnido = $("#impuesto_1").val();
-    const imp1 = impuestoUnido ? impuestoUnido.split("_") : ["", ""];
-    const impuesto2Unido = $("#impuesto_2").val();
-    const imp2 = impuesto2Unido ? impuesto2Unido.split("_") : ["", ""];
-    formData.set('impuesto_1', imp1[1] || "");
-    formData.set('impuesto_2', imp2[1] || "");
     formData.append("precio_compra_bruto", $("#precio_compra_bruto").val())
     $.ajax({
         type: 'POST',
@@ -352,26 +346,29 @@ function calcula(valor) {
     const isEditMode = $("#precio_compra_neto_editar").val();
 
     const precioCompraNetoId = isEditMode ? "precio_compra_neto_editar" : "precio_compra_neto";
+    const impuesto1Id = isEditMode ? "impuesto_1_editar" : "impuesto_1";
     const impuesto2Id = isEditMode ? "impuesto_2_editar" : "impuesto_2";
     const precioCompraBrutoId = isEditMode ? "precio_compra_bruto_editar" : "precio_compra_bruto";
-    console.log(precioCompraBrutoId);
+
     if ($("#" + precioCompraNetoId).val() == 0 || $("#" + precioCompraNetoId).val() == "") {
         $("#" + precioCompraBrutoId).val(0);
     } else {
         if (valor == 0) {
+            $("#" + impuesto1Id).val(0);
             $("#" + impuesto2Id).val(0);
             $("#" + precioCompraBrutoId).val("");
             return false;
         }
-        if (isEditMode) {
-            valor_iva = parseInt($("#" + precioCompraNetoId).val() * valor) / 100;
-        } else {
-            var trozos = valor.split("_");
-            valor_iva = parseInt($("#" + precioCompraNetoId).val() * trozos[1]) / 100;
-        }
+        let porcentaje = $("#" + impuesto1Id).text().match(/\(([^)]+)\)/);
+        porcentaje = porcentaje[1].replace('%', '');
+        let iva = porcentaje;
+
+        valor_iva = parseInt($("#" + precioCompraNetoId).val() * iva) / 100;
+
         var calculo1 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_iva);
         $("#" + precioCompraBrutoId).val(calculo1);
     }
+    $("#" + impuesto2Id).val(0);
 }
 
 function calcula2(valor) {
@@ -389,23 +386,56 @@ function calcula2(valor) {
             toastr.error("Seleccione impuesto 1");
             $("#" + impuesto2Id).val(0);
         } else {
-            if (isEditMode) {
-                let iva = $("#" + impuesto1Id).val();
-                let valor_imp1 = parseInt($("#" + precioCompraNetoId).val() * iva) / 100;
-                let valor_imp2 = (valor == 0) ? 0 : parseInt($("#" + precioCompraNetoId).val() * valor) / 100;
-                let calculo2 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_imp1 + valor_imp2);
-                $("#" + precioCompraBrutoId).val(calculo2);
-            } else {
-                let iva = $("#" + impuesto1Id).val();
-                var trozos2 = iva.split("_");
-                let valor_imp1 = parseInt($("#" + precioCompraNetoId).val() * trozos2[1]) / 100;
-                var trozos = valor.split("_");
-                let valor_imp2 = (valor == 0) ? 0 : parseInt($("#" + precioCompraNetoId).val() * trozos[1]) / 100;
-                let calculo2 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_imp1 + valor_imp2);
-                $("#" + precioCompraBrutoId).val(calculo2);
-            }
+            let porcentaje = $("#" + impuesto1Id).text().match(/\(([^)]+)\)/);
+            porcentaje = porcentaje[1].replace('%', '');
+            let iva = porcentaje;
 
+            let imp2=0;
+            if(valor != 0){
+                let porcentaje2 = $("#" + impuesto2Id +" option:selected").text().match(/\(([^)]+)\)/);
+                porcentaje2 = porcentaje2[1].replace('%', '');
+                imp2 = porcentaje2;
+            }
+            console.log(imp2);
+            let valor_imp1 = parseInt($("#" + precioCompraNetoId).val() * iva) / 100;
+            let valor_imp2 = parseInt($("#" + precioCompraNetoId).val() * imp2) / 100;
+    
+            let calculo2 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_imp1 + valor_imp2);
+            $("#" + precioCompraBrutoId).val(calculo2);
         }
+    }
+}
+function calcula3() {
+    const isEditMode = $("#precio_compra_neto_editar").val();
+
+    const precioCompraNetoId = isEditMode ? "precio_compra_neto_editar" : "precio_compra_neto";
+    const impuesto1Id = isEditMode ? "impuesto_1_editar" : "impuesto_1";
+    const impuesto2Id = isEditMode ? "impuesto_2_editar" : "impuesto_2";
+    const precioCompraBrutoId = isEditMode ? "precio_compra_bruto_editar" : "precio_compra_bruto";
+
+    if ($("#" + impuesto1Id).val() !=0 && $("#" + impuesto2Id).val() != 0) {
+        let porcentaje = $("#" + impuesto1Id).text().match(/\(([^)]+)\)/);
+        porcentaje = porcentaje[1].replace('%', '');
+        let iva = porcentaje;
+    
+        let porcentaje2 = $("#" + impuesto2Id +" option:selected").text().match(/\(([^)]+)\)/);
+        porcentaje2 = porcentaje2[1].replace('%', '');
+        let imp2 = porcentaje2;
+        
+        let valor_imp1 = parseInt($("#" + precioCompraNetoId).val() * iva) / 100;
+        let valor_imp2 = parseInt($("#" + precioCompraNetoId).val() * imp2) / 100;
+
+        let calculo2 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_imp1 + valor_imp2);
+        $("#" + precioCompraBrutoId).val(calculo2);
+    }else if($("#" + impuesto1Id).val() !=0 && !$("#" + impuesto2Id).val() == 0){
+        let porcentaje = $("#" + impuesto1Id).text().match(/\(([^)]+)\)/);
+        porcentaje = porcentaje[1].replace('%', '');
+        let iva = porcentaje;
+
+        valor_iva = parseInt($("#" + precioCompraNetoId).val() * iva) / 100;
+
+        var calculo1 = Math.round(parseInt($("#" + precioCompraNetoId).val()) + valor_iva);
+        $("#" + precioCompraBrutoId).val(calculo1);
     }
 }
 

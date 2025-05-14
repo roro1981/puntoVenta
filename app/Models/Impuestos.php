@@ -14,11 +14,22 @@ class Impuestos extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'id',
         'nom_imp',
         'valor_imp',
         'descrip_imp',
         'last_activity'
      ];
+
+    public function productosImpuesto1()
+    {
+        return $this->hasMany(Producto::class, 'impuesto1', 'id');
+    }
+
+    public function productosImpuesto2()
+    {
+        return $this->hasMany(Producto::class, 'impuesto2', 'id');
+    }
 
      public function updateImp($impuestoRequest)
      {

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Boleta;
 use App\Models\Comuna;
 use App\Models\Region;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Proveedor extends Model
 {
@@ -16,11 +17,13 @@ class Proveedor extends Model
     protected $table = 'proveedores';
 
     protected $fillable = [
+        'id',
         'uuid',
         'rut',
         'razon_social',
         'nombre_fantasia',
         'giro',
+        'fpago_id',
         'direccion',
         'region_id',
         'comuna_id',
@@ -47,6 +50,21 @@ class Proveedor extends Model
         return $this->belongsTo(Comuna::class, 'comuna_id');
     }
 
+    public function boletas()
+    {
+        return $this->hasMany(Boleta::class, 'prov_id', 'id');
+    }
+
+    public function facturas()
+    {
+        return $this->hasMany(Facturas::class, 'prov_id', 'id');
+    }
+
+    public function formaPago()
+    {
+        return $this->belongsTo(FormaPago::class, 'fpago_id', 'id');
+    }
+
     public static function storeProv($provRequest)
     {
         return Proveedor::create([
@@ -55,6 +73,7 @@ class Proveedor extends Model
             'razon_social' => $provRequest['razon_social'],
             'nombre_fantasia' => $provRequest['nombre_fantasia'],
             'giro' => $provRequest['giro'],
+            'fpago_id' => $provRequest['fpago'],
             'direccion' => $provRequest['direccion'],
             'region_id' => $provRequest['region'],
             'comuna_id' => $provRequest['comuna'],
@@ -76,6 +95,7 @@ class Proveedor extends Model
             'razon_social' => $provRequest['razon_social'],
             'nombre_fantasia' => $provRequest['nombre_fantasia'],
             'giro' => $provRequest['giro'],
+            'fpago_id' => $provRequest['fpago'],
             'direccion' => $provRequest['direccion'],
             'region_id' => $provRequest['region'],
             'comuna_id' => $provRequest['comuna'],

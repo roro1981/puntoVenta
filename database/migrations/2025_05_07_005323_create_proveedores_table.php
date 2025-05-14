@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('direccion', 255)->nullable()->comment('Dirección fiscal o de despacho');
             $table->foreignId('region_id')->constrained('regiones', 'id')->comment('Region proveedor');
             $table->foreignId('comuna_id')->constrained('comunas', 'id')->comment('Comuna proveedor');
+            $table->foreignId('fpago_id')->constrained('formas_pago', 'id')->comment('Forma de pago');
             $table->string('telefono', 20)->nullable()->comment('Teléfono principal');
             $table->string('email', 150)->nullable()->comment('Correo electrónico principal');
             $table->string('pagina_web', 150)->nullable()->comment('Sitio web');

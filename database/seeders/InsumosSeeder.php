@@ -168,7 +168,7 @@ class InsumosSeeder extends Seeder
                 'stock_minimo'         => 0,
                 'categoria_id'         => 1,
                 'tipo'                 => 'I',
-                'impuesto1'            => 19,
+                'impuesto1'            => 1,
                 'estado'               => 'Activo',
                 'fec_creacion'         => Carbon::now(),
                 'user_creacion'        => 'roro1981',

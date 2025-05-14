@@ -71,6 +71,13 @@ Route::post('/compras/createProveedor', [ComprasController::class, 'createProvee
 Route::get('/compras/{proveedor}/edit', [ComprasController::class, 'editProveedor']);
 Route::put('/compras/{proveedor}/update', [ComprasController::class, 'updateProveedor']);
 Route::delete('/compras/{uuid}/delete', [ComprasController::class, 'deleteProveedor']);
+Route::get('/compras/ingresos', [ComprasController::class, 'indexIngresos']);
+Route::get('/compras/pago-proveedor/{uuid}', [ComprasController::class, 'pagoProv']);
+Route::get('/compras/productos-compra', [ComprasController::class, 'productosCompra']);
+Route::get('/compras/trae-docs', [ComprasController::class, 'traeDocs']);
+Route::get('/compras/facturas-calendario', [ComprasController::class, 'facturasCalendario']);
+Route::get('/compras/facturas/{estado}', [ComprasController::class, 'traeDocsPorEstado']);
+Route::post('/compras/facturas/grabaFactura', [ComprasController::class, 'grabaCompra']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

@@ -44,14 +44,14 @@
           </div>
           <div class="form-group">
             <label for="precio_compra_neto">Precio Compra Neto</label>
-            <input type="number" class="form-control" id="precio_compra_neto" name="precio_compra_neto" step="0.01" >
+            <input type="number" class="form-control" oninput="calcula3();" id="precio_compra_neto" name="precio_compra_neto" step="0.01" >
           </div>
           <div class="form-group">
             <label for="impuesto_1">Impuesto</label>
             <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1" >
               <option value="0">Seleccione opción</option>
               @foreach($impuesto_iva as $impuesto)
-                <option value="{{ $impuesto->id }}_{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
+                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
               @endforeach
             </select>
           </div>
@@ -60,7 +60,7 @@
             <select class="form-control" onchange="calcula2(this.value);" id="impuesto_2" name="impuesto_2">
               <option value="0" selected>Seleccione opción</option>
               @foreach($impuesto_ad as $impuesto)
-                <option value="{{ $impuesto->id }}_{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
+                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
               @endforeach
             </select>
           </div>
@@ -159,14 +159,14 @@
           </div>
           <div class="form-group">
             <label for="precio_compra_neto_editar">Precio Compra Neto</label>
-            <input type="number" class="form-control" id="precio_compra_neto_editar" name="precio_compra_neto_editar" step="0.01">
+            <input type="number" oninput="calcula3();" class="form-control" id="precio_compra_neto_editar" name="precio_compra_neto_editar" step="0.01">
           </div>
           <div class="form-group">
             <label for="impuesto_1_editar">Impuesto</label>
             <select class="form-control" onchange="calcula(this.value);" id="impuesto_1_editar" name="impuesto_1_editar">
               <option value="0">Seleccione opción</option>
               @foreach($impuesto_iva as $impuesto)
-                <option value="{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
+                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
               @endforeach
             </select>
           </div>
@@ -175,7 +175,7 @@
             <select class="form-control" onchange="calcula2(this.value);" id="impuesto_2_editar" name="impuesto_2_editar">
               <option value="0" selected>Seleccione opción</option>
               @foreach($impuesto_ad as $impuesto)
-                <option value="{{ $impuesto->valor_imp }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
+                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
               @endforeach
             </select>
           </div>

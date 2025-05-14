@@ -61,6 +61,24 @@ class Producto extends Model
         return $this->hasMany(RangoPrecio::class);
     }
 
+    public function historialMovimientos()
+    {
+        return $this->hasMany(HistorialMovimientos::class, 'prod_id', 'id');
+    }
+
+    public function movimientosProd()
+    {
+        return $this->hasMany(MovimientosProd::class, 'prod_id', 'id');
+    }
+    public function impuesto1()
+    {
+        return $this->belongsTo(Impuestos::class, 'impuesto1', 'id');
+    }
+
+    public function impuesto2()
+    {
+        return $this->belongsTo(Impuestos::class, 'impuesto2', 'id');
+    }
     public function crearProducto(array $data)
     {
         $this->uuid = Str::uuid();

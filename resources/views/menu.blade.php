@@ -52,6 +52,9 @@
 <!-- AdminLTE -->
 <script src="js/app.min.js"></>
 <!-- FullCalendar -->
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
 <script src='js/fullcalendar-4.4.2/packages/core/main.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/core/locales-all.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/interaction/main.js'></script>
