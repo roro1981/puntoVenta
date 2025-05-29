@@ -26,7 +26,7 @@
                                 <th style="text-align:center">Fecha_doc</th>
                                 <th style="text-align:center">Items</th>
                                 <th style="text-align:center">Ingreso</th>
-                                <th></th>
+                                <th>Acciones</th>
                             </thead>
                             <tbody class="listado_docs">
                               
@@ -225,14 +225,7 @@
                             <tbody class="listado_pc">
                               
                             </tbody>
-                            <tfoot>
-                              <th>Cantidad</th>
-                                <th>Nombre</th>
-                                <th>Categoría</th>
-                                <th>Código</th>
-                                <th>Stock</th>
-                                <th>Imagen</th>
-                            </tfoot>
+                            
                           </table>
                         </div>
                         
@@ -339,7 +332,7 @@
                             <div class="card">
                                 <div class="card-body" style="float:left">
                                     <div class="form-group">
-                                        <label style="width:150px">Foto Documento</label><input type="file" accept=".gif,.jpg,.jpeg,.png" title="Solo formato jpg,png" class="form-control-file" id="image0">
+                                        <label style="width:150px">Foto Documento</label><input type="file" accept=".gif,.jpg,.jpeg,.png" title="Solo formato jpg,png" class="form-control-file" id="image2">
                                     </div>
                                     <input type="button" class="btn btn-primary upload2" value="Subir">
                                 </div>
@@ -367,6 +360,9 @@
       <div id="ver_imagen_doc" class="modal-body">
                 
       </div>
+      <div class="modal-footer">
+        <strong id="subida_por"></strong>
+      </div>   
     </div>
   </div>
 </div>
@@ -381,7 +377,7 @@
                         <div class="modal-body">
                             <div id="cab_pago" class="form-group col-lg-8 col-md-8 col-sm-8 col-xs-12">
                                 <select id="fpago_pag">
-                                <option value="0">FORMA DE PAGO</option>  
+                                <option value="0">--SELECCIONE FORMA DE PAGO--</option>  
                                 <option value="CONTADO">CONTADO</option>
                                 <option value="CHEQUE AL DIA">CHEQUE AL DIA</option>
                                 <option value="CHEQUE A FECHA">CHEQUE A FECHA</option>

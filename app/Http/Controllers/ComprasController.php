@@ -6,6 +6,7 @@ use App\Models\PagosFactura;
 use Illuminate\Http\Request;
 use App\Models\DetalleBoleta;
 use Illuminate\Support\Carbon;
+use App\Services\ComprasService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
@@ -183,7 +184,7 @@ class ComprasController extends Controller
                             class='incant form-control'>";
         
                 $foto = $pro->imagen !== null 
-                    ? "<img src='img/fotos_prod/{$pro->imagen}' height='50px' width='50px'>" 
+                    ? "<img src='{$pro->imagen}' height='50px' width='50px'>" 
                     : "<img src='img/fotos_prod/sin_imagen.jpg' height='50px' width='50px'>";
         
                 $datos = [
@@ -212,10 +213,10 @@ class ComprasController extends Controller
     public function traeDocs(): JsonResponse
     {
         $boletas = Boleta::with('proveedor')
-            ->select(DB::raw("num_boleta as num_doc, prov_id, tot_boleta as total, fecha_boleta as fecha_doc, fec_creacion, 'Boleta' as tipo, foto, '1' as estado"));
+            ->select(DB::raw("num_boleta as num_doc, prov_id, tot_boleta as total, fecha_boleta as fecha_doc, fec_creacion, 'Boleta' as tipo, foto, usuario_foto,'1' as estado"));
 
         $facturas = Facturas::with('proveedor')
-            ->select(DB::raw("num_factura as num_doc, prov_id, (neto + impuestos) as total, fecha_doc, fec_creacion, 'Factura' as tipo, foto, estado"));
+            ->select(DB::raw("num_factura as num_doc, prov_id, (neto + impuestos) as total, fecha_doc, fec_creacion, 'Factura' as tipo, foto, usuario_foto, estado"));
 
         $documentos = $boletas->unionAll($facturas)->orderBy('fec_creacion', 'desc')->get();
 
@@ -236,14 +237,15 @@ class ComprasController extends Controller
 
             $detalle = "<img src='img/detalle_doc.png' class='{$clase}' id='{$doc->num_doc}' data-tipo='{$doc->tipo}' width='20' height='20' style='cursor:pointer' data-toggle='modal' data-target='{$detalleModal}' title='Ver detalle de documento'>";
 
-            $foto = $doc->foto === "-" ? "" : "<img src='img/foto_doc.jpg' class='foto_doc' width='30' height='30' style='cursor:pointer' data-toggle='modal' data-ruta='{$doc->foto}' data-numdoc='{$doc->num_doc}' data-target='#ver_foto_doc' title='Ver foto de documento'>";
+            $foto = (empty($doc->foto) || $doc->foto === "-")
+            ? ""
+            : "<img src='img/foto_doc.jpg' class='foto_doc' width='30' height='30' style='cursor:pointer' data-toggle='modal' data-ruta='{$doc->foto}' data-numdoc='{$doc->num_doc}' data-usuario='{$doc->usuario_foto}' data-target='#ver_foto_doc' title='Ver foto de documento'>";
 
             if ($doc->tipo === 'Boleta') {
                 $items = DetalleBoleta::where('num_boleta', $doc->num_doc)->count();
             } else {
                 $items = DetalleFactura::where('num_factura', $doc->num_doc)->count();
             }
-
             if ($doc->estado === 'NP') {
                 $saldo = PagosFactura::where('nro_factura', $doc->num_doc)->sum('monto_pago') ?? 0;
                 $pago = "<img src='img/por_pagar.jpg' class='pago_pend' width='40' height='40' style='cursor:pointer' data-toggle='modal' data-numdoc='{$doc->num_doc}' data-totdoc='{$doc->total}' data-saldodoc='{$saldo}' data-target='#modulo_pago' title='Documento con pago pendiente'>";
@@ -258,7 +260,7 @@ class ComprasController extends Controller
                 'total'    => number_format($doc->total, 0, ",", "."),
                 'fec_doc'  => Carbon::parse($doc->fecha_doc)->format('d-m-Y'),
                 'items'    => $items,
-                'fec_ing'  => "<span style='display:none'>" . Carbon::parse($doc->fecha_ing)->format('Y-m-d H:i:s') . "</span>" . Carbon::parse($doc->fecha_ing)->format('d-m-Y H:i:s'),
+                'fec_ing'  => Carbon::parse($doc->fec_creacion)->format('d-m-Y'),
                 'opciones' => $detalle . ' ' . $pago,
             ];
         }
@@ -310,20 +312,24 @@ class ComprasController extends Controller
             ->get();
 
         foreach ($facturas as $doc) {
-            $foto = $doc->foto === "-" 
+            $foto = $doc->foto === "" 
                 ? "" 
                 : "<img src='img/foto_doc.jpg' class='foto_doc' width='30' height='30' style='cursor:pointer' data-toggle='modal' data-ruta=\"{$doc->foto}\" data-numdoc=\"{$doc->num_factura}\" data-target='#ver_foto_doc' title='Ver foto de documento'>";
 
             $detalle = "<img src='img/detalle_doc.png' class='detalle_documento' id='{$doc->num_factura}' data-tipo='Factura' width='20' height='20' style='cursor:pointer' data-toggle='modal' data-target='#modalDetalleCompraFact' title='Ver detalle de documento'>";
 
-            // Cantidad de ítems
-            $items = $doc->detalles()->count();
-
             // Saldo
             $pagado = $doc->pagos()->sum('monto_pago');
             $saldo = $doc->neto + $doc->impuestos - $pagado;
 
-            $pago = "<img src='img/por_pagar.jpg' class='pago_pend' width='40' height='40' style='cursor:pointer' data-toggle='modal' data-numdoc=\"{$doc->num_factura}\" data-totdoc=\"".($doc->neto + $doc->impuestos)."\" data-saldodoc=\"{$saldo}\" data-target='#modulo_pago' title='Documento con pago pendiente'>";
+            $items = DetalleFactura::where('num_factura', $doc->num_factura)->count();
+            
+            if ($doc->estado === 'NP') {
+                $saldo = PagosFactura::where('nro_factura', $doc->num_doc)->sum('monto_pago') ?? 0;
+                $pago = "<img src='img/por_pagar.jpg' class='pago_pend' width='40' height='40' style='cursor:pointer' data-toggle='modal' data-numdoc='{$doc->num_doc}' data-totdoc='{$doc->total}' data-saldodoc='{$saldo}' data-target='#modulo_pago' title='Documento con pago pendiente'>";
+            } elseif ($doc->estado === 'P') {
+                $pago = "<img src='img/pagada.jpg' width='30' height='30' style='cursor:pointer' title='Documento pagado'>";
+            }
 
             $data[] = [
                 'tipo'     => "Factura $foto",
@@ -332,7 +338,7 @@ class ComprasController extends Controller
                 'total'    => number_format($doc->neto + $doc->impuestos, 0, ',', '.'),
                 'fec_doc'  => Carbon::parse($doc->fecha_doc)->format('d-m-Y'),
                 'items'    => $items,
-                'fec_ing'  => "<span style='display:none'>" . Carbon::parse($doc->fecha_ing)->format('Y-m-d H:i:s') . "</span>" . Carbon::parse($doc->fecha_ing)->format('d-m-Y H:i:s'),
+                'fec_ing'  => Carbon::parse($doc->fec_creacion)->format('d-m-Y'),
                 'opciones' => "$detalle $pago",
             ];
         }
@@ -356,7 +362,6 @@ class ComprasController extends Controller
             $numDoc = $data2[0]->num_doc;
             $provId = $data2[0]->prov;
 
-            // Verificar si existe la factura
             $existe = Facturas::with('proveedor')
                 ->where('num_factura', $numDoc)
                 ->where('id', $provId)
@@ -374,22 +379,25 @@ class ComprasController extends Controller
                 ], 200);
             }   
 
-            $factura = Facturas::iniciarCabecera($data2[0]);
-
+            $factura = Facturas::grabarFactura($data2[0]);
+          
             foreach ($data as $item) {
                 $item->nfact = $factura->num_factura;
-                DetalleFactura::grabarDetalle($item);
-
-                Producto::where('codigo', $item->cod)->increment('stock', $item->cant);
+                DetalleFactura::grabarDetalleFactura($item);
 
                 $producto = Producto::where('codigo', $item->cod)->first();
-                $idProducto = $producto->id;
-                $stockActual = $producto->stock;
 
-                HistorialMovimientos::create([
+                if ($producto) {
+                    $producto->stock += $item->cant;
+                    $producto->save();
+                }
+
+                $idProducto = $producto->id;
+
+                HistorialMovimientos::registrarMovimiento([
                     'producto_id' => $idProducto,
                     'cantidad' => $item->cant,
-                    'stock' => $stockActual,
+                    'stock' => $producto->stock,
                     'tipo_mov' => 'FACTURA COMPRA',
                     'fecha' => now(),
                     'num_doc' => $item->nfact,
@@ -416,5 +424,160 @@ class ComprasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function traeDetalleDoc(Request $request)
+    {
+        $num_doc = $request->input('docu');
+        $tipo_docu = $request->input('tipo');
+       
+        $detalle = $this->obtenerDetalleDocumento($num_doc, $tipo_docu);
+        $saldo = ($tipo_docu === 'Factura' && $this->obtenerSaldoFactura($num_doc) > 0) ? 'SI' : 'NO';
+
+        $data = [];
+        
+        foreach ($detalle as $doc) {
+            if($tipo_docu === 'Factura'){
+                $estado = ($doc->estado === 'NP') ? 'POR PAGAR' : 'PAGADA';
+                $subt = ($doc->cantidad ?? 0) * ($doc->precio ?? 0);
+
+                $data[] = [
+                    'codigo'     => $doc->cod_producto,
+                    'nombre'     => $doc->descripcion,
+                    'cant'       => $doc->cantidad,
+                    'precio'     => number_format($doc->precio, 0, ",", "."),
+                    'descue'     => $doc->descuento,
+                    'subt'       => number_format($subt, 0, ",", "."),
+                    'imp1'       => $doc->impuesto,
+                    'imp2'       => $doc->impuesto2,
+                    'desglose'   => $doc->desglose_impuestos,
+                    'neto'       => number_format($doc->neto ?? 0, 0, ",", "."),
+                    'impuestos'  => number_format($doc->impuestos ?? 0, 0, ",", "."),
+                    'total'      => number_format($doc->total_fact ?? 0, 0, ",", "."),
+                    'dias'       => $doc->dias,
+                    'venc'       => $doc->vencimiento ? Carbon::parse($doc->vencimiento)->format('d-m-Y') : null,
+                    'fpago'      => $doc->fpago,
+                    'estado'     => $estado,
+                    'saldo'      => $saldo,
+                ];
+            }else{
+                $data[] = [ 
+                    'codigo'  => $doc->cod_producto,
+                    'nombre'  => $doc->descripcion,
+                    'cant'    => $doc->cantidad,
+                    'precio'  => number_format($doc->precio, 0, ",", "."),
+                    'descue'  => $doc->descuento,
+                    'subt'    => number_format(($doc->cantidad * $doc->precio), 0, ",", "."),
+                    'total'   => number_format($doc->tot_boleta, 0, ",", ".")
+                ];
+            }
+        }
+
+        return response()->json($data);
+    }
+
+    private function obtenerDetalleDocumento($num, $tip)
+    {
+        if ($tip === 'Factura') {
+            return DB::table('detalle_factura as df')
+                ->join('productos as p', 'p.codigo', '=', 'df.cod_producto')
+                ->join('impuestos as i', 'i.id', '=', 'p.impuesto1')
+                ->leftJoin('impuestos as i2', 'i2.id', '=', 'p.impuesto2')
+                ->join('facturas as f', 'f.num_factura', '=', 'df.num_factura')
+                ->where('df.num_factura', $num)
+                ->selectRaw('df.cod_producto, p.descripcion, df.cantidad, df.precio, df.descuento,
+                             i.nom_imp as impuesto, i2.nom_imp as impuesto2,
+                             f.desglose_impuestos, f.neto, f.impuestos, f.total_fact,
+                             f.dias, f.vencimiento, f.fpago, f.estado')
+                ->get();
+        }
+
+        // Para boletas
+        return DB::table('detalle_boleta as db')
+            ->join('productos as p', 'p.codigo', '=', 'db.cod_prod')
+            ->join('boletas as b', 'b.num_boleta', '=', 'db.num_boleta')
+            ->where('db.num_boleta', $num)
+            ->selectRaw('db.cod_prod as cod_producto, p.descripcion, db.cantidad, db.precio, db.descu as descuento,
+                         NULL as impuesto, NULL as impuesto2, NULL as desglose_impuestos, NULL as neto,
+                         NULL as impuestos, b.tot_boleta,
+                         NULL as dias, NULL as vencimiento, NULL as fpago, "NP" as estado')
+            ->get();
+    }
+
+    private function obtenerSaldoFactura($num)
+    {
+        return DB::table('pagos_factura')
+            ->where('nro_factura', $num)
+            ->sum('monto_pago');
+    }
+
+    public function subirFotoDoc(Request $request, ComprasService $comprasService)
+    {
+        $request->validate([
+            'file' => 'required|image|mimes:jpg,jpeg,png|max:1024',
+            'nombre' => 'required',
+            'tipo' => 'required|in:Factura,Boleta',
+        ]);
+
+        try {
+            $usuario = auth()->user()->name ?? 'sistema';
+            $ruta = $comprasService->subirFoto(
+                $request->file('file'),
+                $request->nombre,
+                $request->tipo,
+                $usuario
+            );
+
+            return response()->json([
+                'estado' => 'ok',
+                'mensaje' => 'Imagen subida correctamente.',
+                'ruta' => $ruta,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'estado' => 'error',
+                'mensaje' => 'Error al subir la imagen: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function grabaPago(Request $request, ComprasService $comprasService)
+    {
+        $request->validate([
+            'nfac'    => 'required|integer',
+            'valpag'  => 'required|numeric|min:1',
+            'forpag'  => 'required|string',
+            'ndocpag' => 'nullable|string',
+        ]);
+
+        $usuario = auth()->user()->name;
+
+        $resultado = $comprasService->registrarPago([
+            'nfac'     => $request->input('nfac'),
+            'valpag'   => $request->input('valpag'),
+            'forpag'   => $request->input('forpag'),
+            'ndocpag'  => $request->input('ndocpag'),
+            'usuario'  => $usuario,
+        ]);
+
+        return response()->json(['estado' => $resultado]);
+    }
+
+    public function detallePagos(Request $request, ComprasService $comprasService)
+    {
+        $request->validate([
+            'numfac' => 'required|integer',
+        ]);
+
+        $resultado = $comprasService->obtenerPagosFactura($request->numfac);
+
+        return response()->json($resultado);
+    }
+
+    public function grabarBoleta(Request $request, ComprasService $service)
+    {
+        $items = json_decode($request->input('arr'));
+        $cabecera = json_decode($request->input('arr2'), true);
+
+        return $service->grabarCompraBoleta($items, $cabecera);
     }
 }

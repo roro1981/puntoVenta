@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('historial_movimientos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('producto_id')->constrained('productos', 'id')->comment('Producto');
-            $table->double('cantidad', 15, 8);
-            $table->double('stock', 15, 8);
+            $table->double('cantidad', 15, 1);
+            $table->double('stock', 15, 1);
             $table->string('tipo_mov', 50);
             $table->dateTime('fecha');
             $table->string('num_doc', 45);

@@ -1,10 +1,12 @@
 <?php
 
-use App\Http\Controllers\ComprasController;
-use App\Http\Controllers\ConfigurationController;
-use App\Http\Controllers\ProductosController;
-use App\Http\Controllers\UsersController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UsersController;
+use App\Http\Controllers\ComprasController;
+use App\Http\Controllers\ProductosController;
+use App\Http\Controllers\ConfigurationController;
 
 
 
@@ -66,6 +68,7 @@ Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::
 //menu compras
 Route::get('/compras/proveedores', [ComprasController::class, 'indexProveedores']);
 Route::get('/compras/proveedores_list', [ComprasController::class, 'listProveedores']);
+Route::get('/compras/facturas/detalle-doc', [ComprasController::class, 'traeDetalleDoc']);
 Route::get('/compras/{region}/comunas', [ComprasController::class, 'getComunas']);
 Route::post('/compras/createProveedor', [ComprasController::class, 'createProveedor']);
 Route::get('/compras/{proveedor}/edit', [ComprasController::class, 'editProveedor']);
@@ -78,6 +81,11 @@ Route::get('/compras/trae-docs', [ComprasController::class, 'traeDocs']);
 Route::get('/compras/facturas-calendario', [ComprasController::class, 'facturasCalendario']);
 Route::get('/compras/facturas/{estado}', [ComprasController::class, 'traeDocsPorEstado']);
 Route::post('/compras/facturas/grabaFactura', [ComprasController::class, 'grabaCompra']);
+Route::post('/compras/subir-foto-doc', [ComprasController::class, 'subirFotoDoc']);
+Route::post('/compras/registrar-pago', [ComprasController::class, 'grabaPago']);
+Route::get('/compras/detalle-pagos', [ComprasController::class, 'detallePagos']);
+Route::post('/compras/boleta/grabar', [ComprasController::class, 'grabarBoleta']);
+
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

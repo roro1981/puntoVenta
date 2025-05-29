@@ -25,7 +25,7 @@ class DetalleFactura extends Model
         'imp2',
     ];
 
-    public static function grabarDetalle(object $item): self
+    public static function grabarDetalleFactura(object $item): self
     {
         return self::create([
             'uuid' =>  Str::uuid(),

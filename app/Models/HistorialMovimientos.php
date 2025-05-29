@@ -28,5 +28,17 @@ class HistorialMovimientos extends Model
         return $this->belongsTo(Producto::class, 'producto_id', 'id');
     }
 
+    public static function registrarMovimiento(array $data): self
+    {
+        return self::create([
+            'producto_id' => $data['producto_id'],
+            'cantidad'    => $data['cantidad'],
+            'stock'       => $data['stock'],
+            'tipo_mov'    => $data['tipo_mov'],
+            'fecha'       => $data['fecha'],
+            'num_doc'     => $data['num_doc'],
+            'obs'         => $data['obs'] ?? '-'
+        ]);
+    }
     
 }

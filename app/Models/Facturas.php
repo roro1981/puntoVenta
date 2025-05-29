@@ -48,7 +48,7 @@ class Facturas extends Model
         return $this->hasMany(PagosFactura::class, 'nro_factura', 'num_factura');
     }
 
-    public static function iniciarCabecera(object $datos): self
+    public static function grabarFactura(object $datos): self
     {
         $id_prov=Proveedor::where('uuid', $datos->prov)->value('id');
         return self::create([

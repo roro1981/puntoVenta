@@ -781,7 +781,7 @@ $("#btn_guarda_bol").unbind('click').bind('click', function () {
 	var ndoc=     $("#num_doc2").val();
 	var fec_doc=  $("#fecha_doc2").val();
 	if(prov==0 || ndoc==0 || ndoc==0 || fec_doc==""){
-	    alert("Complete todos los datos del encabezado de la boleta de compra");
+	    toastr.warning("Complete todos los datos del encabezado de la boleta de compra");
 	    return false;
 	}
 	
@@ -819,26 +819,24 @@ $("#btn_guarda_bol").unbind('click').bind('click', function () {
 	        DATA2.push(item);
 			info 	= JSON.stringify(DATA2);
 		 }else{
-		     alert("Boleta sin productos");
-		     return false;
+		    toastr.warning("Boleta sin productos");
+		    return false;
 		 }
 		
 			$.ajax({
-    			type	: "POST",
-    			url		: "ajax_facturacion.php",
-    			async	: true,
-    			data	: {
-    			opt		: 'grabaCompra2',
-    	    	arr 	: prods,
-    			arr2    : info
+                url: '/compras/boleta/grabar',
+                type: 'POST',
+                data: {
+                    arr: prods,
+                    arr2: info
+                },
+                headers: { 'X-CSRF-TOKEN': $('input[name="_token"]').val()
     			},
     		
     			success: function(r){
-    				res=$.trim(r).split("_");	
-    				console.log(res[0]);
-    				if(res[0]=="EXISTE"){
-    				    alertify.error(res[1]);
-    				}else if(res[0]=="OK"){
+    				if(r.status=="EXISTE"){
+    				    toastr.warning(r.message);
+    				}else if(r.status=="OK"){
     				    $("#cabecera2 input").each(function() {
                 			if ($(this).prop('required') == true) {
                 			    $(this).val("");
@@ -847,12 +845,16 @@ $("#btn_guarda_bol").unbind('click').bind('click', function () {
                 		$("#proveedor_compra2").val("").selectpicker('refresh');
                 		$(".compras2").html("");
     				    $("#tot_boleta").html("");
-    				    alertify.success("Boleta grabada exitosamente");
-    				    trae_documentos();
+    				    toastr.success("Boleta grabada exitosamente");
+                        $('#contenido').load('/compras/ingresos');
     				}else{
-    				    alertify.error("error al grabar");
+    				    toastr.error("error al grabar");
     				}
-    			}
+    			},
+                error: function(xhr) {
+                    const msg = xhr.responseJSON?.message || "Error al grabar la boleta.";
+                    toastr.error(msg);
+                }
 			});
 				
 });	
@@ -860,80 +862,84 @@ $(document).on('click','.detalle_documento',function(e){
     var num_doc=$(this).attr("id"); 
     var tipo_doc=$(this).data("tipo");
     $.ajax({
-		type	: "POST",
-		url		: "ajax_facturacion.php",
-		async	: true,
+        url		: "/compras/facturas/detalle-doc",
+		type	: "GET",
+        dataType: 'json',
 		data	: {
-		opt		: 'trae_detalle_doc',
     	docu 	: num_doc,
 		tipo    : tipo_doc
 		},
 	
 		success: function(r){
-		    resp=$.trim(r);
-		 
-		        respuesta=JSON.parse(resp);
-		        $(".listado_prods").html("");
-    		    for (var clave in respuesta){
-    		        if(respuesta[clave]["imp2"]==null){
-    		            impu2="NO";
-    		        }else{
-    		            impu2=respuesta[clave]["imp2"];
-    		        }
-    		        $(".listado_prods").append('<tr><td>'+respuesta[clave]["codigo"]+'</td><td>'+respuesta[clave]["nombre"]+'</td><td>'+respuesta[clave]["cant"]+'</td><td>'+respuesta[clave]["precio"]+'</td><td>'+respuesta[clave]["descue"]+'</td><td>'+respuesta[clave]["subt"]+'</td><td>'+respuesta[clave]["imp1"]+'</td><td>'+impu2+'</td></tr>');
-    		        neto=respuesta[clave]["neto"];
-    		        impu=respuesta[clave]["impuestos"];
-    		        tot=respuesta[clave]["total"];
+            respuesta=r;
+            $(".listado_prods").html("");
+            for (var clave in respuesta){
+                if(respuesta[clave]["imp2"]==null){
+                    impu2="NO";
+                }else{
+                    impu2=respuesta[clave]["imp2"];
                 }
-               
-                $("#cab_factura").html("<strong style='color:blue'>Estado documento:</strong><label style='margin-left:5px;margin-right:10px;'>"+respuesta[clave]["estado"]+"</label>|<strong style='margin-left:10px;color:blue'>Forma de pago:</strong><label style='margin-left:5px;margin-right:10px'>"+respuesta[clave]["fpago"]+"</label>");
-                if(respuesta[clave]["fpago"]=="CHEQUE A FECHA" || respuesta[clave]["fpago"]=="CREDITO A X DIAS"){
-                  $("#cab_factura").append("|<strong style='color:blue;margin-left:10px'>Días de plazo:</strong><label style='margin-left:5px;margin-right:10px;'>"+respuesta[clave]["dias"]+"</label>|<strong style='margin-left:10px;color:blue'>Vencimiento:</strong><label style='margin-left:5px'>"+respuesta[clave]["venc"]+"</label>");  
-                }
-                 var f = new Date();
-                  fec_actual=f.getDate() + "-" + (f.getMonth() +1) + "-" + f.getFullYear();
-                  if(!comparaFecha(fec_actual,respuesta[clave]["venc"]) && respuesta[clave]["estado"]=="POR PAGAR" && (respuesta[clave]["fpago"]=="CHEQUE A FECHA" || respuesta[clave]["fpago"]=="CREDITO A X DIAS")){
-                      vencida="<label style='color:red;font-weight:bold;margin-left:20px'>FACTURA VENCIDA</label>";
-                  }else{
-                      vencida="";
-                  }
-                $("#titulo_compra").html("FACTURA DE COMPRA "+num_doc+vencida);
-                $("#cab_factura").append("<br>");
-                detalle_imp=respuesta[clave]["desglose"].split("|");
-                $("#cab_factura").append("<label style='margin-right:10px;color:blue'>DESGLOSE DE IMPUESTOS:</label>");
-                for (var i=0; i < detalle_imp.length; i++) {
-                      $("#cab_factura").append("<label style='font-weight:bold;margin-right:10px'>"+detalle_imp[i] + "</label>");
-                }
-                if(respuesta[clave]["saldo"]=="SI"){
-                    $("#cab_factura").append("<button type='button' data-toggle='modal' data-ndoc='"+num_doc+"' data-target='#pagos_ing' style='margin-left:10px' class='mostrar_pags btn btn-primary btn-sm'>Pagos realizados</button>");
-                }
-                $("#neto_doc").html(neto);
-                $("#imps_doc").html(impu);
-                $("#bruto_doc").html(tot);
-                $("#docu_ing").val(num_doc);
-                $("#docu_tip").val(tipo_doc);
+                $(".listado_prods").append('<tr><td>'+respuesta[clave]["codigo"]+'</td><td>'+respuesta[clave]["nombre"]+'</td><td>'+respuesta[clave]["cant"]+'</td><td>'+respuesta[clave]["precio"]+'</td><td>'+respuesta[clave]["descue"]+'</td><td>'+respuesta[clave]["subt"]+'</td><td>'+respuesta[clave]["imp1"]+'</td><td>'+impu2+'</td></tr>');
+                neto=respuesta[clave]["neto"];
+                impu=respuesta[clave]["impuestos"];
+                tot=respuesta[clave]["total"];
             }
-        
+            
+            $("#cab_factura").html("<strong style='color:blue'>Estado documento:</strong><label style='margin-left:5px;margin-right:10px;'>"+respuesta[clave]["estado"]+"</label>|<strong style='margin-left:10px;color:blue'>Forma de pago:</strong><label style='margin-left:5px;margin-right:10px'>"+respuesta[clave]["fpago"]+"</label>");
+            if(respuesta[clave]["fpago"]=="CHEQUE A FECHA" || respuesta[clave]["fpago"]=="CREDITO A X DIAS"){
+                $("#cab_factura").append("|<strong style='color:blue;margin-left:10px'>Días de plazo:</strong><label style='margin-left:5px;margin-right:10px;'>"+respuesta[clave]["dias"]+"</label>|<strong style='margin-left:10px;color:blue'>Vencimiento:</strong><label style='margin-left:5px'>"+respuesta[clave]["venc"]+"</label>");  
+            }
+                var f = new Date();
+                fec_actual=f.getDate() + "-" + (f.getMonth() +1) + "-" + f.getFullYear();
+                if(!comparaFecha(fec_actual,respuesta[clave]["venc"]) && respuesta[clave]["estado"]=="POR PAGAR" && (respuesta[clave]["fpago"]=="CHEQUE A FECHA" || respuesta[clave]["fpago"]=="CREDITO A X DIAS")){
+                    vencida="<label style='color:red;font-weight:bold;margin-left:20px'>FACTURA VENCIDA</label>";
+                }else{
+                    vencida="";
+                }
+            $("#titulo_compra").html("FACTURA DE COMPRA "+num_doc+vencida);
+            $("#cab_factura").append("<br>");
+            detalle_imp=respuesta[clave]["desglose"].split("|");
+            $("#cab_factura").append("<label style='margin-right:10px;color:blue'>DESGLOSE DE IMPUESTOS:</label>");
+            for (var i=0; i < detalle_imp.length; i++) {
+                    $("#cab_factura").append("<label style='font-weight:bold;margin-right:10px'>"+detalle_imp[i] + "</label>");
+            }
+            if(respuesta[clave]["saldo"]=="SI"){
+                $("#cab_factura").append("<button type='button' data-toggle='modal' data-ndoc='"+num_doc+"' data-target='#pagos_ing' style='margin-left:10px' class='mostrar_pags btn btn-primary btn-sm'>Pagos realizados</button>");
+            }
+            $("#neto_doc").html(neto);
+            $("#imps_doc").html(impu);
+            $("#bruto_doc").html(tot);
+            $("#docu_ing").val(num_doc);
+            $("#docu_tip").val(tipo_doc);
+        }
+    
 	});
 });
-$(document).on('click','.mostrar_pags',function(e){  
-    var numf=$(this).data("ndoc");
+$(document).on('click', '.mostrar_pags', function (e) {
+    var numf = $(this).data("ndoc");
+
     $.ajax({
-		type	: "POST",
-		url		: "ajax_facturacion.php",
-		async	: true,
-		data	: {
-		opt		: 'trae_detalle_pagos',
-    	numfac 	: numf
-		},
-	
-		success: function(r){
-		    var respu=r.split("***");
-		    console.log(respu);
-		    $(".listado_pagos").html(respu[0]);
-		    $("#titulo_pagos_ing").html("TOTAL PAGOS: "+respu[1]);
-		}
-    });	
+        type: "GET",
+        url: "/compras/detalle-pagos",
+        data: { numfac: numf },
+        success: function (r) {
+            $(".listado_pagos").html("");
+            r.pagos.forEach(function (pago) {
+                $(".listado_pagos").append(
+                    `<tr>
+                        <td>${pago.fpago}</td>
+                        <td>${pago.monto_pago}</td>
+                        <td>${pago.num_docu}</td>
+                        <td>${pago.fecha_pago}</td>
+                    </tr>`
+                );
+            });
+            $("#titulo_pagos_ing").html("TOTAL PAGOS: " + r.total);
+        },
+        error: function () {
+            toastr.error("Error al cargar los pagos.");
+        }
+    });
 });
 function comparaFecha(fecha1, fecha2){
     console.log(fecha1+" "+fecha2);
@@ -956,28 +962,25 @@ $(document).on('click','.detalle_documento2',function(e){
     var num_doc=$(this).attr("id"); 
     var tipo_doc=$(this).data("tipo");
     $.ajax({
-		type	: "POST",
-		url		: "ajax_facturacion.php",
-		async	: true,
+        url		: "/compras/facturas/detalle-doc",
+		type	: "GET",
+        dataType: 'json',
 		data	: {
-		opt		: 'trae_detalle_doc2',
     	docu 	: num_doc,
 		tipo    : tipo_doc
 		},
 	
 		success: function(r){
-		    resp=$.trim(r);
-		 
-		        respuesta=JSON.parse(resp);
-		        $(".listado_prods2").html("");
-    		    for (var clave in respuesta){
-    		        $(".listado_prods2").append('<tr><td>'+respuesta[clave]["codigo"]+'</td><td>'+respuesta[clave]["nombre"]+'</td><td>'+respuesta[clave]["cant"]+'</td><td>'+respuesta[clave]["precio"]+'</td><td>'+respuesta[clave]["descue"]+'</td><td>'+respuesta[clave]["subt"]+'</td></tr>');
-    		        tot=respuesta[clave]["total"];
-                }
-                $("#titulo_compra2").html("BOLETA DE COMPRA "+num_doc);
-                $("#bruto_doc2").html(tot);
-                $("#docu_ing").val(num_doc);
-                $("#docu_tip").val(tipo_doc);
+            respuesta=r;
+            $(".listado_prods2").html("");
+            for (var clave in respuesta){
+                $(".listado_prods2").append('<tr><td>'+respuesta[clave]["codigo"]+'</td><td>'+respuesta[clave]["nombre"]+'</td><td>'+respuesta[clave]["cant"]+'</td><td>'+respuesta[clave]["precio"]+'</td><td>'+respuesta[clave]["descue"]+'</td><td>'+respuesta[clave]["subt"]+'</td></tr>');
+                tot=respuesta[clave]["total"];
+            }
+            $("#titulo_compra2").html("BOLETA DE COMPRA "+num_doc);
+            $("#bruto_doc2").html(tot);
+            $("#docu_ing").val(num_doc);
+            $("#docu_tip").val(tipo_doc);
             
         }
 	});
@@ -985,95 +988,93 @@ $(document).on('click','.detalle_documento2',function(e){
  $(document).on('click','.foto_doc',function(e){
 	var link_foto=$(this).data('ruta');
 	var documento=$(this).data('numdoc');
+    var usuario=$(this).data('usuario');
+
 	$("#num_docu").html("Documento "+documento);
 	$("#ver_imagen_doc").html("<center><img width='500' height='500' src='"+link_foto+"' /></center>");
-	
+	$("#subida_por").text("Subida por el usuario: "+usuario);
 });
-$(".upload").on('click', function() {
-        var formData = new FormData();
+    $(".upload").on('click', function () {
         var files = $('#image')[0].files[0];
-        var fileSize = $('#image')[0].files[0].size;
-        var tam_max=1000;
-        var siezekiloByte = parseInt(fileSize / 1024);
-        if (siezekiloByte >  tam_max) {
-            alert("Imagen muy grande, el tamaño máximo es 1MB");
+        var fileSize = files.size;
+        var tam_max = 1024; // KB
+        var sizeKB = parseInt(fileSize / 1024);
+
+        if (sizeKB > tam_max) {
+            toastr.error("Imagen muy grande, el tamaño máximo es 1MB");
             return false;
         }
-        formData.append('file',files);
-        $.ajax({
-            url: 'plantillas/upload2.php?nombre='+$("#docu_ing").val(),
-            type: 'POST',
-            data: formData,
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                if (response != 0) {
-                    nombre_foto = $.trim(response);
-                    graba_foto(nombre_foto);
-                }else {
-                    alert('Formato de imagen incorrecto.');
-                    $('#image').val(null);
-                }
-            }
-        });
-        return false;
-    }); 
-    $(".upload2").on('click', function() {
+
         var formData = new FormData();
-        var files = $('#image0')[0].files[0];
-        var fileSize = $('#image0')[0].files[0].size;
-        var tam_max=1000;
-        var siezekiloByte = parseInt(fileSize / 1024);
-        if (siezekiloByte >  tam_max) {
-            alert("Imagen muy grande, el tamaño máximo es 1MB");
-            return false;
-        }
-        formData.append('file',files);
+        formData.append('file', files);
+        formData.append('nombre', $("#docu_ing").val());
+        formData.append('tipo', $("#docu_tip").val());
+
         $.ajax({
-            url: 'plantillas/upload3.php?nombre='+$("#docu_ing").val(),
+            url: '/compras/subir-foto-doc',
             type: 'POST',
+            headers: { 'X-CSRF-TOKEN': $('input[name="_token"]').val() },
             data: formData,
             contentType: false,
             processData: false,
-            success: function(response) {
-                if (response != 0) {
-                    nombre_foto = $.trim(response);
-                    graba_foto(nombre_foto);
-                }else {
-                    alert('Formato de imagen incorrecto.');
-                    $('#image0').val(null);
+            success: function (response) {
+                if (response.estado === "ok") {
+                    toastr.success("Imagen subida correctamente.");
+                    $('#image').val('');
+                    trae_documentos();
+                } else {
+                    toastr.errort("Error: " + response.mensaje);
                 }
+            },
+            error: function (err) {
+                toastr.error("Error al subir la imagen.");
+                console.log(err);
             }
         });
+
         return false;
     });
-    function graba_foto(ruta){
-        var num_doc=$("#docu_ing").val();
-        var tip_doc=$("#docu_tip").val();
-        $.ajax({
-		type	: "POST",
-		url		: "ajax_facturacion.php",
-		async	: true,
-		data	: {
-		opt		: 'graba_foto',
-    	foto 	: ruta,
-		tipo    : tip_doc,
-		num_doc : num_doc
-		},
-	
-		success: function(r){
-		   resp=$.trim(r);
-		   if(resp=="NO"){
-		       alert("Foto no fue grabada");
-		   }else{
-		       $('#image').val(null);
-               alert("La foto del documento fue grabada exitosamente");
-               trae_documentos();
-		   }
-            
+    $(".upload2").on('click', function () {
+        var files = $('#image2')[0].files[0];
+        var fileSize = files.size;
+        var tam_max = 1024; // KB
+        var sizeKB = parseInt(fileSize / 1024);
+
+        if (sizeKB > tam_max) {
+            toastr.error("Imagen muy grande, el tamaño máximo es 1MB");
+            return false;
         }
-	});
-    }
+
+        var formData = new FormData();
+        formData.append('file', files);
+        formData.append('nombre', $("#docu_ing").val());
+        formData.append('tipo', $("#docu_tip").val());
+
+        $.ajax({
+            url: '/compras/subir-foto-doc',
+            type: 'POST',
+            headers: { 'X-CSRF-TOKEN': $('input[name="_token"]').val() },
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (response) {
+                if (response.estado === "ok") {
+                    toastr.success("Imagen subida correctamente.");
+                    $('#image2').val('');
+                    trae_documentos();
+                } else {
+                    toastr.errort("Error: " + response.mensaje);
+                }
+            },
+            error: function (err) {
+                toastr.error("Error al subir la imagen.");
+                console.log(err);
+            }
+        });
+
+        return false;
+    });
+   
     $("#fpago_pag").on('change', function() {
         if($(this).val()=="CONTADO"){
             $("#monto_pago").show();
@@ -1111,47 +1112,67 @@ $(".upload").on('click', function() {
        $("#fpago_pag").change();
          
      });
-    $("#btn-pagar-docu").on('click', function() {
-        var num_fac=$("#docu_ing").val();
-        var fpago=$("#fpago_pag").val();
-        var monto_pago=$("#monto_pago").val();
-        var num_docu_pag=$("#num_docu_pago").val();
-        var saldo=$("#docu_saldo").val();
-        
-        if(fpago=="CONTADO" && (monto_pago==0 || monto_pago=="")){
-            alert("Ingrese monto del pago");
+     $("#btn-pagar-docu").on('click', function () {
+        var num_fac = $("#docu_ing").val();
+        var fpago = $("#fpago_pag").val();
+        var monto_pago = $("#monto_pago").val();
+        var num_docu_pag = $("#num_docu_pago").val();
+        var saldo = $("#docu_saldo").val();
+    
+        if (fpago === "CONTADO" && (!monto_pago || monto_pago == 0)) {
+            toastr.warning("Ingrese monto del pago");
             $("#monto_pago").focus();
             return false;
         }
-        if((fpago=="CHEQUE A FECHA" || fpago=="CHEQUE AL DIA") && (monto_pago==0 || monto_pago=="")){
-            alert("Ingrese monto del pago");
+    
+        if ((fpago === "CHEQUE A FECHA" || fpago === "CHEQUE AL DIA") && (!monto_pago || monto_pago == 0)) {
+            toastr.warning("Ingrese monto del pago");
             $("#monto_pago").focus();
             return false;
         }
-        if((fpago=="CHEQUE A FECHA" || fpago=="CHEQUE AL DIA") && (num_docu_pag==0 || num_docu_pag=="")){
-            alert("Ingrese numero del documento");
+    
+        if ((fpago === "CHEQUE A FECHA" || fpago === "CHEQUE AL DIA") && (!num_docu_pag || num_docu_pag == 0)) {
+            toastr.warning("Ingrese número del documento");
             $("#num_docu_pago").focus();
             return false;
         }
-      
-        if(parseInt(monto_pago)>parseInt(saldo)){
-           alert("Monto del pago sobrepasa el saldo del documento");
+    
+        if (parseInt(monto_pago) > parseInt(saldo)) {
+            toastr.warning("Monto del pago sobrepasa el saldo del documento");
             $("#monto_pago").focus();
-            return false; 
+            return false;
         }
-        $.post( "ajax_facturacion.php", {opt:'graba_pago',nfac:num_fac,forpag:fpago,valpag:monto_pago,ndocpag:num_docu_pag}, function( data ) {
-            resp=$.trim(data);
-            if(resp=="OK"){
-                $("#monto_pago").val("");
-                $("#num_docu_pago").val("");
-                $("#fpago_pag").val(0);
-                $('#modulo_pago').modal('hide');
-                trae_documentos();
+    
+        $.ajax({
+            url: '/compras/registrar-pago',
+            type: 'POST',
+            data: {
+                nfac: num_fac,
+                forpag: fpago,
+                valpag: monto_pago,
+                ndocpag: num_docu_pag
+            },
+            headers: { 'X-CSRF-TOKEN': $('input[name="_token"]').val() },
+            success: function (response) {
+                if (response.estado === "OK") {
+                    $("#monto_pago").val("");
+                    $("#num_docu_pago").val("");
+                    $("#fpago_pag").val(0);
+                    $('#modulo_pago').modal('hide');
+                    trae_documentos();
+                } else {
+                    toastr.error("No se pudo registrar el pago.");
+                }
+            },
+            error: function () {
+                toastr.error("Error al comunicarse con el servidor.");
             }
-            console.log(resp);
         });
+    
+        return false;
     });
     function filtro(tip){
+        console.log(tip);
         switch(tip){
             case 1:
                 trae_facturas('NP');

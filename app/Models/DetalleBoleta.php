@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class DetalleBoleta extends Model
 {
@@ -25,5 +26,17 @@ class DetalleBoleta extends Model
     public function boleta()
     {
         return $this->belongsTo(Boleta::class, 'num_boleta', 'num_boleta');
+    }
+
+    public static function grabarDetalleBoleta(object $item): self
+    {
+        return self::create([
+            'uuid' =>  Str::uuid(),
+            'num_boleta' => $item->nbol,
+            'cod_prod' => $item->cod,
+            'cantidad' => $item->cant,
+            'precio' => $item->precio,
+            'descu' => $item->descu
+        ]);
     }
 }
