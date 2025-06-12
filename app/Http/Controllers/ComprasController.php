@@ -580,4 +580,51 @@ class ComprasController extends Controller
 
         return $service->grabarCompraBoleta($items, $cabecera);
     }
+
+    public function indexMovs()
+    {
+        return view('compras.entradas_salidas');
+    }
+
+    public function searchProductosAll(Request $request)
+    {
+        $term = $request->input('q');
+
+        $products = Producto::where(function ($query) use ($term) {
+            $query->where('codigo', 'like', "%{$term}%")
+                ->orWhere('descripcion', 'like', "%{$term}%");
+        })
+            ->where('tipo', '<>', 'S')
+            ->limit(10)
+            ->get();
+
+        return response()->json($products);
+    }
+
+    public function cargarMovimiento(Request $request)
+    {
+        $data = $request->only(['idp', 'tipo_mov', 'canti']);
+        return app(ComprasService::class)->cargarMovimiento($data);
+    }
+
+    public function registrarMovimientos(Request $request)
+    {
+        try {
+            $items = json_decode($request->input('arr'), true);
+
+            if (!$items || !is_array($items)) {
+                return response()->json(['status' => 'ERROR', 'message' => 'Datos inválidos'], 400);
+            }
+
+            app(ComprasService::class)->registrarMovimientos($items);
+
+            return response()->json(['status' => 'OK'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

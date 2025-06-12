@@ -16,7 +16,7 @@ class MenusTableSeeder extends Seeder
     {
         DB::table('menus')->insert([
             ['menu_name' => 'Almacén', 'menu_route' => '/almacen', 'menu_fa' => 'fa fa-truck' ,'created_at' => Carbon::now()->toDateTimeString()],
-            ['menu_name' => 'Compras', 'menu_route' => '/compras', 'menu_fa' => 'fa fa-th', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_name' => 'Gestion de Stock', 'menu_route' => '/compras', 'menu_fa' => 'fa fa-th', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_name' => 'Ventas', 'menu_route' => '/ventas', 'menu_fa' => 'fa fa-shopping-cart', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_name' => 'Reportes', 'menu_route' => '/reportes', 'menu_fa' => 'fa fa-bar-chart', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_name' => 'Usuarios', 'menu_route' => '/usuarios', 'menu_fa' => 'fa fa-user', 'created_at' => Carbon::now()->toDateTimeString()],

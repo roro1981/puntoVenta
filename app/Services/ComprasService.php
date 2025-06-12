@@ -4,10 +4,12 @@ namespace App\Services;
 use Carbon\Carbon;
 use App\Models\Boleta;
 use App\Models\Facturas;
+use App\Models\Globales;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\PagosFactura;
 use App\Models\DetalleBoleta;
+use App\Models\MovimientosProd;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use App\Models\HistorialMovimientos;
@@ -171,5 +173,89 @@ class ComprasService
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function cargarMovimiento(array $data): string
+    {
+        $id = $data['idp'];
+        $tip_mov = $data['tipo_mov'];
+        $cant = $data['canti'];
+
+        $aleatorio = rand(100, 5000);
+        $elimina = '<button type="button" id="elimina_' . $aleatorio . '" class="borrar btn btn-danger">X</button>';
+
+        $movi = match ($tip_mov) {
+            'E' => 'ENTRADA',
+            'S' => 'SALIDA',
+            default => 'MERMA',
+        };
+
+        $producto = Producto::findOrFail($id);
+        $permiteNegativo = Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var') == 1;
+
+        if (!$permiteNegativo && in_array($tip_mov, ['S', 'M'])) {
+            if (($producto->stock - $cant) < 0) {
+                return 'NO';
+            }
+        }
+
+        return trim('
+            <tr id="' . $aleatorio . '">
+                <td style="text-align:center">' . $elimina . '</td>
+                <td id="idp_' . $id . '">' . $producto->codigo . '</td>
+                <td>' . $producto->descripcion . ' <font style="font-weight: bold;">(STOCK ' . $producto->stock . ')</font></td>
+                <td style="text-align:center">' . $cant . '</td>
+                <td style="text-align:center">' . $movi . '</td>
+                <td><textarea class="form-control" title="Máximo 500 caracteres" id="obs_' . $id . '" rows="1"></textarea></td>
+            </tr>
+        ');
+    }
+
+    public function registrarMovimientos(array $items): string
+    {
+        $fecha = now();
+        $usuario = auth()->user()->name;
+
+        foreach ($items as $item) {
+           
+            $movimiento = MovimientosProd::create([
+                'producto_id'  => $item['idp'],
+                'cantidad'     => $item['cant'],
+                'tipo_movi'    => $item['tipo'],
+                'obs'          => $item['obs'],
+                'fec_mov'      => $fecha,
+                'usuario_mov'  => $usuario,
+            ]);
+            
+            $idMovimiento = $movimiento->id;
+
+            $producto = Producto::find($item['idp']);
+            
+            if (!$producto) continue;
+
+            $cantidad = $item['cant'];
+            if ($item['tipo'] === 'E') {
+                $producto->increment('stock', $cantidad);
+                $movim = 'ENTRADA';
+            } elseif ($item['tipo'] === 'S') {
+                $producto->decrement('stock', $cantidad);
+                $movim = 'SALIDA';
+            } else {
+                $producto->decrement('stock', $cantidad);
+                $movim = 'MERMA';
+            }
+           
+            HistorialMovimientos::registrarMovimiento([
+                'producto_id' => $producto->id,
+                'cantidad'    => $cantidad,
+                'stock'       => $producto->stock,
+                'tipo_mov'    => $movim,
+                'fecha'       => $fecha,
+                'num_doc'     => $idMovimiento,
+                'obs'         => $item['obs']
+            ]);
+        }
+
+        return 'OK';
     }
 }

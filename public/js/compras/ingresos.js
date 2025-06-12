@@ -749,7 +749,7 @@ $("#btn_guarda_fact").unbind('click').bind('click', function () {
 		 }
 		
          $.ajax({
-            url: '/compras/facturas/grabaFactura', // ajusta a tu ruta
+            url: '/compras/facturas/grabaFactura',
             type: 'POST',
             data: {
                 arr: prods,

@@ -4,7 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\VentasController;
 use App\Http\Controllers\ComprasController;
+use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ProductosController;
 use App\Http\Controllers\ConfigurationController;
 
@@ -85,7 +87,19 @@ Route::post('/compras/subir-foto-doc', [ComprasController::class, 'subirFotoDoc'
 Route::post('/compras/registrar-pago', [ComprasController::class, 'grabaPago']);
 Route::get('/compras/detalle-pagos', [ComprasController::class, 'detallePagos']);
 Route::post('/compras/boleta/grabar', [ComprasController::class, 'grabarBoleta']);
+Route::get('/compras/ent_sal', [ComprasController::class, 'indexMovs']);
+Route::get('/compras/searchProductosAll', [ComprasController::class, 'searchProductosAll']);
+Route::get('/compras/cargaProdMov', [ComprasController::class, 'cargarMovimiento']);
+Route::post('/compras/movimientos/grabar', [ComprasController::class, 'registrarMovimientos']);
 
+//menu ventas
+Route::get('/ventas/generar_ventas', [VentasController::class, 'indexVentas']);
+Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
+
+//menu reportes
+Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
+Route::get('/reportes/trae_movimientos', [ReportesController::class, 'traeMovimientos']);
+Route::get('/reportes/exportar-movimientos', [ReportesController::class, 'exportarMovimientos']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

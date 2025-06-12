@@ -11,8 +11,10 @@ class MovimientosProd extends Model
 
     protected $table = 'movimientos_prod';
 
+    public $timestamps = false;
+
     protected $fillable = [
-        'prod_id',
+        'producto_id',
         'cantidad',
         'tipo_movi',
         'obs',
