@@ -1,21 +1,18 @@
 $(document).ready(function() {
     let cart = [];
 
-    // Function to format currency
     function formatCurrency(amount) {
         return '$ ' + new Intl.NumberFormat('es-CL').format(amount);
     }
 
-    // Function to update cart total
     function updateTotal() {
         let total = cart.reduce((sum, item) => {
             let discount = parseFloat(item.discount) || 0;
             return sum + (item.precio_venta * item.quantity * (1 - discount/100));
         }, 0);
-        $('#cart-total').text(formatCurrency(total));
+        $('#cart-total').text(formatCurrency(Math.round(total)));
     }
 
-    // Function to render cart items
     function renderCart() {
         let cartHtml = cart.map((item, index) => `
             <div class="product-row" data-index="${index}">
@@ -28,7 +25,7 @@ $(document).ready(function() {
                     <div class="product-name">${item.descripcion}</div>
                     <div class="product-price">$/unidad: ${formatCurrency(item.precio_venta)}</div>
                 </div>
-                <div class="product-total">${formatCurrency(item.precio_venta * item.quantity)}</div>
+                <div class="product-total">${formatCurrency(Math.round(item.precio_venta * item.quantity))}</div>
                 <select class="discount-select">
                     <option ${item.discount === 0 ? 'selected' : ''}>0 %</option>
                     <option ${item.discount === 5 ? 'selected' : ''}>5 %</option>
@@ -45,13 +42,11 @@ $(document).ready(function() {
         updateTotal();
     }
 
-    // Handle product code search
     $('#product-code').on('keypress', function(e) {
-        if(e.which === 13) { // Enter key
+        if(e.which === 13) { 
             let code = $(this).val();
             let input = $(this);
             
-            // Simulate API call to get product details
             $.ajax({
                 url: '/ventas/buscarProducto',
                 method: 'GET',
@@ -77,7 +72,6 @@ $(document).ready(function() {
         }
     });
 
-    // Handle quantity changes
     $(document).on('click', '.plus-btn', function() {
         let index = $(this).closest('.product-row').data('index');
         cart[index].quantity++;
@@ -92,14 +86,12 @@ $(document).ready(function() {
         }
     });
 
-    // Handle discount changes
     $(document).on('change', '.discount-select', function() {
         let index = $(this).closest('.product-row').data('index');
         cart[index].discount = parseInt($(this).val());
         renderCart();
     });
 
-    // Handle item removal
     $(document).on('click', '.delete-btn', function() {
         let index = $(this).closest('.product-row').data('index');
         cart.splice(index, 1);
@@ -132,7 +124,6 @@ $(document).ready(function() {
         });
     });
 
-    // Handle adding product from search results
     $(document).on('click', '.add-to-cart', function() {
         let product = {
             id: $(this).data('id'),
@@ -146,7 +137,6 @@ $(document).ready(function() {
         renderCart();
     });
 
-    // Handle cancel button
     $('#cancel-btn').click(function() {
         Swal.fire({
             title: "Cancelar venta",
@@ -166,34 +156,110 @@ $(document).ready(function() {
         });
     });
 
-    // Handle save draft button
     $('#save-draft-btn').click(function() {
-        // Simulate saving draft
-        toastr.success('Borrador guardado exitosamente');
+
+        if (cart.length === 0) {
+            toastr.warning('El carrito está vacío. Agrega productos antes de guardar el borrador.');
+            return;
+        }
+
+        let uuid_borrador = crypto.randomUUID(); 
+        const now = new Date();
+        const timezoneOffset = now.getTimezoneOffset() * 60000;
+        const localTime = new Date(now.getTime() - timezoneOffset);
+        const fecha = localTime.toISOString().slice(0, 19).replace('T', ' ');
+    
+        let productos = cart.map(item => ({
+            id: item.id,
+            descripcion: item.descripcion,
+            precio_venta: item.precio_venta,
+            cantidad: item.quantity,
+            descuento: item.discount,
+            uuid_borrador: uuid_borrador,
+            fec_creacion: fecha
+        }));
+    
+        $.ajax({
+            url: '/ventas/guardar-borrador',
+            method: 'POST',
+            data: {
+                _token: $("#token").val(),
+                productos: productos
+            },
+            success: function (response) {
+                if (response.status === 'OK') {
+                    toastr.success(response.message);
+                    cart = [];
+                    renderCart();
+                } else {
+                    toastr.warning(response.message);
+                }
+            }
+        });
     });
 
-    // Handle pay button
     $('#pay-btn').click(function() {
         if(cart.length === 0) {
             toastr.warning('Agregue productos al carrito para continuar');
             return;
         }
         
-        // Simulate payment process
         alert('Procesando pago...');
     });
 
     $('.tab-btn').on('click', function() {
-        // Quitar active a todos los botones
         $('.tab-btn').removeClass('active');
-        // Agregar active al clicado
         $(this).addClass('active');
-    
-        // Ocultar todos los tab-content
         $('.tab-content').removeClass('active');
-    
-        // Mostrar el contenido correspondiente
         const tab = $(this).data('tab');
         $('#tab-' + tab).addClass('active');
+    });
+
+    $('#cart-items').on('keypress', '.quantity-input', function (e) {
+        let char = String.fromCharCode(e.which);
+        let allowed = /^[0-9.]$/;
+    
+        if (!allowed.test(char)) {
+            e.preventDefault(); // bloquea letras y símbolos
+        }
+    
+        // Solo permitir un punto decimal
+        if (char === '.' && $(this).val().includes('.')) {
+            e.preventDefault();
+        }
+    })
+
+    $('#cart-items').on('input', '.quantity-input', function () {
+        let $input = $(this);
+        let index = $input.closest('.product-row').data('index');
+
+        let value = $input.val().replace(/[^0-9.]/g, '');
+        let parts = value.split('.');
+
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts[1];
+        }
+
+        if (parts[1]?.length > 1) {
+            parts[1] = parts[1].substring(0, 1);
+            value = parts[0] + '.' + parts[1];
+        }
+
+        $input.val(value);
+
+        let newQuantity = parseFloat(value);
+        if (isNaN(newQuantity) || newQuantity <= 0) {
+            newQuantity = 1;
+        }
+
+        // Actualizar el carrito sin redibujar todo
+        cart[index].quantity = newQuantity;
+
+        // Actualizar solo el total de ese producto
+        let total = Math.round(cart[index].precio_venta * cart[index].quantity);
+        $input.closest('.product-row').find('.product-total').text(formatCurrency(total));
+
+        // Actualizar el total general
+        updateTotal();
     });
 });

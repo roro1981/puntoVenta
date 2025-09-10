@@ -95,6 +95,7 @@ Route::post('/compras/movimientos/grabar', [ComprasController::class, 'registrar
 //menu ventas
 Route::get('/ventas/generar_ventas', [VentasController::class, 'indexVentas']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
+Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
 
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);

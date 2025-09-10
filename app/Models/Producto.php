@@ -79,6 +79,11 @@ class Producto extends Model
     {
         return $this->belongsTo(Impuestos::class, 'impuesto2', 'id');
     }
+
+    public function borradores()
+    {
+        return $this->hasMany(Borrador::class, 'product_id');
+    }
     public function crearProducto(array $data)
     {
         $this->uuid = Str::uuid();

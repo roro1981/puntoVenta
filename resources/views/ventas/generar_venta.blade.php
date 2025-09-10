@@ -1,5 +1,6 @@
 <script type="text/javascript" src="js/ventas/generar_ventas.js"></script>
 <link rel="stylesheet" type="text/css" href="css/ventas/generar_ventas.css">
+<input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
 <div class="pos-container">
     <div class="left-panel">
         <div class="search-bar">
@@ -54,10 +55,10 @@
         </div>
     
         <div class="tabs-footer">
-            <button class="tab-btn active" data-tab="products"><i class="fa fa-th"></i></button>
-            <button class="tab-btn" data-tab="favorites"><i class="fa fa-star"></i></button>
-            <button class="tab-btn" data-tab="history"><i class="fa fa-file"></i></button>
-            <button class="tab-btn" data-tab="clients"><i class="fa fa-user"></i></button>
+            <button class="tab-btn active" title="Listado productos" data-tab="products"><i class="fa fa-th"></i></button>
+            <button class="tab-btn" title="Productos vendidos recientemente" data-tab="favorites"><i class="fa fa-star"></i></button>
+            <button class="tab-btn" title="Borradores" data-tab="history"><i class="fa fa-file"></i></button>
+            <button class="tab-btn" title="Clientes" data-tab="clients"><i class="fa fa-user"></i></button>
         </div>
     </div>
 </div>
