@@ -17,14 +17,16 @@ $(document).ready(function() {
                     $.each(data.submenus, function(menuId, submenus) {
                         if (submenus.length > 0) {
                             // Crear la card para el menú
-                            var card = $('<div style="padding-left: 0px;" class="col-md-4 mb-4"></div>').append(`
+                          var card = $(`
+                            <div class="menu-card">
                                 <div class="card card-with-border">
                                     <div class="card-body">
                                         <h3 class="card-title">${submenus[0].menu_name}</h3>
                                         <div class="form-check-container"></div>
                                     </div>
                                 </div>
-                            `);
+                            </div>
+                        `);
                 
                             // Agregar los submenús como checkboxes dentro de la card
                             var formCheckContainer = card.find('.form-check-container');
@@ -90,6 +92,20 @@ $(document).ready(function() {
             }
         } else {
             toastr.error('Por favor, selecciona un rol.');
+        }
+    });
+    $(document).on("click", "#toggleChecks", function () {
+
+        var checkboxes = $("#menusContainer .form-check-input");
+
+        var allChecked = checkboxes.length > 0 && checkboxes.filter(":checked").length === checkboxes.length;
+
+        if (allChecked) {
+            checkboxes.prop("checked", false);
+            $("#toggleChecks").text("Seleccionar todos");
+        } else {
+            checkboxes.prop("checked", true);
+            $("#toggleChecks").text("Deseleccionar todos");
         }
     });
 });

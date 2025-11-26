@@ -95,7 +95,12 @@ Route::post('/compras/movimientos/grabar', [ComprasController::class, 'registrar
 //menu ventas
 Route::get('/ventas/generar_ventas', [VentasController::class, 'indexVentas']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
+Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock']);
 Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
+Route::delete('/ventas/eliminar-borrador/{uuid_borrador}', [VentasController::class, 'eliminarBorrador']);
+Route::get('/ventas/traer-borradores', [VentasController::class, 'traer_borradores']);
+Route::get('/ventas/borrador/{uuid}/productos', [VentasController::class, 'productosPorUuid']);
+Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta']);
 
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);

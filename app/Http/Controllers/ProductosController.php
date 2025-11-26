@@ -49,7 +49,7 @@ class ProductosController extends Controller
                 'imagen' => $product->imagen ? '<img src="' . $product->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
                 'fec_creacion' => $product->fec_creacion ? Carbon::parse($product->fec_creacion)->format('d-m-Y | H:i:s') : '',
                 'fec_modificacion' => $product->fec_modificacion ? Carbon::parse($product->fec_modificacion)->format('d-m-Y | H:i:s') : '',
-                'actions' => '<a href="" class="btn btn-sm btn-primary editar" data-target="#modalEditarProducto" data-uuid="' . $product->uuid . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
+                'actions' => '<a href="" class="btn btn-sm btn-primary editar_prod" data-target="#modalEditarProducto" data-uuid="' . $product->uuid . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
                                 <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $product->uuid . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
             ];
         });

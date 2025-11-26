@@ -74,7 +74,7 @@ $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#image_editar').val('');
     $('#nom_foto_editar').val('');
 });
-$(document).on('click', '.editar', function () {
+$(document).on('click', '.editar_prod', function () {
     var uuid = $(this).data('uuid');
 
     $.ajax({
@@ -131,7 +131,7 @@ $('#guardarCambios').click(function (event) {
         descripcion: $('#descripcion_editar').val(),
         precio_compra_neto: $('#precio_compra_neto_editar').val(),
         impuesto_1: $('#impuesto_1_editar').val(),
-        impuesto_2: $('#impuesto_2_editar').val(),
+        impuesto_2: $('#impuesto_2_editar').val() == 0 ? null : $('#impuesto_2_editar').val(),
         precio_compra_bruto: $('#precio_compra_bruto_editar').val(),
         precio_venta: $('#precio_venta_editar').val(),
         categoria: $('#categoria_editar').val(),
@@ -278,6 +278,13 @@ $('#createProdForm').submit(function (event) {
     event.preventDefault();
 
     var formData = new FormData(this);
+    
+    // Validar impuesto_2: si es 0, enviar null
+    const impuesto2Value = $('#impuesto_2').val();
+    if (impuesto2Value == 0) {
+        formData.set('impuesto_2', '');
+    }
+    
     formData.append("precio_compra_bruto", $("#precio_compra_bruto").val())
     $.ajax({
         type: 'POST',

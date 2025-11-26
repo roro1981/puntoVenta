@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('producto_id')->constrained('productos', 'id')->comment('Producto');
             $table->double('cantidad', 15, 1);
-            $table->double('stock', 15, 1);
+            $table->double('stock', 15, 1)->nullable();
             $table->string('tipo_mov', 50);
             $table->dateTime('fecha');
             $table->string('num_doc', 45);

@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Borrador extends Model
 {
@@ -19,14 +20,14 @@ class Borrador extends Model
         'descuento',
         'uuid_borrador',
         'fec_creacion',
-        'product_id'
+        'producto_uuid'
     ];
 
     public $timestamps = false;
 
     public function producto()
     {
-        return $this->belongsTo(Producto::class, 'product_id');
+        return $this->belongsTo(Producto::class, 'uuid');
     }
 
     public static function guardarBorradores(array $productos): void
@@ -35,7 +36,7 @@ class Borrador extends Model
 
         foreach ($productos as $item) {
             self::create([
-                'product_id'    => $item['id'],
+                'producto_uuid'    => $item['product_uuid'],
                 'producto'      => $item['descripcion'],
                 'cantidad'      => $item['cantidad'],
                 'precio_venta'  => $item['precio_venta'],
@@ -45,4 +46,30 @@ class Borrador extends Model
             ]);
         }
     }
+
+    public static function borrarBorrador($uuid_borrador)
+    {
+        return self::where('uuid_borrador', $uuid_borrador)->delete();
+    }    
+
+    public static function resumen()
+    {
+        return self::select(
+            'uuid_borrador',
+            DB::raw("MIN(DATE_FORMAT(fec_creacion, '%d-%m-%Y %H:%i:%s')) AS fecha_creacion"),
+            DB::raw('SUM(cantidad) AS total_cantidad'),
+            DB::raw('SUM(cantidad * precio_venta) AS total')
+        )
+        ->groupBy('uuid_borrador')
+        ->get();
+    }
+
+    public static function obtenerProductosPorUuid($uuid)
+    {
+        return self::select('cantidad', 'producto', 'precio_venta', 'descuento', 'producto_uuid')
+            ->where('uuid_borrador', $uuid)
+            ->get();
+    }
+
+
 }

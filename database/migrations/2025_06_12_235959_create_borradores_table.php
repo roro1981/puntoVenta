@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('borradores', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid_borrador')->comment('uuid del borrador');
-            $table->foreignId('product_id')->constrained('productos')->comment('ID del producto');
+            $table->uuid('producto_uuid')->constrained('productos')->comment('UUID del producto');
             $table->string('producto', 255)->comment('Descripcion producto');
             $table->double('cantidad',15,1)->comment('Cantidad producto');
-            $table->double('precio_Venta', 15, 0)->comment('Precio producto');
+            $table->double('precio_venta', 15, 0)->comment('Precio producto');
             $table->integer('descuento')->comment('Descuento producto');
             $table->datetime('fec_creacion')->comment('Fecha creación');
         });

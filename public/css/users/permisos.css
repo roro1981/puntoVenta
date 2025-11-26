@@ -1,6 +1,51 @@
+  /* Contenedor de las cards */
+#menusContainer {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+/* Cada card ocupa un ancho uniforme */
+.menu-card {
+    flex: 1 1 calc(35% - 20px); /* 3 por fila */
+    min-width: 350px;
+    margin-bottom: 10px;
+    margin-right: 10px;
+}
+
+/* Estilo de card */
 .card-with-border {
-    border: 2px solid #ddd; /* Ajusta el color y grosor del borde según tu preferencia */
-    border-radius: 10px; /* Agrega bordes redondeados para un estilo más elegante */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Agrega una sombra sutil para más profundidad */
-  }
+    border: 1px solid #dcdcdc;
+    border-radius: 12px;
+    box-shadow: 0px 3px 7px rgba(0,0,0,0.08);
+    padding: 15px;
+}
+
+/* Títulos */
+.card-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+/* Checkboxes */
+.form-check {
+    margin-bottom: 10px;
+}
+
+.form-check-input {
+    transform: scale(1.2);
+    margin-right: 8px;
+}
+
+/* Distribución más uniforme entre cards */
+.card-body {
+    height: 300px; /* Ajusta según tu contenido */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
   

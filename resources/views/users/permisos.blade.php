@@ -11,9 +11,13 @@
             @endforeach
         </select>
         <button style="margin-left:100px" class="btn btn-dropbox" data-toggle="modal" id="permisos_act"><i class='fa fa fa-list'></i> Actualizar permisos</button>
+        <button id="toggleChecks" class="btn btn-secondary ms-2">Seleccionar todos</button>
     </div>    
     <br>
+      
+</div>
+ <div class="container-fluid px-0">
     <div id="menusContainer" class="row">
     
     </div>  
-</div>
+</div> 

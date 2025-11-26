@@ -82,7 +82,7 @@ class Producto extends Model
 
     public function borradores()
     {
-        return $this->hasMany(Borrador::class, 'product_id');
+        return $this->hasMany(Borrador::class, 'product_uuid');
     }
     public function crearProducto(array $data)
     {

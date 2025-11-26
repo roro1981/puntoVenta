@@ -24,8 +24,9 @@ class DatabaseSeeder extends Seeder
         $this->call(GlobalesTableSeeder::class);
         $this->call(ImpuestosTableSeeder::class);
         $this->call(CategoriasTableSeeder::class);
-        $this->call(InsumosSeeder::class);
+        //$this->call(InsumosSeeder::class);
         $this->call(RegionSeeder::class);
         $this->call(FormasPagoTableSeeder::class);
+        $this->call(ProductosTableSeeder::class);
     }
 }
