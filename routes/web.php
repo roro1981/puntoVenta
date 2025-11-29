@@ -94,6 +94,10 @@ Route::post('/compras/movimientos/grabar', [ComprasController::class, 'registrar
 
 //menu ventas
 Route::get('/ventas/generar_ventas', [VentasController::class, 'indexVentas']);
+Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
+Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword']);
+Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
+Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
 Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock']);
 Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
@@ -101,6 +105,8 @@ Route::delete('/ventas/eliminar-borrador/{uuid_borrador}', [VentasController::cl
 Route::get('/ventas/traer-borradores', [VentasController::class, 'traer_borradores']);
 Route::get('/ventas/borrador/{uuid}/productos', [VentasController::class, 'productosPorUuid']);
 Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta']);
+Route::get('/ventas/ticket-pdf/{id}', [VentasController::class, 'generarTicketPDF']);
+Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTicketCierrePDF']);
 
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
@@ -120,6 +126,7 @@ Route::get('/roles', [UsersController::class, 'rolesTable']);
 Route::get('roles/{id}/ver', [UsersController::class, 'ver'])->name('roles.ver');
 Route::get('roles/users-associated/{id}/ver', [UsersController::class, 'ver_users'])->name('roles.ver_users');
 Route::post('/roles/create', [UsersController::class, 'createRole']);
+Route::delete('/roles/{id}/delete', [UsersController::class, 'deleteRole']);
 Route::get('/usuarios/permisos', [UsersController::class, 'getRolesPermisos']);
 Route::post('/permisos/get-menus', [UsersController::class, 'getMenus'])->name('get-menus');
 Route::post('/permisos/save', [UsersController::class, 'savePermissions']);

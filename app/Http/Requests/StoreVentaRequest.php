@@ -81,8 +81,9 @@ class StoreVentaRequest extends FormRequest
                 $sumaSubtotales += $subtotal;
             }
 
-            // Validar que suma de subtotales menos descuentos coincida con total
-            $totalEsperado = $sumaSubtotales - $totalDescuentos;
+            // Validar que suma de subtotales coincida con total
+            // Los subtotales ya vienen con descuentos aplicados por línea
+            $totalEsperado = $sumaSubtotales;
             $totalRecibido = (int) $this->input('total');
             
             if (abs($totalRecibido - $totalEsperado) > 1) {

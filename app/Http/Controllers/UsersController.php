@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 
 use App\Models\Menu;
+use App\Models\MenuRole;
 use App\Models\Role;
 use App\Models\Submenu;
 use App\Models\User;
@@ -219,6 +220,39 @@ class UsersController extends Controller
 
         return $response;
     }
+    public function deleteRole($id)
+    {
+        try {
+            $role = Role::findOrFail($id);
+
+            $userCount = User::where('role_id', $id)->count();
+            if ($userCount > 0) {
+                return response()->json([
+                    'error' => 403,
+                    'message' => "No se puede eliminar el rol porque hay usuarios asociados a él."
+                ], 403);
+            }
+
+            // Eliminar primero las relaciones en menu_roles
+            MenuRole::where('role_id', $id)->delete();
+
+            // Ahora eliminar el rol
+            $role->delete();
+
+            $response = response()->json([
+                'error' => 200,
+                'message' => "Rol eliminado correctamente"
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error al eliminar rol " . $e->getMessage());
+            $response = response()->json([
+                'error' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        return $response;
+    }
     public function rolesTable()
     {
         $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')
@@ -233,7 +267,7 @@ class UsersController extends Controller
                                         </button>';
                 $roles->created_at = date('d/m/Y H:i:s', strtotime($roles->created_at));
                 $roles->updated_at = $roles->updated_at ? date('d/m/Y H:i:s', strtotime($roles->updated_at)) : 'Aún no tiene modificaciones';
-                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-rolid="' . $roles->id . '" data-namerol="' . $roles->role_name . '" title="Eliminar rol ' . $roles->role_name . '"><i class="fa fa-trash"></i></a>';
+                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar-rol" data-toggle="tooltip" data-rolid="' . $roles->id . '" data-namerol="' . $roles->role_name . '" title="Eliminar rol ' . $roles->role_name . '"><i class="fa fa-trash"></i></a>';
                 return $roles;
             });
 

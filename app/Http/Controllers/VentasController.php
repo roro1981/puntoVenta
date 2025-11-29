@@ -10,16 +10,240 @@ use App\Models\DetalleVenta;
 use App\Models\FormaPagoVenta;
 use App\Models\HistorialMovimientos;
 use App\Models\PromocionDetalle;
+use App\Models\CorporateData;
+use App\Models\Caja;
+use App\Models\User;
 use App\Http\Requests\StoreVentaRequest;
+use App\Http\Requests\AperturaCajaRequest;
+use App\Http\Requests\CierreCajaRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VentasController extends Controller
 {
     public function indexVentas()
-    {        
-        return view('ventas.generar_venta');
+    {
+        // Verificar si el usuario tiene una caja abierta
+        $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id());
+        
+        return view('ventas.generar_venta', [
+            'cajaAbierta' => $cajaAbierta
+        ]);
+    }
+
+    /**
+     * Abrir caja
+     */
+    public function abrirCaja(AperturaCajaRequest $request)
+    {
+        try {
+            // Verificar que no tenga una caja abierta
+            $cajaExistente = Caja::cajaAbiertaUsuario(Auth::id());
+            
+            if ($cajaExistente) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'Ya tienes una caja abierta'
+                ], 400);
+            }
+
+            // Crear nueva caja
+            $caja = Caja::create([
+                'user_id' => Auth::id(),
+                'fecha_apertura' => now(),
+                'monto_inicial' => $request->monto_inicial,
+                'observaciones' => $request->observaciones
+            ]);
+
+            return response()->json([
+                'status' => 'OK',
+                'message' => 'Caja abierta correctamente',
+                'caja_id' => $caja->id
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Error al abrir caja: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Verificar contraseña del usuario
+     */
+    public function verificarPassword(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string'
+        ]);
+
+        $user = Auth::user();
+        
+        if (!\Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Contraseña incorrecta'
+            ], 401);
+        }
+
+        return response()->json([
+            'status' => 'OK',
+            'message' => 'Contraseña verificada'
+        ]);
+    }
+
+    /**
+     * Obtener información de la caja actual
+     */
+    public function obtenerInfoCaja()
+    {
+        try {
+            $caja = Caja::cajaAbiertaUsuario(Auth::id());
+            
+            if (!$caja) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'No tienes una caja abierta'
+                ], 404);
+            }
+
+            // Obtener ventas de esta caja
+            $ventas = Venta::where('caja_id', $caja->id)->get();
+            
+            // Calcular totales por forma de pago
+            $totalEfectivo = 0;
+            $totalTarjetaDebito = 0;
+            $totalTarjetaCredito = 0;
+            $totalTransferencia = 0;
+            $totalCheque = 0;
+            $totalMixto = 0;
+
+            foreach ($ventas as $venta) {
+                $monto = $venta->total;
+                
+                switch ($venta->forma_pago) {
+                    case 'EFECTIVO':
+                        $totalEfectivo += $monto;
+                        break;
+                    case 'TARJETA_DEBITO':
+                        $totalTarjetaDebito += $monto;
+                        break;
+                    case 'TARJETA_CREDITO':
+                        $totalTarjetaCredito += $monto;
+                        break;
+                    case 'TRANSFERENCIA':
+                        $totalTransferencia += $monto;
+                        break;
+                    case 'CHEQUE':
+                        $totalCheque += $monto;
+                        break;
+                    case 'MIXTO':
+                        $totalMixto += $monto;
+                        // Para MIXTO, sumar los detalles
+                        $formasPago = FormaPagoVenta::where('venta_id', $venta->id)->get();
+                        foreach ($formasPago as $fp) {
+                            switch ($fp->forma_pago) {
+                                case 'EFECTIVO':
+                                    $totalEfectivo += $fp->monto;
+                                    break;
+                                case 'TARJETA_DEBITO':
+                                    $totalTarjetaDebito += $fp->monto;
+                                    break;
+                                case 'TARJETA_CREDITO':
+                                    $totalTarjetaCredito += $fp->monto;
+                                    break;
+                                case 'TRANSFERENCIA':
+                                    $totalTransferencia += $fp->monto;
+                                    break;
+                                case 'CHEQUE':
+                                    $totalCheque += $fp->monto;
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            $totalVentas = $ventas->sum('total');
+            $cantidadVentas = $ventas->count();
+
+            return response()->json([
+                'status' => 'OK',
+                'caja' => [
+                    'id' => $caja->id,
+                    'fecha_apertura' => $caja->fecha_apertura->format('d/m/Y H:i:s'),
+                    'monto_inicial' => $caja->monto_inicial,
+                    'observaciones_apertura' => $caja->observaciones,
+                    'total_ventas' => $totalVentas,
+                    'cantidad_ventas' => $cantidadVentas,
+                    'monto_esperado' => $caja->monto_inicial + $totalVentas,
+                    'desglose' => [
+                        'efectivo' => $totalEfectivo,
+                        'tarjeta_debito' => $totalTarjetaDebito,
+                        'tarjeta_credito' => $totalTarjetaCredito,
+                        'transferencia' => $totalTransferencia,
+                        'cheque' => $totalCheque,
+                        'mixto' => $totalMixto
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Error al obtener información de caja: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cerrar caja
+     */
+    public function cerrarCaja(CierreCajaRequest $request)
+    {
+        try {
+            $caja = Caja::cajaAbiertaUsuario(Auth::id());
+            
+            if (!$caja) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'No tienes una caja abierta'
+                ], 404);
+            }
+
+            // Calcular totales
+            $ventas = Venta::where('caja_id', $caja->id)->get();
+            $totalVentas = $ventas->sum('total');
+            $montoEsperado = $caja->monto_inicial + $totalVentas;
+            $montoFinalDeclarado = $request->monto_final_declarado;
+            $diferencia = $montoFinalDeclarado - $montoEsperado;
+
+            // Actualizar caja
+            $caja->update([
+                'fecha_cierre' => now(),
+                'monto_ventas' => $totalVentas,
+                'monto_final_declarado' => $montoFinalDeclarado,
+                'diferencia' => $diferencia,
+                'estado' => 'cerrada',
+                'observaciones' => $caja->observaciones . "\n\nCierre: " . ($request->observaciones ?? '')
+            ]);
+
+            return response()->json([
+                'status' => 'OK',
+                'message' => 'Caja cerrada correctamente',
+                'caja_id' => $caja->id,
+                'diferencia' => $diferencia
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Error al cerrar caja: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function searchProduct(Request $request)
@@ -124,7 +348,7 @@ class VentasController extends Controller
     public function verificarStock(Request $request)
     {
         $uuid = $request->input('uuid');
-        $cantidad = (int) $request->input('cantidad', 1);
+        $cantidad = (float) $request->input('cantidad', 1);
 
         if (empty($uuid) || $cantidad <= 0) {
             return response()->json(['status' => 'ERROR', 'message' => 'Parámetros inválidos'], 400);
@@ -252,12 +476,23 @@ class VentasController extends Controller
         DB::beginTransaction();
         
         try {
+            // Obtener caja abierta del usuario
+            $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id());
+            
+            if (!$cajaAbierta) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'No tienes una caja abierta. Debes abrir caja antes de realizar ventas.'
+                ], 400);
+            }
+
             // Crear la venta
             $venta = Venta::create([
                 'numero_venta' => $request->numero_venta,
                 'total' => $request->total,
                 'total_descuentos' => $request->total_descuentos ?? 0,
                 'user_id' => Auth::id(),
+                'caja_id' => $cajaAbierta->id,
                 'forma_pago' => $request->forma_pago,
                 'estado' => $request->estado ?? 'completada',
                 'fecha_venta' => $request->fecha_venta ?? now(),
@@ -392,5 +627,83 @@ class VentasController extends Controller
         }
     }
 
+    /**
+     * Genera el ticket de cierre de caja en formato PDF
+     */
+    public function generarTicketCierrePDF($cajaId)
+    {
+        $caja = Caja::with(['usuario', 'ventas.formasPago'])->findOrFail($cajaId);
+        
+        // Verificar que la caja esté cerrada
+        if ($caja->estado !== 'cerrada') {
+            abort(400, 'Solo se pueden generar tickets de cajas cerradas');
+        }
+        
+        // Calcular resumen de ventas
+        $cantidadVentas = $caja->ventas->count();
+        $totalVentas = $caja->ventas->sum('total');
+        
+        // Calcular desglose por forma de pago
+        $desglose = [
+            'efectivo' => 0,
+            'tarjeta_debito' => 0,
+            'tarjeta_credito' => 0,
+            'transferencia' => 0,
+            'cheque' => 0,
+            'mixto' => 0,
+        ];
+        
+        foreach ($caja->ventas as $venta) {
+            if ($venta->forma_pago === 'MIXTO') {
+                // Para ventas mixtas, sumar cada forma de pago individualmente
+                foreach ($venta->formasPago as $formaPago) {
+                    $tipo = strtolower($formaPago->tipo_forma_pago);
+                    if (isset($desglose[$tipo])) {
+                        $desglose[$tipo] += $formaPago->monto;
+                    }
+                }
+                $desglose['mixto'] += $venta->total;
+            } else {
+                // Para ventas simples
+                $tipo = strtolower($venta->forma_pago);
+                if (isset($desglose[$tipo])) {
+                    $desglose[$tipo] += $venta->total;
+                }
+            }
+        }
+        
+        // Cargar datos corporativos
+        $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+        
+        // Cargar la vista del ticket de cierre
+        $pdf = Pdf::loadView('ventas.ticket_cierre_caja', compact('caja', 'cantidadVentas', 'totalVentas', 'desglose', 'corporateData'));
+        
+        // Configurar papel de 80mm de ancho (226.77 puntos = 80mm)
+        $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+        
+        // Mostrar el PDF en el navegador
+        return $pdf->stream('cierre-caja-' . str_pad($caja->id, 4, '0', STR_PAD_LEFT) . '.pdf');
+    }
+
+    /**
+     * Genera el ticket de venta en formato PDF
+     */
+    public function generarTicketPDF($ventaId)
+    {
+        $venta = Venta::with(['detalles', 'usuario', 'formasPago'])->findOrFail($ventaId);
+        
+        // Cargar datos corporativos
+        $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+        
+        // Cargar la vista del ticket
+        $pdf = Pdf::loadView('ventas.ticket', compact('venta', 'corporateData'));
+        
+        // Configurar papel de 80mm de ancho (226.77 puntos = 80mm)
+        // Alto automático según contenido
+        $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+        
+        // Mostrar el PDF en el navegador
+        return $pdf->stream('ticket-' . $venta->numero_venta . '.pdf');
+    }
 
 }

@@ -62,6 +62,40 @@ $(document).ready(function() {
         });
     });
 });
+ $(document).on('click', '.eliminar-rol', function(event) {
+    event.preventDefault();
+    var rolId = $(this).data('rolid');
+    var rolName = $(this).data('namerol');
+
+    Swal.fire({
+        title: "¿Estás seguro?",
+        text: "¿Estás seguro de eliminar el rol " + rolName + "?",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#DD6B55",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                type: 'DELETE',
+                url: '/roles/' + rolId + '/delete',
+                headers: {
+                    'X-CSRF-TOKEN': $("#token").val()
+                },
+                success: function(data) {
+                    toastr.success(data.message);
+                    $('#contenido').load('/usuarios/roles');
+                },
+                error: function(xhr, status, error) {
+                    toastr.error("Error "+xhr.responseJSON.error+"<br>"+xhr.responseJSON.message);
+                }
+            });
+        } else {
+            toastr.error("Eliminación cancelada");
+        }
+    });
+});
 $('#createRolForm').submit(function(event) {
     event.preventDefault();
 

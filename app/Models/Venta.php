@@ -12,6 +12,7 @@ class Venta extends Model
         'total',
         'total_descuentos',
         'user_id',
+        'caja_id',
         'forma_pago',
         'estado',
         'fecha_venta',
@@ -24,6 +25,14 @@ class Venta extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Relación: una venta pertenece a una caja
+     */
+    public function caja()
+    {
+        return $this->belongsTo(Caja::class, 'caja_id');
     }
 
     /**

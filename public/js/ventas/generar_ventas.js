@@ -1,4 +1,9 @@
 $(document).ready(function() {
+    // Verificar apertura de caja
+    if (typeof cajaAbierta !== 'undefined' && !cajaAbierta) {
+        $('#modalAperturaCaja').modal('show');
+    }
+
     cargarBorradores();
     let cart = [];
     let alerts = [];
@@ -195,8 +200,23 @@ $(document).ready(function() {
 
     $('#product-code').on('keypress', function(e) {
         if(e.which === 13) { 
-            let code = $(this).val();
             let input = $(this);
+            let inputValue = input.val().trim();
+            
+            // Detectar si viene con formato cantidad*codigo (ej: 2*0001 o 0.5*0001)
+            let quantity = 1;
+            let code = inputValue;
+            
+            if (inputValue.includes('*')) {
+                let parts = inputValue.split('*');
+                if (parts.length === 2) {
+                    let parsedQty = parseFloat(parts[0]);
+                    if (!isNaN(parsedQty) && parsedQty > 0) {
+                        quantity = parsedQty;
+                        code = parts[1].trim();
+                    }
+                }
+            }
             
             $.ajax({
                 url: '/ventas/buscarProducto',
@@ -206,14 +226,14 @@ $(document).ready(function() {
                     if(product.length > 0){
                         // verificar stock antes de añadir (asíncrono) - incluyendo cantidad total del mismo producto en carrito
                         const existingQty = getCartTotalQuantity(product[0].uuid);
-                        const totalRequested = existingQty + 1;
+                        const totalRequested = existingQty + quantity;
                         verificarStock(product[0].uuid, totalRequested).done(function(resp){
                             if (resp.status === 'OK') {
                                 cart.push({
                                     uuid: product[0].uuid,
                                     descripcion: product[0].descripcion,
                                     precio_venta: product[0].precio_venta,
-                                    quantity: 1,
+                                    quantity: quantity,
                                     discount: 0
                                 });
                                 renderCart();
@@ -236,8 +256,27 @@ $(document).ready(function() {
                                     toastr.error(resp.message || 'No se puede agregar el producto');
                                 }
                             }
-                        }).fail(function(){
-                            toastr.error('Error verificando stock');
+                        }).fail(function(xhr){
+                            // Si el servidor devuelve información, intentar usarla
+                            if (xhr.responseJSON) {
+                                let resp = xhr.responseJSON;
+                                if (resp.status === 'OK') {
+                                    // Producto válido, agregar al carrito
+                                    cart.push({
+                                        uuid: product[0].uuid,
+                                        descripcion: product[0].descripcion,
+                                        precio_venta: product[0].precio_venta,
+                                        quantity: quantity,
+                                        discount: 0
+                                    });
+                                    renderCart();
+                                    input.val('');
+                                } else {
+                                    toastr.error(resp.message || 'Error verificando stock');
+                                }
+                            } else {
+                                toastr.error('Error verificando stock');
+                            }
                         });
                         
                     }else{
@@ -582,6 +621,9 @@ $(document).ready(function() {
         // Calcular totales
         const totalVenta = parseInt($('#cart-total').text().replace(/[^\d]/g, ''));
         const totalDescuentos = parseInt($('#discount-amount').text().replace(/[^\d]/g, ''));
+        
+        // Calcular el subtotal SIN descuentos (para que el backend pueda restar correctamente)
+        const subtotalSinDescuentos = totalVenta + totalDescuentos;
 
         // Preparar detalles de la venta
         const detalles = cart.map(item => {
@@ -626,6 +668,13 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'OK') {
                     toastr.success(response.message);
+                    
+                    // Mostrar ticket en modal flotante
+                    if (response.venta_id) {
+                        const ticketUrl = '/ventas/ticket-pdf/' + response.venta_id;
+                        $('#ticketFrame').attr('src', ticketUrl);
+                        $('#modalTicket').modal('show');
+                    }
                     
                     // Limpiar carrito y alertas
                     cart = [];
@@ -674,11 +723,293 @@ $(document).ready(function() {
     }
 
     $('.tab-btn').on('click', function() {
+        const tab = $(this).data('tab');
+        
+        // Si es la pestaña de caja, SIEMPRE pedir contraseña
+        if (tab === 'caja') {
+            $('#modalVerificarPassword').modal('show');
+            $('#passwordCaja').val('');
+            return;
+        }
+
         $('.tab-btn').removeClass('active');
         $(this).addClass('active');
         $('.tab-content').removeClass('active');
-        const tab = $(this).data('tab');
         $('#tab-' + tab).addClass('active');
+    });
+
+    // Verificar contraseña para acceder a caja
+    $('#btnConfirmarPassword').click(function() {
+        const password = $('#passwordCaja').val();
+
+        if (!password) {
+            toastr.error('Ingrese su contraseña');
+            return;
+        }
+
+        $.ajax({
+            url: '/ventas/verificar-password',
+            method: 'POST',
+            data: {
+                _token: $('#token').val(),
+                password: password
+            },
+            beforeSend: function() {
+                $('#btnConfirmarPassword').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Verificando...');
+            },
+            success: function(response) {
+                if (response.status === 'OK') {
+                    $('#modalVerificarPassword').modal('hide');
+                    
+                    // Activar pestaña de caja
+                    $('.tab-btn').removeClass('active');
+                    $('.tab-btn[data-tab="caja"]').addClass('active');
+                    $('.tab-content').removeClass('active');
+                    $('#tab-caja').addClass('active');
+                    
+                    // Cargar información de caja
+                    cargarInfoCaja();
+                } else {
+                    toastr.error(response.message || 'Contraseña incorrecta');
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'Error al verificar contraseña';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                toastr.error(errorMsg);
+            },
+            complete: function() {
+                $('#btnConfirmarPassword').prop('disabled', false).html('<i class="fa fa-unlock"></i> Verificar');
+            }
+        });
+    });
+
+    // Cargar información de caja
+    function cargarInfoCaja() {
+        $.ajax({
+            url: '/ventas/info-caja',
+            method: 'GET',
+            beforeSend: function() {
+                $('#caja-content').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i><p>Cargando información...</p></div>');
+            },
+            success: function(response) {
+                if (response.status === 'OK') {
+                    const caja = response.caja;
+                    
+                    let html = `
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5><i class="fa fa-info-circle"></i> Información de Caja</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Fecha Apertura:</strong> ${caja.fecha_apertura}</p>
+                                        <p><strong>Monto Inicial:</strong> ${formatCurrency(caja.monto_inicial)}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Cantidad de Ventas:</strong> ${caja.cantidad_ventas}</p>
+                                        <p><strong>Total Ventas:</strong> <span class="text-success font-weight-bold">${formatCurrency(caja.total_ventas)}</span></p>
+                                    </div>
+                                </div>
+
+                                ${caja.observaciones_apertura ? `
+                                <div class="alert alert-info">
+                                    <strong>Observaciones de Apertura:</strong><br>
+                                    ${caja.observaciones_apertura}
+                                </div>
+                                ` : ''}
+
+                                <h6 class="mt-4"><strong>Desglose por Forma de Pago</strong></h6>
+                                <table class="table table-bordered table-sm">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Forma de Pago</th>
+                                            <th class="text-right">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>💵 Efectivo</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.efectivo)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>🏦 Tarjeta Débito</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.tarjeta_debito)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>💳 Tarjeta Crédito</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.tarjeta_credito)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>🔄 Transferencia</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.transferencia)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>📋 Cheque</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.cheque)}</td>
+                                        </tr>
+                                        ${caja.desglose.mixto > 0 ? `
+                                        <tr>
+                                            <td>🔀 Mixto</td>
+                                            <td class="text-right">${formatCurrency(caja.desglose.mixto)}</td>
+                                        </tr>
+                                        ` : ''}
+                                        <tr class="table-success font-weight-bold">
+                                            <td>TOTAL</td>
+                                            <td class="text-right">${formatCurrency(caja.total_ventas)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <div class="alert alert-success mt-3">
+                                    <h5><strong>Monto Esperado en Caja:</strong> ${formatCurrency(caja.monto_esperado)}</h5>
+                                    <small>Monto Inicial (${formatCurrency(caja.monto_inicial)}) + Total Ventas (${formatCurrency(caja.total_ventas)})</small>
+                                </div>
+
+                                <button class="btn btn-danger btn-lg btn-block mt-4" id="btnAbrirCierreCaja">
+                                    <i class="fa fa-power-off"></i> Cerrar Caja
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('#caja-content').html(html);
+                } else {
+                    $('#caja-content').html('<div class="alert alert-warning">No se pudo cargar la información de caja</div>');
+                }
+            },
+            error: function() {
+                $('#caja-content').html('<div class="alert alert-danger">Error al cargar información de caja</div>');
+            }
+        });
+    }
+
+    // Abrir modal de cierre de caja
+    $(document).on('click', '#btnAbrirCierreCaja', function() {
+        // Cargar datos de la caja actual
+        $.ajax({
+            url: '/ventas/info-caja',
+            method: 'GET',
+            success: function(response) {
+                if (response.status === 'OK') {
+                    const caja = response.caja;
+                    $('#montoEsperadoCierre').text(formatCurrency(caja.monto_esperado));
+                    $('#totalVentasCierre').text(formatCurrency(caja.total_ventas));
+                    $('#montoFinalDeclarado').val('');
+                    $('#diferenciaCierre').text('$ 0').removeClass('text-danger text-success').addClass('text-muted');
+                    $('#observacionesCierre').val('');
+                    $('#modalCierreCaja').modal('show');
+
+                    // Guardar monto esperado para calcular diferencia
+                    $('#modalCierreCaja').data('monto-esperado', caja.monto_esperado);
+                }
+            }
+        });
+    });
+
+    // Calcular diferencia al ingresar monto final
+    $('#montoFinalDeclarado').on('input', function() {
+        const montoFinal = parseFloat($(this).val()) || 0;
+        const montoEsperado = parseFloat($('#modalCierreCaja').data('monto-esperado')) || 0;
+        const diferencia = montoFinal - montoEsperado;
+
+        const $diferencia = $('#diferenciaCierre');
+        $diferencia.text(formatCurrency(Math.abs(diferencia)));
+        
+        if (diferencia > 0) {
+            $diferencia.removeClass('text-muted text-danger').addClass('text-success');
+            $diferencia.prepend('+ ');
+        } else if (diferencia < 0) {
+            $diferencia.removeClass('text-muted text-success').addClass('text-danger');
+            $diferencia.prepend('- ');
+        } else {
+            $diferencia.removeClass('text-danger text-success').addClass('text-muted');
+        }
+    });
+
+    // Confirmar cierre de caja
+    $('#btnConfirmarCierreCaja').click(function() {
+        const montoFinal = parseFloat($('#montoFinalDeclarado').val());
+        const observaciones = $('#observacionesCierre').val();
+
+        if (isNaN(montoFinal) || montoFinal < 0) {
+            toastr.error('Ingrese un monto final válido');
+            return;
+        }
+
+        Swal.fire({
+            title: '¿Cerrar Caja?',
+            text: "Esta acción no se puede deshacer. ¿Estás seguro?",
+            type: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, cerrar caja',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/ventas/cerrar-caja',
+                    method: 'POST',
+                    data: {
+                        _token: $('#token').val(),
+                        monto_final_declarado: montoFinal,
+                        observaciones: observaciones
+                    },
+                    beforeSend: function() {
+                        $('#btnConfirmarCierreCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Cerrando caja...');
+                    },
+                    success: function(response) {
+                        if (response.status === 'OK') {
+                            const diferencia = response.diferencia;
+                            const cajaId = response.caja_id;
+                            let mensaje = 'Caja cerrada correctamente';
+                            
+                            if (Math.abs(diferencia) > 0) {
+                                if (diferencia > 0) {
+                                    mensaje += `\nSobrante: ${formatCurrency(diferencia)}`;
+                                } else {
+                                    mensaje += `\nFaltante: ${formatCurrency(Math.abs(diferencia))}`;
+                                }
+                            }
+
+                            $('#modalCierreCaja').modal('hide');
+
+                            // Mostrar el ticket de cierre en el modal
+                            $('#ticketFrame').attr('src', `/ventas/cierre-caja-pdf/${cajaId}`);
+                            $('#modalTicket').modal('show');
+
+                            // Mostrar SweetAlert cuando se cierre el modal del ticket
+                            $('#modalTicket').one('hidden.bs.modal', function() {
+                                Swal.fire({
+                                    title: 'Caja Cerrada',
+                                    text: mensaje,
+                                    type: 'success',
+                                    confirmButtonText: 'OK'
+                                }).then(() => {
+                                    // Recargar la página
+                                    window.location.reload();
+                                });
+                            });
+                        } else {
+                            toastr.error(response.message || 'Error al cerrar caja');
+                            $('#btnConfirmarCierreCaja').prop('disabled', false).html('<i class="fa fa-power-off"></i> Cerrar Caja');
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'Error al cerrar caja';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        toastr.error(errorMsg);
+                        $('#btnConfirmarCierreCaja').prop('disabled', false).html('<i class="fa fa-power-off"></i> Cerrar Caja');
+                    }
+                });
+            }
+        });
     });
 
     $('#cart-items').on('keypress', '.quantity-input', function (e) {
@@ -706,16 +1037,20 @@ $(document).ready(function() {
             value = parts[0] + '.' + parts[1];
         }
 
-        if (parts[1]?.length > 1) {
-            parts[1] = parts[1].substring(0, 1);
+        if (parts[1]?.length > 2) {
+            parts[1] = parts[1].substring(0, 2);
             value = parts[0] + '.' + parts[1];
         }
 
         $input.val(value);
 
         let newQuantity = parseFloat(value);
-        if (isNaN(newQuantity) || newQuantity <= 0) {
-            newQuantity = 1;
+        if (isNaN(newQuantity) || newQuantity < 0) {
+            return; // Permitir edición temporal
+        }
+
+        if (newQuantity === 0 || value.endsWith('.')) {
+            return; // Permitir escribir "0." antes del decimal o valores que terminan en punto
         }
 
         // Verificar stock para la cantidad ingresada (incluyendo cantidad de otros items del mismo producto)
@@ -739,6 +1074,9 @@ $(document).ready(function() {
                 cart[index].insufficient = true;
                 toastr.error('Promoción con faltantes. Revise los componentes.');
                 pushAlertFromResp(resp);
+            } else {
+                // Otros errores: actualizar la cantidad de todas formas
+                cart[index].quantity = newQuantity;
             }
 
             // Actualizar solo el total de ese producto
@@ -749,8 +1087,26 @@ $(document).ready(function() {
             updateTotal();
             renderCart();
         }).fail(function(){
-            toastr.error('Error verificando stock');
+            // En caso de error de red, permitir la cantidad de todas formas
+            cart[index].quantity = newQuantity;
+            let total = Math.round(cart[index].precio_venta * cart[index].quantity * (1 - (parseFloat(cart[index].discount)||0)/100));
+            $input.closest('.product-row').find('.product-total').text(formatCurrency(total));
+            updateTotal();
+            renderCart();
         });
+    });
+
+    // Validar cantidad cuando el usuario sale del campo
+    $('#cart-items').on('blur', '.quantity-input', function () {
+        let $input = $(this);
+        let value = parseFloat($input.val());
+        
+        if (isNaN(value) || value <= 0) {
+            $input.val('1');
+            let index = $input.closest('.product-row').data('index');
+            cart[index].quantity = 1;
+            renderCart();
+        }
     });
 
     $(document).on('click', '.ver-borrador', function () {
@@ -897,3 +1253,52 @@ function eliminarBorrador(uuid_borrador) {
         }
     });
 }
+
+// Manejador para abrir caja
+$('#btnConfirmarAperturaCaja').click(function() {
+    const montoInicial = parseFloat($('#montoInicialCaja').val());
+    const observaciones = $('#observacionesApertura').val();
+
+    if (isNaN(montoInicial) || montoInicial < 0) {
+        toastr.error('Ingrese un monto inicial válido');
+        return;
+    }
+
+    $.ajax({
+        url: '/ventas/abrir-caja',
+        method: 'POST',
+        data: {
+            _token: $('#token').val(),
+            monto_inicial: montoInicial,
+            observaciones: observaciones
+        },
+        beforeSend: function() {
+            $('#btnConfirmarAperturaCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Abriendo caja...');
+        },
+        success: function(response) {
+            if (response.status === 'OK') {
+                toastr.success(response.message);
+                $('#modalAperturaCaja').modal('hide');
+                
+                // Activar la pestaña de productos (generar ventas)
+                $('.nav-tabs a[href="#tab-products"]').tab('show');
+                
+                // Enfocar el input de código de producto
+                setTimeout(function() {
+                    $('#product-code').focus();
+                }, 500);
+            } else {
+                toastr.error(response.message || 'Error al abrir caja');
+                $('#btnConfirmarAperturaCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Abrir Caja');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'Error al abrir caja';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            toastr.error(errorMsg);
+            $('#btnConfirmarAperturaCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Abrir Caja');
+        }
+    });
+});
