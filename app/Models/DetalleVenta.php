@@ -15,6 +15,10 @@ class DetalleVenta extends Model
         'precio_unitario',
         'descuento_porcentaje',
         'subtotal_linea',
+        'anulado',
+        'fecha_anulacion',
+        'user_anulacion_id',
+        'motivo_anulacion',
     ];
     public $timestamps = false;
 
@@ -32,5 +36,15 @@ class DetalleVenta extends Model
     protected $casts = [
         'cantidad' => 'float',
         'descuento_porcentaje' => 'float',
+        'anulado' => 'boolean',
+        'fecha_anulacion' => 'datetime',
     ];
+
+    /**
+     * Relación: usuario que anuló el detalle
+     */
+    public function usuarioAnulacion()
+    {
+        return $this->belongsTo(User::class, 'user_anulacion_id');
+    }
 }

@@ -172,15 +172,22 @@ class UsersController extends Controller
     }
     public function index()
     {
-        $users = User::select('users.uuid', 'users.id', 'users.name', 'users.name_complete', 'users.role_id', 'roles.role_name', 'users.created_at', 'users.updated_at')
+        $query = User::select('users.uuid', 'users.id', 'users.name', 'users.name_complete', 'users.role_id', 'roles.role_name', 'users.created_at', 'users.updated_at')
             ->join('roles', 'users.role_id', '=', 'roles.id')
             ->where('users.estado', 1)
-            ->where('users.name_complete', '<>', 'Rodrigo Panes')
-            ->get()
+            ->where('users.name_complete', '<>', 'Rodrigo Panes');
+        
+        // Si el usuario autenticado NO es SuperAdministrador, excluir SuperAdministradores del listado
+        $userRole = auth()->user()->role->role_name;
+        if ($userRole !== 'SuperAdministrador') {
+            $query->where('roles.role_name', '!=', 'SuperAdministrador');
+        }
+        
+        $users = $query->get()
             ->map(function ($user) {
                 $user->created_at = date('d/m/Y H:i:s', strtotime($user->created_at));
                 $user->updated_at = $user->updated_at ? date('d/m/Y H:i:s', strtotime($user->updated_at)) : 'Aún no tiene modificaciones';
-                $user->actions = '<a href="" class="btn btn-sm btn-primary editar" data-rol="' . $user->role_id . '" data-target="#editUserModal" data-uuid="' . $user->uuid . '" data-toggle="modal" title="Editar usuario ' . $user->name . '"><i class="fa fa-edit"></i></a>
+                $user->actions = '<a href="" class="btn btn-sm btn-primary editar_usu" data-rol="' . $user->role_id . '" data-target="#editUserModal" data-uuid="' . $user->uuid . '" data-toggle="modal" title="Editar usuario ' . $user->name . '"><i class="fa fa-edit"></i></a>
                                 <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $user->uuid . '" data-nameuser="' . $user->name . '" title="Eliminar usuario ' . $user->name . '"><i class="fa fa-trash"></i></a>';
                 return $user;
             });
@@ -335,7 +342,7 @@ class UsersController extends Controller
     }
     public function getRolesPermisos()
     {
-        $roles = Role::all();
+        $roles = Role::where('role_name', '!=', 'SuperAdministrador')->get();
         return view('users.permisos', compact('roles'));
     }
     public function getMenus(Request $request)

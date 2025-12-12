@@ -8,7 +8,6 @@ class Venta extends Model
 {
     protected $table = 'ventas';
     protected $fillable = [
-        'numero_venta',
         'total',
         'total_descuentos',
         'user_id',

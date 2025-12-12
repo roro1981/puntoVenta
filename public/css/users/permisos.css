@@ -7,15 +7,155 @@
     margin-left: 0 !important;
     margin-right: 0 !important;
 }
+
+/* Contenedor de permisos */
+#permisosContainer {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
 /* Cada card ocupa un ancho uniforme */
 .menu-card {
-    flex: 1 1 calc(35% - 20px); /* 3 por fila */
+    flex: 1 1 calc(35% - 20px);
     min-width: 350px;
     margin-bottom: 10px;
     margin-right: 10px;
 }
 
-/* Estilo de card */
+/* Card de permisos - diseño creativo */
+.permisos-card {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.permisos-card .card {
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    border: none;
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f9fc 100%);
+}
+
+.permisos-card .card-body {
+    padding: 30px;
+}
+
+/* Lista de permisos */
+.permisos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Item de permiso con diseño creativo */
+.permiso-item {
+    position: relative;
+    padding: 16px 20px 16px 50px;
+    background: white;
+    border: 2px solid #f0f0f0;
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.permiso-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--permiso-color, #667eea);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.permiso-item:hover {
+    border-color: var(--permiso-color, #667eea);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.permiso-item:hover::before {
+    opacity: 1;
+}
+
+/* Badge de color */
+.permiso-badge {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+}
+
+.permiso-item .form-check {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.permiso-item .form-check-input {
+    margin-right: 15px;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.permiso-item .form-check-input:checked {
+    background-color: var(--permiso-color, #4c6ef5);
+    border-color: var(--permiso-color, #4c6ef5);
+    box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.1);
+}
+
+.permiso-item .form-check-input:hover {
+    border-color: var(--permiso-color, #4c6ef5);
+}
+
+.permiso-item .form-check-label {
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.permiso-code {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.permiso-separator {
+    color: #cbd5e0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.permiso-desc {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.5;
+    font-weight: 400;
+}
+
+/* Efecto de check animado */
+.permiso-item .form-check-input:checked ~ .form-check-label .permiso-code {
+    color: var(--permiso-color, #4c6ef5);
+}
+
+/* Estilo de card antigua */
 .card-with-border {
     border: 1px solid #dcdcdc;
     border-radius: 12px;
@@ -30,22 +170,44 @@
     margin-bottom: 15px;
 }
 
-/* Checkboxes */
-.form-check {
-    margin-bottom: 10px;
-}
-
-.form-check-input {
-    transform: scale(1.2);
-    margin-right: 8px;
-}
-
 /* Distribución más uniforme entre cards */
 .card-body {
-    height: 300px; /* Ajusta según tu contenido */
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
 }
+
+/* Contenedor de los checkboxes */
+.form-check-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Animación de entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.permiso-item {
+    animation: fadeInUp 0.3s ease backwards;
+}
+
+.permiso-item:nth-child(1) { animation-delay: 0.05s; }
+.permiso-item:nth-child(2) { animation-delay: 0.1s; }
+.permiso-item:nth-child(3) { animation-delay: 0.15s; }
+.permiso-item:nth-child(4) { animation-delay: 0.2s; }
+.permiso-item:nth-child(5) { animation-delay: 0.25s; }
+.permiso-item:nth-child(6) { animation-delay: 0.3s; }
+.permiso-item:nth-child(7) { animation-delay: 0.35s; }
+.permiso-item:nth-child(8) { animation-delay: 0.4s; }
 
   

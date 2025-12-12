@@ -68,4 +68,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class, 'role_id');
     }
+
+    /**
+     * Verifica si el usuario tiene un permiso específico
+     * 
+     * @param string $codigoPermiso Código del permiso
+     * @return bool
+     */
+    public function tienePermiso($codigoPermiso)
+    {
+        if (!$this->role) {
+            return false;
+        }
+        
+        return $this->role->tienePermiso($codigoPermiso);
+    }
 }

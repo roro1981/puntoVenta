@@ -29,4 +29,23 @@ class Role extends Model
     {
         return $this->belongsToMany(Submenu::class, 'menu_roles', 'role_id', 'submenu_id');
     }
+
+    public function permisos()
+    {
+        return $this->hasMany(PermisoRole::class);
+    }
+
+    /**
+     * Verifica si el rol tiene un permiso específico
+     * 
+     * @param string $codigoPermiso Código del permiso
+     * @return bool
+     */
+    public function tienePermiso($codigoPermiso)
+    {
+        return $this->permisos()
+            ->where('codigo_permiso', $codigoPermiso)
+            ->where('activo', true)
+            ->exists();
+    }
 }

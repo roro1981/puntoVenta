@@ -1,0 +1,97 @@
+/* Estilos para Historial de Tickets */
+.box-header {
+    border-bottom: 2px solid #01338d;
+}
+
+.modal-header {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.modal-footer {
+    border-top: 2px solid #dee2e6;
+}
+
+#tabla_tickets {
+    font-size: 14px;
+}
+
+#tabla_tickets thead tr {
+    background-color: #01338d !important;
+    color: white !important;
+}
+
+#tabla_tickets thead th {
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+}
+
+#tabla_tickets tbody td {
+    padding: 10px 8px;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* Estilos para los botones de exportación */
+.dt-buttons {
+    margin-bottom: 15px;
+}
+
+.dt-button {
+    margin-right: 5px !important;
+}
+
+/* Filtros de fecha */
+.form-control {
+    height: 38px;
+}
+
+label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Modal de anulación */
+#modalAnularTicket .table-responsive {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#modalAnularTicket .info-ticket {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+#modalAnularTicket .detalle-checkbox {
+    cursor: pointer;
+}
+
+#modalAnularTicket #selectAll {
+    cursor: pointer;
+}
+
+.btn-warning .fa-check {
+    margin-right: 5px;
+}
+
+/* Filas de productos anulados */
+#modalAnularTicket .table-danger {
+    background-color: #f8d7da !important;
+    opacity: 0.7;
+}
+
+#modalAnularTicket .table-danger td {
+    text-decoration: line-through;
+}
+
+/* Badges de estado */
+.badge {
+    font-size: 0.85em;
+    padding: 4px 8px;
+}

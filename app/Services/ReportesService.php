@@ -35,21 +35,21 @@ class ReportesService
             $movimientos = HistorialMovimientos::with('producto')
                 ->where('producto_id', $idProd)
                 ->whereBetween('fecha', [$desde, $hasta])
-                ->orderBy('fecha')
+                ->orderBy('fecha', 'desc')
                 ->get();
         } elseif ($tipoMov == 2) {
             $movimientos = HistorialMovimientos::with('producto')
                 ->where('producto_id', $idProd)
                 ->whereBetween('fecha', [$desde, $hasta])
                 ->where('tipo_mov', $movi)
-                ->orderBy('fecha')
+                ->orderBy('fecha', 'desc')
                 ->get();
         } else {
             $movimientos = HistorialMovimientos::with('producto')
                 ->where('producto_id', $idProd)
                 ->whereBetween('fecha', [$desde, $hasta])
                 ->where('tipo_mov', 'like', "%$movi%")
-                ->orderBy('fecha')
+                ->orderBy('fecha', 'desc')
                 ->get();
         }
 
@@ -78,6 +78,10 @@ class ReportesService
                     $signo = ' (+)';
                     $obs = 'BOLETA ' . $pro->num_doc;
                     break;
+                case 'ANULACIÓN':
+                    $signo = ' (+)';
+                    $obs = $pro->obs;
+                    break;    
                 default:
                     $obs = '';
             }

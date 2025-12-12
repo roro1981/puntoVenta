@@ -9,6 +9,7 @@ use App\Http\Controllers\ComprasController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ProductosController;
 use App\Http\Controllers\ConfigurationController;
+use App\Http\Controllers\PermisosController;
 
 
 
@@ -98,6 +99,13 @@ Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
 Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword']);
 Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
 Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja']);
+Route::get('/ventas/cierres_caja', [VentasController::class, 'historialCierres']);
+Route::get('/ventas/obtener-cierres', [VentasController::class, 'obtenerCierresDataTable']);
+Route::get('/ventas/detalle-cierre/{id}', [VentasController::class, 'obtenerDetalleCierre']);
+Route::get('/ventas/tickets_emitidos', [VentasController::class, 'historialTickets']);
+Route::get('/ventas/obtener-tickets', [VentasController::class, 'obtenerTickets']);
+Route::get('/ventas/detalle-ticket/{id}', [VentasController::class, 'obtenerDetalleTicket']);
+Route::post('/ventas/anular-ticket/{id}', [VentasController::class, 'anularTicket']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
 Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock']);
 Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
@@ -130,6 +138,11 @@ Route::delete('/roles/{id}/delete', [UsersController::class, 'deleteRole']);
 Route::get('/usuarios/permisos', [UsersController::class, 'getRolesPermisos']);
 Route::post('/permisos/get-menus', [UsersController::class, 'getMenus'])->name('get-menus');
 Route::post('/permisos/save', [UsersController::class, 'savePermissions']);
+
+Route::get('/usuarios/permisos-roles', [PermisosController::class, 'index']);
+Route::get('/permisos/disponibles', [PermisosController::class, 'permisosDisponibles']);
+Route::post('/permisos/asignar-multiples', [PermisosController::class, 'asignarMultiples']);
+Route::get('/permisos/role/{roleId}', [PermisosController::class, 'permisosPorRole']);
 
 //menu configuracion
 Route::get('/configuracion/datos_corp', [ConfigurationController::class, 'index']);

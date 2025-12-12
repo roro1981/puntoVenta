@@ -28,5 +28,6 @@ class DatabaseSeeder extends Seeder
         $this->call(RegionSeeder::class);
         $this->call(FormasPagoTableSeeder::class);
         $this->call(ProductosTableSeeder::class);
+        $this->call(PermisosRolesSeeder::class);
     }
 }

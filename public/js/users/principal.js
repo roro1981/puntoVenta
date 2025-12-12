@@ -6,7 +6,7 @@ $(document).ready(function () {
     $('#password_edit').on('focus', function () {
         $(this).removeAttr('readonly');
     });
-    $(document).on('click', '.editar', function () {
+    $(document).on('click', '.editar_usu', function () {
         var rolId = $(this).data('rol');
         $('#role_id_edit option').each(function () {
             if ($(this).val() == rolId) {

@@ -4,155 +4,183 @@
     <meta charset="utf-8">
     <title>Cierre de Caja</title>
     <style>
-        @page {
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
         body {
-            margin: 0;
-            padding: 10px;
             font-family: 'Courier New', monospace;
             font-size: 11px;
-            width: 226.77pt; /* 80mm */
+            line-height: 1.3;
+            color: #000;
+            width: 80mm;
+            padding: 3mm;
         }
+        
         .header {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
+        
         .logo {
             max-width: 60mm;
             max-height: 25mm;
-            margin: 0 auto 10px;
+            margin: 0 auto 8px;
             display: block;
+            height: auto;
         }
-        .company-name {
-            font-weight: bold;
-            font-size: 14px;
-            margin: 3px 0;
-        }
-        .company-info {
-            font-size: 10px;
-            margin: 2px 0;
-        }
+        
         .title-box {
             background: #000;
             color: #fff;
-            padding: 8px;
+            padding: 4px;
             text-align: center;
             font-weight: bold;
-            font-size: 13px;
-            margin: 15px 0;
+            font-size: 12px;
+            margin: 8px 0;
         }
+        
         .info-section {
-            margin: 10px 0;
-            padding: 5px 0;
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
+            margin: 8px 0;
+            font-size: 10px;
+            background: #f5f5f5;
+            padding: 6px;
+            border-radius: 3px;
         }
+        
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin: 3px 0;
+            margin: 2px 0;
         }
-        .info-label {
-            font-weight: bold;
-        }
+        
         .separator {
             border-top: 1px dashed #000;
-            margin: 10px 0;
+            margin: 6px 0;
         }
+        
         .section-title {
             font-weight: bold;
-            font-size: 12px;
-            margin: 10px 0 5px 0;
+            font-size: 11px;
+            margin: 8px 0 4px 0;
             text-align: center;
             text-decoration: underline;
         }
+        
         table {
             width: 100%;
             margin: 5px 0;
             border-collapse: collapse;
+            font-size: 10px;
         }
+        
         table td {
             padding: 3px 0;
+            vertical-align: top;
         }
-        .text-right {
+        
+        table td:last-child {
             text-align: right;
         }
-        .text-center {
-            text-align: center;
-        }
+        
         .totals-section {
-            margin-top: 15px;
-            padding-top: 10px;
+            margin-top: 8px;
             border-top: 2px solid #000;
+            padding-top: 6px;
+            background: #f9f9f9;
+            padding: 8px 6px;
         }
+        
         .total-row {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
-            font-size: 12px;
+            margin: 3px 0;
+            font-size: 11px;
         }
+        
         .total-label {
             font-weight: bold;
         }
+        
         .total-esperado {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
             background: #f0f0f0;
-            padding: 5px;
-            margin: 5px 0;
+            padding: 6px;
+            margin: 6px 0;
         }
+        
         .total-declarado {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 6px;
+            margin: 6px 0;
+        }
+        
+        .diferencia {
             font-size: 13px;
             font-weight: bold;
-            padding: 5px;
-            margin: 5px 0;
-        }
-        .diferencia {
-            font-size: 14px;
-            font-weight: bold;
             padding: 8px;
-            margin: 10px 0;
+            margin: 8px 0;
             text-align: center;
             border: 2px solid #000;
         }
+        
         .diferencia.positiva {
             background: #d4edda;
             color: #155724;
         }
+        
         .diferencia.negativa {
             background: #f8d7da;
             color: #721c24;
         }
+        
         .diferencia.exacta {
             background: #d1ecf1;
             color: #0c5460;
         }
+        
         .observaciones {
-            margin: 10px 0;
-            padding: 8px;
+            margin: 8px 0;
+            padding: 6px;
             background: #f8f9fa;
             border: 1px solid #ddd;
             font-size: 10px;
+            word-wrap: break-word;
         }
+        
         .footer {
-            margin-top: 20px;
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 2px dashed #000;
+            font-size: 10px;
+        }
+        
+        .footer p {
+            margin: 3px 0;
+        }
+        
+        .firma-section {
+            margin-top: 12px;
             text-align: center;
             font-size: 10px;
         }
-        .firma-section {
-            margin-top: 30px;
-            text-align: center;
-        }
+        
         .firma-line {
             border-top: 1px solid #000;
             width: 60%;
-            margin: 40px auto 5px;
+            margin: 20px auto 5px;
         }
+        
         .warning-text {
-            margin-top: 15px;
+            margin-top: 10px;
             padding: 5px;
-            border: 1px solid #000;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
             text-align: center;
             font-size: 9px;
             font-weight: bold;
@@ -160,30 +188,10 @@
     </style>
 </head>
 <body>
-    <!-- Encabezado con logo y datos corporativos -->
+    <!-- Encabezado con logo -->
     <div class="header">
-        @if(isset($corporateData['logo_enterprise']) && $corporateData['logo_enterprise'] !== '/img/fotos_prod/sin_imagen.jpg')
+        @if(isset($corporateData['logo_enterprise']) && $corporateData['logo_enterprise'] && $corporateData['logo_enterprise'] != '/img/fotos_prod/sin_imagen.jpg')
             <img src="{{ public_path($corporateData['logo_enterprise']) }}" alt="Logo" class="logo">
-        @endif
-        
-        @if(isset($corporateData['name_enterprise']) && $corporateData['name_enterprise'])
-            <div class="company-name">{{ $corporateData['name_enterprise'] }}</div>
-        @endif
-        
-        @if(isset($corporateData['fantasy_name_enterprise']) && $corporateData['fantasy_name_enterprise'])
-            <div class="company-info">{{ $corporateData['fantasy_name_enterprise'] }}</div>
-        @endif
-        
-        @if(isset($corporateData['address_enterprise']) && $corporateData['address_enterprise'])
-            <div class="company-info">{{ $corporateData['address_enterprise'] }}</div>
-        @endif
-        
-        @if(isset($corporateData['comuna_enterprise']) && $corporateData['comuna_enterprise'])
-            <div class="company-info">{{ $corporateData['comuna_enterprise'] }}</div>
-        @endif
-        
-        @if(isset($corporateData['phone_enterprise']) && $corporateData['phone_enterprise'])
-            <div class="company-info">Tel: {{ $corporateData['phone_enterprise'] }}</div>
         @endif
     </div>
 
@@ -234,42 +242,42 @@
     <table>
         @if($desglose['efectivo'] > 0)
         <tr>
-            <td>💵 Efectivo</td>
+            <td>Efectivo</td>
             <td class="text-right">${{ number_format($desglose['efectivo'], 0, ',', '.') }}</td>
         </tr>
         @endif
         
         @if($desglose['tarjeta_debito'] > 0)
         <tr>
-            <td>🏦 Tarjeta Débito</td>
+            <td>Tarjeta Débito</td>
             <td class="text-right">${{ number_format($desglose['tarjeta_debito'], 0, ',', '.') }}</td>
         </tr>
         @endif
         
         @if($desglose['tarjeta_credito'] > 0)
         <tr>
-            <td>💳 Tarjeta Crédito</td>
+            <td>Tarjeta Crédito</td>
             <td class="text-right">${{ number_format($desglose['tarjeta_credito'], 0, ',', '.') }}</td>
         </tr>
         @endif
         
         @if($desglose['transferencia'] > 0)
         <tr>
-            <td>🔄 Transferencia</td>
+            <td>Transferencia</td>
             <td class="text-right">${{ number_format($desglose['transferencia'], 0, ',', '.') }}</td>
         </tr>
         @endif
         
         @if($desglose['cheque'] > 0)
         <tr>
-            <td>📋 Cheque</td>
+            <td>Cheque</td>
             <td class="text-right">${{ number_format($desglose['cheque'], 0, ',', '.') }}</td>
         </tr>
         @endif
         
         @if($desglose['mixto'] > 0)
         <tr>
-            <td>🔀 Mixto</td>
+            <td>Mixto</td>
             <td class="text-right">${{ number_format($desglose['mixto'], 0, ',', '.') }}</td>
         </tr>
         @endif
