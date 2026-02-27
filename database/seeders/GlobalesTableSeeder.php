@@ -14,8 +14,9 @@ class GlobalesTableSeeder extends Seeder
     public function run(): void
     {
         DB::table('globales')->insert([
-            ['nom_var' => 'STOCK_NEGATIVO', 'valor_var' =>'0', 'descrip_var' =>'Permite o no stock negativo de productos 0:NO y 1:SI']
-           
+            ['nom_var' => 'STOCK_NEGATIVO', 'valor_var' =>'0', 'descrip_var' =>'Permite o no stock negativo de productos 0:NO y 1:SI'],
+            ['nom_var' => 'TIPO_NEGOCIO', 'valor_var' =>'ALMACEN', 'descrip_var' =>'Determina si el negocio es almacen o restaurant']
+
         ]);
     }
 }

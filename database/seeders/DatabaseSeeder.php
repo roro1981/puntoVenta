@@ -29,5 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call(FormasPagoTableSeeder::class);
         $this->call(ProductosTableSeeder::class);
         $this->call(PermisosRolesSeeder::class);
+        $this->call(MesasTableSeeder::class);
+        $this->call(GarzonesSeeder::class);
     }
 }

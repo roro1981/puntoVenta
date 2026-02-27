@@ -82,8 +82,14 @@ class ConfigurationController extends Controller
 
     public function globalesTable()
     {
-        $globales = Globales::select('globales.id', 'globales.nom_var', 'globales.valor_var', 'globales.descrip_var')
-            ->get()
+        $query = Globales::select('globales.id', 'globales.nom_var', 'globales.valor_var', 'globales.descrip_var');
+        
+        // Solo mostrar TIPO_NEGOCIO si el usuario es Rodrigo Panes
+        if (auth()->user()->name_complete !== 'Rodrigo Panes') {
+            $query->where('nom_var', '!=', 'TIPO_NEGOCIO');
+        }
+        
+        $globales = $query->get()
             ->map(function ($globales) {      
                 $globales->valor_var = '<input type="text" class="valor-var-input" id="valor_var_'.$globales->id.'" value="'.e($globales->valor_var).'" data-id="'.$globales->id.'">';             
                 $globales->actions = '<a href="" class="btn btn-sm btn-primary editar" data-id="'.$globales->id.'" title="Actualizar variable '.$globales->nom_var.'"><i class="fa fa-edit"></i></a>';

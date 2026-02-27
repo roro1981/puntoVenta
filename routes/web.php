@@ -10,6 +10,8 @@ use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ProductosController;
 use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\PermisosController;
+use App\Http\Controllers\MesasController;
+use App\Http\Controllers\ComandasController;
 
 
 
@@ -143,6 +145,28 @@ Route::get('/usuarios/permisos-roles', [PermisosController::class, 'index']);
 Route::get('/permisos/disponibles', [PermisosController::class, 'permisosDisponibles']);
 Route::post('/permisos/asignar-multiples', [PermisosController::class, 'asignarMultiples']);
 Route::get('/permisos/role/{roleId}', [PermisosController::class, 'permisosPorRole']);
+
+//menu restaurant
+Route::get('/configuracion/restaurant/config-mesas', [MesasController::class, 'index']);
+Route::get('/restaurant/mesas/obtener', [MesasController::class, 'obtener']);
+Route::post('/restaurant/mesas/crear', [MesasController::class, 'crear']);
+Route::put('/restaurant/mesas/actualizar/{id}', [MesasController::class, 'actualizar']);
+Route::delete('/restaurant/mesas/eliminar/{id}', [MesasController::class, 'eliminar']);
+
+// Comandas - Atención de mesas
+Route::get('/ventas/generar_comandas', [ComandasController::class, 'index']);
+Route::get('/restaurant/comandas/obtener-mesas', [ComandasController::class, 'obtenerMesas']);
+Route::get('/restaurant/comandas/ver/{mesaId}', [ComandasController::class, 'verComanda']);
+Route::put('/restaurant/comandas/actualizar-comensales/{comandaId}', [ComandasController::class, 'actualizarComensales']);
+Route::get('/restaurant/comandas/obtener-productos', [ComandasController::class, 'obtenerProductos']);
+Route::get('/restaurant/comandas/obtener-garzones', [ComandasController::class, 'obtenerGarzones']);
+Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda']);
+Route::put('/restaurant/comandas/actualizar/{comandaId}', [ComandasController::class, 'actualizarComanda']);
+Route::post('/restaurant/comandas/sincronizar-productos/{comandaId}', [ComandasController::class, 'sincronizarProductos']);
+Route::post('/restaurant/comandas/agregar-producto', [ComandasController::class, 'agregarProducto']);
+Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasController::class, 'actualizarProducto']);
+Route::delete('/restaurant/comandas/eliminar-producto/{detalleId}', [ComandasController::class, 'eliminarProducto']);
+Route::get('/restaurant/comandas/imprimir/{comandaId}', [ComandasController::class, 'imprimirComanda']);
 
 //menu configuracion
 Route::get('/configuracion/datos_corp', [ConfigurationController::class, 'index']);

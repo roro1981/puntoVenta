@@ -57,7 +57,7 @@ class VentasController extends Controller
                 'user_id' => Auth::id(),
                 'fecha_apertura' => now(),
                 'monto_inicial' => $request->monto_inicial,
-                'observaciones' => $request->observaciones
+                'observaciones' => "APERTURA:".$request->observaciones
             ]);
 
             return response()->json([
@@ -231,7 +231,7 @@ class VentasController extends Controller
                 'monto_final_declarado' => $montoFinalDeclarado,
                 'diferencia' => $diferencia,
                 'estado' => 'cerrada',
-                'observaciones' => $caja->observaciones . "\n\nCierre: " . ($request->observaciones ?? '')
+                'observaciones' => $caja->observaciones . "\n\nCIERRE: " . ($request->observaciones ?? '')
             ]);
 
             return response()->json([

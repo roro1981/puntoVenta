@@ -1,0 +1,136 @@
+.mesas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 15px;
+}
+
+.mesa-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: move;
+}
+
+.mesa-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    border-color: #667eea;
+}
+
+.mesa-card.inactiva {
+    opacity: 0.6;
+    background: #f5f5f5;
+}
+
+.mesa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mesa-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+}
+
+.mesa-body {
+    padding: 6px 0;
+}
+
+.mesa-body p {
+    margin: 3px 0;
+    color: #666;
+    font-size: 11px;
+}
+
+.mesa-body i {
+    margin-right: 3px;
+    color: #667eea;
+    font-size: 11px;
+}
+
+.mesa-footer {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.mesa-footer .btn {
+    flex: 1;
+    padding: 3px 6px;
+    font-size: 10px;
+}
+
+.mesa-footer .btn i {
+    font-size: 10px;
+}
+
+/* Estados de Sortable.js */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #f0f0f0;
+}
+
+.sortable-chosen {
+    border-color: #667eea;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    transform: rotate(5deg);
+}
+
+/* Badges */
+.badge {
+    font-size: 9px;
+    padding: 3px 6px;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mesas-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        padding: 8px;
+    }
+    
+    .mesa-footer {
+        flex-direction: column;
+    }
+}
+
+/* Animación de entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mesa-card {
+    animation: fadeInUp 0.3s ease;
+}
