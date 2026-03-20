@@ -13,6 +13,7 @@ function cargaCategorias(){
       "columns": [
         { "data": "id" },
         { "data": "descripcion_categoria" },
+                { "data": "fec_creacion" },
         { "data": "prods_asociados" },
         { "data": "actions" }
       ],

@@ -38,6 +38,8 @@ class Proveedor extends Model
         'user_creacion',
         'fec_modificacion',
         'user_modificacion',
+        'fec_eliminacion',
+        'user_eliminacion',
     ];
 
     public function region()
@@ -115,9 +117,20 @@ class Proveedor extends Model
     public function deleteProv()
     {
         $this->update([
-            'estado' => 'Inactivo',
+            'estado'           => 'Inactivo',
             'fec_modificacion' => now(),
-            'user_modificacion' => auth()->user()->name
+            'user_modificacion' => auth()->user()->name,
+            'fec_eliminacion'  => now(),
+            'user_eliminacion' => optional(auth()->user())->name ?? 'SISTEMA',
+        ]);
+    }
+
+    public function reactivarProveedor(): void
+    {
+        $this->update([
+            'estado'           => 'Activo',
+            'fec_eliminacion'  => null,
+            'user_eliminacion' => null,
         ]);
     }
 }

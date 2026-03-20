@@ -30,6 +30,8 @@ class Receta extends Model
         'user_creacion',
         'fec_modificacion',
         'user_modificacion',
+        'fec_eliminacion',
+        'user_eliminacion',
         'categoria_id'
     ];
 
@@ -129,8 +131,19 @@ class Receta extends Model
         $receta->estado = 'Inactivo';
         $receta->fec_modificacion = now();
         $receta->user_modificacion = auth()->user()->name;
+        $receta->fec_eliminacion = now();
+        $receta->user_eliminacion = optional(auth()->user())->name ?? 'SISTEMA';
         $receta->save();
 
         return $receta;
+    }
+
+    public function reactivarReceta(): void
+    {
+        $this->update([
+            'estado'           => 'Activo',
+            'fec_eliminacion'  => null,
+            'user_eliminacion' => null,
+        ]);
     }
 }

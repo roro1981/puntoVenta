@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 
 class ProductoRequest extends FormRequest
 {
-    public function rules(): array
+    public static function buildRules(bool $isUpdate = false): array
     {
         $rules = [
             'codigo' => ['required', 'string', 'max:100'],
@@ -26,12 +26,12 @@ class ProductoRequest extends FormRequest
             'nom_foto' => ['nullable', 'string', 'max:255']
         ];
 
-        if ($this->isMethod('POST')) {
+        if (!$isUpdate) {
             $rules['codigo'][] = Rule::unique('productos', 'codigo');
             $rules['descripcion'][] = Rule::unique('productos', 'descripcion');
         }
 
-        if ($this->isMethod('PUT')) {
+        if ($isUpdate) {
             $rules['codigo'] = ['string', 'max:100'];
             $rules['descripcion'] = ['required', 'string', 'max:255'];
         }
@@ -39,7 +39,7 @@ class ProductoRequest extends FormRequest
         return $rules;
     }
 
-    public function messages()
+    public static function buildMessages(): array
     {
         return [
             'codigo.required' => 'El código es obligatorio',
@@ -68,20 +68,26 @@ class ProductoRequest extends FormRequest
         ];
     }
 
-    protected function withValidator($validator)
+    public static function applyCrossEntityValidation($validator, array $data, bool $isCreate = true): void
     {
-        $validator->after(function ($validator) {
-            $codigo = $this->input('codigo');
-            $descripcion = $this->input('descripcion');
+        $validator->after(function ($validator) use ($data, $isCreate) {
+            if (!$isCreate) {
+                return;
+            }
 
-            if ($this->isMethod('POST')) {
+            $codigo = $data['codigo'] ?? null;
+            $descripcion = $data['descripcion'] ?? null;
+
+            if ($codigo !== null) {
                 $existeEnRecetas = DB::table('recetas')->where('codigo', $codigo)->exists();
                 $existeEnPromociones = DB::table('promociones')->where('codigo', $codigo)->exists();
 
                 if ($existeEnRecetas || $existeEnPromociones) {
                     $validator->errors()->add('codigo', 'El código ya existe en recetas o promociones.');
                 }
+            }
 
+            if ($descripcion !== null) {
                 $existeEnRecetasDesc = DB::table('recetas')->where('nombre', $descripcion)->exists();
                 $existeEnPromocionesDesc = DB::table('promociones')->where('nombre', $descripcion)->exists();
 
@@ -90,5 +96,20 @@ class ProductoRequest extends FormRequest
                 }
             }
         });
+    }
+
+    public function rules(): array
+    {
+        return self::buildRules($this->isMethod('PUT'));
+    }
+
+    public function messages()
+    {
+        return self::buildMessages();
+    }
+
+    protected function withValidator($validator)
+    {
+        self::applyCrossEntityValidation($validator, $this->all(), $this->isMethod('POST'));
     }
 }

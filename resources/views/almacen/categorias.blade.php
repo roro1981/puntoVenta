@@ -11,7 +11,7 @@
         <table id='tabla_categorias' class="display" style="width:100%">
           <thead>
           <tr style="background-color: #2ab9f7;color:white">
-              <th>ID CATEGORIA</th><th>NOMBRE CATEGORIA</th><th>PRODUCTOS ASOCIADOS</th><th>ACCIONES</th>
+              <th>ID CATEGORIA</th><th>NOMBRE CATEGORIA</th><th>FECHA CREACION</th><th>PRODUCTOS ASOCIADOS</th><th>ACCIONES</th>
           </tr>
           </thead>
           <tbody class="datos_cate">

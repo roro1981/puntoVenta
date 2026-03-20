@@ -15,8 +15,15 @@
                     </div>
                 </div>
                 <div>
-                    <span class="badge badge-success mr-2"><i class="fa fa-circle"></i> Libre</span>
-                    <span class="badge badge-danger mr-2"><i class="fa fa-circle"></i> Ocupada</span>
+                    <span class="badge mr-2 badge-estado-libre"><i class="fa fa-circle"></i> Libre: <span id="total_mesas_libres">0</span></span>
+                    <span class="badge mr-2 badge-estado-ocupada"><i class="fa fa-circle"></i> Ocupada: <span id="total_mesas_ocupadas">0</span></span>
+                    <span class="badge mr-2 badge-estado-pendiente"><i class="fa fa-circle"></i> Pendientes pago: <span id="total_mesas_pendientes_pago">0</span></span>
+                    <button class="btn btn-info" id="btn_ver_plano_mesas" style="margin-right:6px;">
+                        <i class="fa fa-map"></i> Ver plano de mesas
+                    </button>
+                    <button class="btn btn-warning" id="btn_abrir_cambio_mesa" style="margin-right:6px;">
+                        <i class="fa fa-random"></i> Cambiar mesa
+                    </button>
                     <button class="btn btn-primary" id="refrescar_mesas">
                         <i class="fa fa-sync"></i> Actualizar
                     </button>
@@ -26,7 +33,7 @@
         </div>
         
         <div class="mesas-container-wrapper">
-            <div class="row" id="mesas-container">
+            <div id="mesas-container">
                 <!-- Las mesas se cargarán aquí dinámicamente -->
             </div>
         </div>
@@ -72,6 +79,7 @@
                                 </button>
                             </div>
                         </div>
+
                     </div>
                     
                     <button type="button" class="pos-btn-cerrar" id="pos_btn_cerrar">
@@ -95,6 +103,9 @@
                 <div class="pos-order-panel">
                     <div class="pos-order-header">
                         <h3><i class="fa fa-shopping-cart"></i> Pedido</h3>
+                        <button type="button" class="pos-btn-solicitar-cuenta" id="btn_solicitar_cuenta">
+                            <i class="fa fa-file-invoice-dollar"></i> Solicitar cuenta
+                        </button>
                     </div>
                     
                     <div class="pos-order-items" id="pos_order_items">
@@ -105,7 +116,7 @@
                         <div class="pos-propina-section">
                             <label class="pos-propina-checkbox">
                                 <input type="checkbox" id="pos_incluye_propina">
-                                <span>Incluir propina 10%</span>
+                                <span>Incluir propina {{ rtrim(rtrim(number_format($porcentajePropina ?? 10, 2, '.', ''), '0'), '.') }}%</span>
                             </label>
                         </div>
                         
@@ -115,7 +126,7 @@
                                 <span class="pos-total-value">$<span id="pos_subtotal">0</span></span>
                             </div>
                             <div class="pos-total-row" id="pos_propina_row" style="display:none;">
-                                <span class="pos-total-label">Propina (10%):</span>
+                                <span class="pos-total-label">Propina ({{ rtrim(rtrim(number_format($porcentajePropina ?? 10, 2, '.', ''), '0'), '.') }}%):</span>
                                 <span class="pos-total-value">$<span id="pos_propina">0</span></span>
                             </div>
                             <div class="pos-total-row total-final">
@@ -142,4 +153,79 @@
 <input type="hidden" id="pos_mesa_id" value="">
 <input type="hidden" id="pos_comanda_id" value="">
 <input type="hidden" id="pos_capacidad_original" value="">
+
+<div class="modal fade" id="modalCambioMesa" tabindex="-1" role="dialog" aria-labelledby="tituloCambioMesa" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="tituloCambioMesa"><i class="fa fa-random"></i> Cambiar comanda de mesa</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="cambio_mesa_desde">Mesa desde</label>
+                    <select id="cambio_mesa_desde" class="form-control">
+                        <option value="">Seleccionar mesa origen...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="cambio_mesa_hacia">Mesa hacia</label>
+                    <select id="cambio_mesa_hacia" class="form-control">
+                        <option value="">Seleccionar mesa destino...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btn_confirmar_cambio_mesa">
+                    <i class="fa fa-check"></i> Confirmar cambio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTicketComanda" tabindex="-1" aria-labelledby="tituloTicketComanda" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 400px;">
+        <div class="modal-content">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
+                <h4 class="modal-title" id="tituloTicketComanda">Ticket Comanda</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <iframe id="ticketFrameComanda" style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPlanoMesas" tabindex="-1" role="dialog" aria-labelledby="tituloPlanoMesas" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document" style="width: 92vw; max-width: 1200px; margin: 1rem auto;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="tituloPlanoMesas"><i class="fa fa-map"></i> Plano de Mesas</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;align-items:stretch;">
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-success" id="btn_guardar_layout_json">
+                        <i class="fa fa-save"></i> Guardar cambios
+                    </button>
+                </div>
+                <div style="font-weight:600;">Arrastra las mesas y luego guarda los cambios</div>
+                <div id="layout_preview_canvas" style="position:relative;width:100%;height:620px;border:1px solid #ddd;background:#f8f9fa;overflow:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.posPropinaPorcentaje = @json((float)($porcentajePropina ?? 10));
+</script>
 

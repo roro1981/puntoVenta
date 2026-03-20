@@ -13,23 +13,82 @@ use App\Models\HistorialMovimientos;
 use App\Models\PromocionDetalle;
 use App\Models\CorporateData;
 use App\Models\Caja;
-use App\Models\User;
+use App\Models\Comanda;
 use App\Models\Globales;
+use App\Models\RangoPrecio;
 use App\Http\Requests\StoreVentaRequest;
 use App\Http\Requests\AperturaCajaRequest;
 use App\Http\Requests\CierreCajaRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class VentasController extends Controller
 {
+    private const TIPO_CAJA_MODULO_VENTAS = 'ALMACEN';
+
+    private function resolverPrecioUnitarioPorCantidad(?string $uuid, float $cantidad, ?float $precioBase = null): float
+    {
+        $precioBaseNormalizado = is_null($precioBase) ? 0.0 : (float) $precioBase;
+
+        if (empty($uuid) || $cantidad <= 0) {
+            return $precioBaseNormalizado;
+        }
+
+        $producto = Producto::where('uuid', $uuid)->first();
+        if (!$producto) {
+            return $precioBaseNormalizado;
+        }
+
+        $rango = RangoPrecio::where('producto_id', $producto->id)
+            ->where('cantidad_minima', '<=', $cantidad)
+            ->where(function ($query) use ($cantidad) {
+                $query->whereNull('cantidad_maxima')
+                    ->orWhere('cantidad_maxima', 0)
+                    ->orWhere('cantidad_maxima', '>=', $cantidad);
+            })
+            ->orderByDesc('cantidad_minima')
+            ->first();
+
+        if ($rango) {
+            return (float) $rango->precio_unitario;
+        }
+
+        return (float) $producto->precio_venta;
+    }
+
+    public function obtenerPrecioPorCantidad(Request $request)
+    {
+        $request->validate([
+            'uuid' => 'required|string',
+            'cantidad' => 'required|numeric|min:0.01',
+            'precio_base' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $cantidad = (float) $request->cantidad;
+            $precioBase = $request->filled('precio_base') ? (float) $request->precio_base : null;
+            $precioUnitario = $this->resolverPrecioUnitarioPorCantidad($request->uuid, $cantidad, $precioBase);
+
+            return response()->json([
+                'status' => 'OK',
+                'precio_unitario' => $precioUnitario,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Error al resolver precio por cantidad: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function indexVentas()
     {
         // Verificar si el usuario tiene una caja abierta
-        $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id());
+        $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
         
         return view('ventas.generar_venta', [
             'cajaAbierta' => $cajaAbierta
@@ -42,8 +101,13 @@ class VentasController extends Controller
     public function abrirCaja(AperturaCajaRequest $request)
     {
         try {
+            $tipoCaja = strtoupper((string) $request->input('tipo_caja_origen', self::TIPO_CAJA_MODULO_VENTAS));
+            if (!in_array($tipoCaja, ['ALMACEN', 'RESTAURANT'])) {
+                $tipoCaja = self::TIPO_CAJA_MODULO_VENTAS;
+            }
+
             // Verificar que no tenga una caja abierta
-            $cajaExistente = Caja::cajaAbiertaUsuario(Auth::id());
+            $cajaExistente = Caja::cajaAbiertaUsuario(Auth::id(), $tipoCaja);
             
             if ($cajaExistente) {
                 return response()->json([
@@ -55,6 +119,7 @@ class VentasController extends Controller
             // Crear nueva caja
             $caja = Caja::create([
                 'user_id' => Auth::id(),
+                'tipo_caja' => $tipoCaja,
                 'fecha_apertura' => now(),
                 'monto_inicial' => $request->monto_inicial,
                 'observaciones' => "APERTURA:".$request->observaciones
@@ -85,7 +150,7 @@ class VentasController extends Controller
 
         $user = Auth::user();
         
-        if (!\Hash::check($request->password, $user->password)) {
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => 'ERROR',
                 'message' => 'Contraseña incorrecta'
@@ -104,7 +169,7 @@ class VentasController extends Controller
     public function obtenerInfoCaja()
     {
         try {
-            $caja = Caja::cajaAbiertaUsuario(Auth::id());
+            $caja = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
             
             if (!$caja) {
                 return response()->json([
@@ -208,7 +273,7 @@ class VentasController extends Controller
     public function cerrarCaja(CierreCajaRequest $request)
     {
         try {
-            $caja = Caja::cajaAbiertaUsuario(Auth::id());
+            $caja = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
             
             if (!$caja) {
                 return response()->json([
@@ -255,21 +320,21 @@ class VentasController extends Controller
         $tipo = $request->input('tipo');
 
         if ($tipo == 1) {
-            $products = Producto::select('uuid', 'descripcion', 'precio_venta')
+            $products = Producto::select('uuid', 'codigo', 'descripcion', 'precio_venta', 'imagen')
                 ->where('codigo', $query)
                 ->get();
 
-            $promotions = Promocion::select('uuid', 'nombre as descripcion', 'precio_venta')
+            $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
                 ->where('codigo', $query)
                 ->get();
         } else {
-            $products = Producto::select('uuid', 'descripcion', 'precio_venta')
+            $products = Producto::select('uuid', 'codigo', 'descripcion', 'precio_venta', 'imagen')
                 ->where(function($q) use ($query) {
                     $q->where('descripcion', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
                 })->get();
 
-            $promotions = Promocion::select('uuid', 'nombre as descripcion', 'precio_venta')
+            $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
                 ->where(function($q) use ($query) {
                     $q->where('nombre', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
@@ -495,7 +560,7 @@ class VentasController extends Controller
         
         try {
             // Obtener caja abierta del usuario
-            $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id());
+            $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
             
             if (!$cajaAbierta) {
                 return response()->json([
@@ -863,7 +928,41 @@ class VentasController extends Controller
      */
     public function generarTicketPDF($ventaId)
     {
-        $venta = Venta::with(['detalles', 'usuario', 'formasPago'])->findOrFail($ventaId);
+        $venta = Venta::with(['detalles', 'usuario', 'formasPago', 'caja'])->findOrFail($ventaId);
+
+        $tipoNegocio = Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var');
+        $esVentaRestaurant = strtolower(trim((string) $tipoNegocio)) === 'restaurant';
+
+        if ($esVentaRestaurant) {
+            $comanda = null;
+
+            $movimientoComanda = HistorialMovimientos::where('num_doc', (string) $venta->id)
+                ->where('tipo_mov', 'VENTA')
+                ->where('obs', 'like', 'Cierre comanda %')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($movimientoComanda && preg_match('/Cierre comanda\s+(.+)$/u', (string) $movimientoComanda->obs, $coincidencia)) {
+                $numeroComanda = trim($coincidencia[1]);
+
+                $comanda = Comanda::with(['mesa', 'detalles.producto', 'user', 'garzon'])
+                    ->where('numero_comanda', $numeroComanda)
+                    ->first();
+            }
+
+            if ($comanda) {
+                $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+                $porcentajeGlobal = Globales::where('nom_var', 'PORCENTAJE_PROPINA')->value('valor_var');
+                $porcentajePropinaGlobal = is_null($porcentajeGlobal) ? 10 : (float) $porcentajeGlobal;
+                $porcentajePropinaGlobal = max(0, min(100, $porcentajePropinaGlobal));
+                $esTicketPago = true;
+
+                $pdf = Pdf::loadView('restaurant.ticket_comanda', compact('comanda', 'corporateData', 'venta', 'esTicketPago', 'porcentajePropinaGlobal'));
+                $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+
+                return $pdf->stream('ticket-comanda-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
+            }
+        }
         
         // Cargar datos corporativos
         $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
@@ -898,7 +997,7 @@ class VentasController extends Controller
             $fechaHasta = $request->input('fecha_hasta');
             
             // Query base
-            $query = Venta::with(['usuario', 'detalles', 'formasPago']);
+            $query = Venta::with(['usuario', 'detalles', 'formasPago', 'caja']);
             
             // Si el usuario NO tiene permiso para ver todas las ventas, solo mostrar las propias
             if (!puedeVerTodasVentas()) {
@@ -919,6 +1018,8 @@ class VentasController extends Controller
             
             // Formatear datos para DataTable
             $data = $ventas->map(function ($venta) {
+                $esTicketRestaurant = strtoupper((string) optional($venta->caja)->tipo_caja) === 'RESTAURANT';
+
                 // Contar productos
                 $cantidadProductos = $venta->detalles->count();
                 
@@ -961,10 +1062,11 @@ class VentasController extends Controller
                     'total' => '$' . number_format($venta->total, 0, ',', '.'),
                     'total_raw' => (int)$venta->total,
                     'forma_pago' => $formaPago,
+                    'origen_ticket' => $esTicketRestaurant ? 'RESTAURANT' : 'VENTA',
                     'productos' => $cantidadProductos . ' ' . ($cantidadProductos == 1 ? 'producto' : 'productos'),
                     'estado' => $venta->estado,
                     'actions' => '
-                        <button class="btn btn-sm btn-primary ver-ticket" data-venta-id="' . $venta->id . '" data-toggle="tooltip" title="Ver ticket">
+                        <button class="btn btn-sm btn-primary ver-ticket" data-venta-id="' . $venta->id . '" data-ticket-origen="' . ($esTicketRestaurant ? 'RESTAURANT' : 'VENTA') . '" data-toggle="tooltip" title="Ver ticket">
                             <i class="fa fa-print"></i>
                         </button>
                         ' . $botonesAnular . '
@@ -1006,6 +1108,17 @@ class VentasController extends Controller
                 // Obtener producto para verificar tipo
                 $producto = Producto::where('uuid', $detalle->producto_uuid)->first();
                 $tipo = $producto->tipo ?? 'simple';
+
+                if (!$producto) {
+                    $uuidReceta = str_starts_with((string) $detalle->producto_uuid, 'RECETA-')
+                        ? substr((string) $detalle->producto_uuid, 7)
+                        : (string) $detalle->producto_uuid;
+
+                    $esReceta = Receta::where('uuid', $uuidReceta)->exists();
+                    if ($esReceta) {
+                        $tipo = 'RECETA';
+                    }
+                }
                 
                 return [
                     'id' => $detalle->id,
@@ -1195,7 +1308,7 @@ class VentasController extends Controller
                     ]);
                     
                     foreach ($receta->ingredientes as $ingrediente) {
-                        if ($ingrediente->producto && $ingrediente->producto->tipo === 'P') {
+                        if ($ingrediente->producto && in_array($ingrediente->producto->tipo, ['P', 'I'], true)) {
                             $cantidadDevolver = $ingrediente->cantidad * $cantidad;
                             $ingrediente->producto->stock += $cantidadDevolver;
                             $ingrediente->producto->save();
@@ -1265,6 +1378,48 @@ class VentasController extends Controller
                 ]);
             }
             
+            return;
+        }
+
+        // Si no es producto, verificar si es una receta por UUID directo o con prefijo legacy
+        $uuidReceta = str_starts_with((string) $detalle->producto_uuid, 'RECETA-')
+            ? substr((string) $detalle->producto_uuid, 7)
+            : (string) $detalle->producto_uuid;
+        $receta = Receta::with('ingredientes.producto')->where('uuid', $uuidReceta)->first();
+
+        if ($receta) {
+            Log::info('Devolviendo stock de receta por UUID', [
+                'receta_id' => $receta->id,
+                'cantidad' => $cantidad,
+                'ticket' => $ticketNum,
+            ]);
+
+            foreach ($receta->ingredientes as $ingrediente) {
+                if ($ingrediente->producto && in_array($ingrediente->producto->tipo, ['P', 'I'], true)) {
+                    $cantidadDevolver = $ingrediente->cantidad * $cantidad;
+                    $ingrediente->producto->stock += $cantidadDevolver;
+                    $ingrediente->producto->save();
+
+                    try {
+                        HistorialMovimientos::registrarMovimiento([
+                            'producto_id' => $ingrediente->producto->id,
+                            'cantidad' => $cantidadDevolver,
+                            'stock' => $ingrediente->producto->stock,
+                            'tipo_mov' => 'ANULACIÓN',
+                            'fecha' => now(),
+                            'num_doc' => (string) $ticketNum,
+                            'obs' => 'Anulación de venta ticket ' . $ticketNum . ' - Ingrediente de receta: ' . ($receta->nombre ?? 'RECETA') . ' - Motivo: ' . $motivo . ' - Usuario: ' . $user->name,
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Error al registrar movimiento receta por UUID', [
+                            'producto_id' => $ingrediente->producto->id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
+                }
+            }
+
             return;
         }
         

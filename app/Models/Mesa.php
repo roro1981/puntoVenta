@@ -32,6 +32,6 @@ class Mesa extends Model
 
     public function comandaAbierta()
     {
-        return $this->hasOne(Comanda::class)->where('estado', 'ABIERTA')->latest();
+        return $this->hasOne(Comanda::class)->whereIn('estado', ['ABIERTA', 'EN CONSUMO', 'PENDIENTE DE PAGO'])->latest();
     }
 }

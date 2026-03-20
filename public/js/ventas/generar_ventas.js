@@ -1,4 +1,6 @@
 $(document).ready(function() {
+    const EVENT_NS = '.ventasGenerar';
+
     // Verificar apertura de caja
     if (typeof cajaAbierta !== 'undefined' && !cajaAbierta) {
         $('#modalAperturaCaja').modal('show');
@@ -7,6 +9,15 @@ $(document).ready(function() {
     cargarBorradores();
     let cart = [];
     let alerts = [];
+    let addByCodeInProgress = false;
+    let quantityInputTimers = {};
+    let lastPriceSignature = '';
+    let inFlightPriceSignature = '';
+    let inFlightPricePromise = null;
+    const productByCodeCache = new Map();
+    const stockInFlight = new Map();
+    const stockCache = new Map();
+    const STOCK_CACHE_TTL_MS = 1200;
 
     function pushAlertFromResp(resp, context = {}) {
         try {
@@ -132,10 +143,54 @@ $(document).ready(function() {
         return '$ ' + new Intl.NumberFormat('es-CL').format(amount);
     }
 
+    function getProductImageUrl(product) {
+        if (!product || !product.imagen) {
+            return '/img/fotos_prod/sin_imagen.jpg';
+        }
+
+        const image = String(product.imagen).trim();
+        if (!image) return '/img/fotos_prod/sin_imagen.jpg';
+        if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/')) {
+            return image;
+        }
+        return '/img/fotos_prod/' + image;
+    }
+
+    function showProductPreview(product) {
+        if (!product) return;
+        const nombre = product.descripcion || product.nombre || 'Producto';
+        const codigo = product.codigo ? `<div style="color:#666;margin-top:4px">Código: ${product.codigo}</div>` : '';
+        const precio = typeof product.precio_venta !== 'undefined'
+            ? `<div style="margin-top:6px;font-weight:600">Precio: ${formatCurrency(product.precio_venta)}</div>`
+            : '';
+
+        Swal.fire({
+            title: nombre,
+            imageUrl: getProductImageUrl(product),
+            imageWidth: 150,
+            imageHeight: 150,
+            html: `${codigo}${precio}`,
+            showConfirmButton: true,
+            confirmButtonText: 'Cerrar'
+        });
+    }
+
     // Llama al endpoint backend para verificar stock de producto o promocion
     function verificarStock(uuid, cantidad) {
-        // devolver el jqXHR para poder encadenar .done()/.fail()
-        return $.ajax({
+        const normalizedQty = (parseFloat(cantidad) || 0).toFixed(4);
+        const key = `${uuid}|${normalizedQty}`;
+        const now = Date.now();
+
+        const cached = stockCache.get(key);
+        if (cached && (now - cached.ts) <= STOCK_CACHE_TTL_MS) {
+            return $.Deferred().resolve(cached.resp).promise();
+        }
+
+        if (stockInFlight.has(key)) {
+            return stockInFlight.get(key);
+        }
+
+        const jqxhr = $.ajax({
             url: '/ventas/verificar-stock',
             method: 'POST',
             data: {
@@ -144,6 +199,157 @@ $(document).ready(function() {
                 cantidad: cantidad
             }
         });
+
+        stockInFlight.set(key, jqxhr);
+        jqxhr.done(function(resp) {
+            stockCache.set(key, { resp: resp, ts: Date.now() });
+        }).always(function() {
+            stockInFlight.delete(key);
+        });
+
+        return jqxhr;
+    }
+
+    function obtenerPrecioPorCantidad(uuid, cantidad, precioBase) {
+        return $.ajax({
+            url: '/ventas/precio-por-cantidad',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                _token: $('#token').val(),
+                uuid: uuid,
+                cantidad: cantidad,
+                precio_base: precioBase
+            }
+        });
+    }
+
+    function actualizarPreciosPorRangoCarrito(callback) {
+        if (!cart.length) {
+            lastPriceSignature = '';
+            if (typeof callback === 'function') callback();
+            return;
+        }
+
+        const cantidadPorUuid = {};
+        cart.forEach(function(item) {
+            if (!item.uuid) return;
+            cantidadPorUuid[item.uuid] = (cantidadPorUuid[item.uuid] || 0) + (parseFloat(item.quantity) || 0);
+        });
+
+        const uuids = Object.keys(cantidadPorUuid).sort();
+        if (!uuids.length) {
+            if (typeof callback === 'function') callback();
+            return;
+        }
+
+        const signature = uuids
+            .map(function(uuid) {
+                return `${uuid}:${(parseFloat(cantidadPorUuid[uuid]) || 0).toFixed(4)}`;
+            })
+            .join('|');
+
+        if (signature === lastPriceSignature) {
+            if (typeof callback === 'function') callback();
+            return;
+        }
+
+        if (inFlightPricePromise && inFlightPriceSignature === signature) {
+            inFlightPricePromise.finally(function() {
+                if (typeof callback === 'function') callback();
+            });
+            return;
+        }
+
+        const basePorUuid = {};
+        cart.forEach(function(item) {
+            if (!item.uuid) return;
+            if (typeof basePorUuid[item.uuid] === 'undefined') {
+                basePorUuid[item.uuid] = parseFloat(item.precio_venta) || 0;
+            }
+        });
+
+        inFlightPriceSignature = signature;
+        const promesas = uuids.map(function(uuid) {
+            return obtenerPrecioPorCantidad(uuid, cantidadPorUuid[uuid], basePorUuid[uuid])
+                .then(function(resp) {
+                    if (resp && resp.status === 'OK' && typeof resp.precio_unitario !== 'undefined') {
+                        return {
+                            uuid: uuid,
+                            precio: parseFloat(resp.precio_unitario)
+                        };
+                    }
+                    return null;
+                })
+                .catch(function() {
+                    return null;
+                });
+        });
+
+        const currentPromise = Promise.all(promesas)
+            .then(function(results) {
+                if (inFlightPriceSignature !== signature) return;
+
+                const nuevosPrecios = {};
+                (results || []).forEach(function(row) {
+                    if (!row || typeof row.uuid === 'undefined') return;
+                    if (isNaN(row.precio)) return;
+                    nuevosPrecios[row.uuid] = row.precio;
+                });
+
+                if (Object.keys(nuevosPrecios).length) {
+                    cart.forEach(function(item) {
+                        if (typeof nuevosPrecios[item.uuid] !== 'undefined') {
+                            item.precio_venta = nuevosPrecios[item.uuid];
+                        }
+                    });
+                }
+
+                lastPriceSignature = signature;
+            });
+
+        inFlightPricePromise = currentPromise;
+
+        currentPromise.finally(function() {
+            if (inFlightPricePromise === currentPromise) {
+                inFlightPricePromise = null;
+                inFlightPriceSignature = '';
+            }
+            if (typeof callback === 'function') callback();
+        });
+    }
+
+    function actualizarPrecioPorRangoDeUuid(uuid, callback) {
+        if (!uuid) {
+            if (typeof callback === 'function') callback();
+            return;
+        }
+
+        const cantidadTotal = getCartTotalQuantity(uuid);
+        if (cantidadTotal <= 0) {
+            if (typeof callback === 'function') callback();
+            return;
+        }
+
+        const itemBase = cart.find(function(item) { return item.uuid === uuid; });
+        const precioBase = itemBase ? (parseFloat(itemBase.precio_venta) || 0) : 0;
+
+        obtenerPrecioPorCantidad(uuid, cantidadTotal, precioBase)
+            .done(function(resp) {
+                if (resp && resp.status === 'OK' && typeof resp.precio_unitario !== 'undefined') {
+                    const nuevoPrecio = parseFloat(resp.precio_unitario);
+                    if (!isNaN(nuevoPrecio)) {
+                        cart.forEach(function(item) {
+                            if (item.uuid === uuid) {
+                                item.precio_venta = nuevoPrecio;
+                            }
+                        });
+                    }
+                }
+            })
+            .always(function() {
+                if (typeof callback === 'function') callback();
+            });
     }
 
     function updateTotal() {
@@ -171,6 +377,9 @@ $(document).ready(function() {
             let lineTotal = Math.round(item.precio_venta * item.quantity * (1 - discount/100));
             const rowStyle = item.insufficient ? 'background-color:#ffe6e6;' : '';
             const insuffBadge = item.insufficient ? '<span class="badge badge-danger" style="margin-left:8px;">Faltante</span>' : '';
+            const photoBtn = item.imagen
+                ? `<button type="button" class="btn btn-link p-0 view-photo-btn" data-index="${index}" title="Ver foto" style="margin-left:8px;color:#007bff;vertical-align:middle;"><i class="fa fa-camera"></i></button>`
+                : '';
             return `
             <div class="product-row" data-id="${item.uuid}" data-index="${index}" style="${rowStyle}">
                 <div class="quantity-controls">
@@ -179,7 +388,7 @@ $(document).ready(function() {
                     <button class="quantity-btn plus-btn">+</button>
                 </div>
                 <div class="product-info">
-                    <div class="product-name">${item.descripcion}</div>
+                    <div class="product-name">${item.descripcion}${photoBtn}</div>
                     <div class="product-price">$/unidad: ${formatCurrency(item.precio_venta)} ${insuffBadge}</div>
                 </div>
                 <div class="product-total">${formatCurrency(lineTotal)}</div>
@@ -198,10 +407,14 @@ $(document).ready(function() {
         updateTotal();
     }
 
-    $('#product-code').on('keypress', function(e) {
+    $('#product-code').off('keypress' + EVENT_NS).on('keypress' + EVENT_NS, function(e) {
         if(e.which === 13) { 
+            e.preventDefault();
+            if (addByCodeInProgress) return;
+
             let input = $(this);
             let inputValue = input.val().trim();
+            if (!inputValue) return;
             
             // Detectar si viene con formato cantidad*codigo (ej: 2*0001 o 0.5*0001)
             let quantity = 1;
@@ -217,13 +430,45 @@ $(document).ready(function() {
                     }
                 }
             }
+
+            const cachedProduct = productByCodeCache.get(code);
+            if (cachedProduct) {
+                const existingQty = getCartTotalQuantity(cachedProduct.uuid);
+                const totalRequested = existingQty + quantity;
+                verificarStock(cachedProduct.uuid, totalRequested).done(function(resp){
+                    if (resp.status === 'OK') {
+                        cart.push({
+                            uuid: cachedProduct.uuid,
+                            descripcion: cachedProduct.descripcion,
+                            precio_venta: cachedProduct.precio_venta,
+                            imagen: cachedProduct.imagen || '',
+                            quantity: quantity,
+                            discount: 0
+                        });
+                        renderCart();
+                        actualizarPrecioPorRangoDeUuid(cachedProduct.uuid, function() {
+                            renderCart();
+                        });
+                        input.val('');
+                    } else {
+                        toastr.error(resp.message || 'No se puede agregar el producto');
+                    }
+                }).fail(function() {
+                    toastr.error('Error verificando stock');
+                }).always(function() {
+                    addByCodeInProgress = false;
+                });
+                return;
+            }
             
+            addByCodeInProgress = true;
             $.ajax({
                 url: '/ventas/buscarProducto',
                 method: 'GET',
                 data: { q: code, tipo:1 },
                 success: function(product) {
                     if(product.length > 0){
+                        productByCodeCache.set(code, product[0]);
                         // verificar stock antes de añadir (asíncrono) - incluyendo cantidad total del mismo producto en carrito
                         const existingQty = getCartTotalQuantity(product[0].uuid);
                         const totalRequested = existingQty + quantity;
@@ -233,10 +478,14 @@ $(document).ready(function() {
                                     uuid: product[0].uuid,
                                     descripcion: product[0].descripcion,
                                     precio_venta: product[0].precio_venta,
+                                    imagen: product[0].imagen || '',
                                     quantity: quantity,
                                     discount: 0
                                 });
                                 renderCart();
+                                actualizarPrecioPorRangoDeUuid(product[0].uuid, function() {
+                                    renderCart();
+                                });
                                 input.val('');
                             } else {
                                 // mostrar mensaje con detalle si disponible
@@ -266,10 +515,14 @@ $(document).ready(function() {
                                         uuid: product[0].uuid,
                                         descripcion: product[0].descripcion,
                                         precio_venta: product[0].precio_venta,
+                                        imagen: product[0].imagen || '',
                                         quantity: quantity,
                                         discount: 0
                                     });
                                     renderCart();
+                                    actualizarPrecioPorRangoDeUuid(product[0].uuid, function() {
+                                        renderCart();
+                                    });
                                     input.val('');
                                 } else {
                                     toastr.error(resp.message || 'Error verificando stock');
@@ -277,18 +530,25 @@ $(document).ready(function() {
                             } else {
                                 toastr.error('Error verificando stock');
                             }
+                        }).always(function() {
+                            addByCodeInProgress = false;
                         });
                         
                     }else{
                         toastr.error("Producto no existe");
+                        addByCodeInProgress = false;
                     }
                     
+                },
+                error: function() {
+                    toastr.error('Error buscando producto');
+                    addByCodeInProgress = false;
                 }
             });
         }
     });
 
-    $(document).on('click', '.plus-btn', function() {
+    $(document).off('click' + EVENT_NS, '.plus-btn').on('click' + EVENT_NS, '.plus-btn', function() {
         let index = $(this).closest('.product-row').data('index');
         // incrementar y verificar stock (incluyendo cantidad de otros items del mismo producto)
         const newQty = cart[index].quantity + 1;
@@ -313,7 +573,9 @@ $(document).ready(function() {
                 toastr.error('Promoción con faltantes. Revise los componentes.');
                 pushAlertFromResp(resp);
             }
-            renderCart();
+            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                renderCart();
+            });
         }).fail(function(){
             toastr.error('Error verificando stock');
         });
@@ -328,7 +590,9 @@ $(document).ready(function() {
             cart[index].insufficient = false;
             // si al reducir queda sin insuficiencia, limpiar alerta asociada
             removeAlertByUuid(cart[index].uuid);
-            renderCart();
+            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                renderCart();
+            });
         }
     });
 
@@ -345,8 +609,11 @@ $(document).ready(function() {
         if (item && item.uuid) {
             removeAlertByUuid(item.uuid);
         }
+        const uuidAfectado = item ? item.uuid : null;
         cart.splice(index, 1);
-        renderCart();
+        actualizarPrecioPorRangoDeUuid(uuidAfectado, function() {
+            renderCart();
+        });
     });
 
     $('#product-search').on('keyup', function() {
@@ -365,7 +632,7 @@ $(document).ready(function() {
                     <div class="product-item">
                         <span>${product.descripcion}</span>
                         <div class="product-actions">
-                            <i class="fa fa-plus action-icon add-to-cart" data-uuid="${product.uuid}" data-name="${product.descripcion}" data-price="${product.precio_venta}"></i>
+                            <i class="fa fa-plus action-icon add-to-cart" data-uuid="${product.uuid}" data-code="${product.codigo || ''}" data-name="${product.descripcion}" data-price="${product.precio_venta}" data-image="${product.imagen || ''}"></i>
                         </div>
                     </div>
                 `).join('');
@@ -375,11 +642,13 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on('click', '.add-to-cart', function() {
+    $(document).off('click' + EVENT_NS, '.add-to-cart').on('click' + EVENT_NS, '.add-to-cart', function() {
         let product = {
             uuid: $(this).data('uuid'),
+            codigo: $(this).data('code'),
             descripcion: $(this).data('name'),
             precio_venta: $(this).data('price'),
+            imagen: $(this).data('image'),
             quantity: 1,
             discount: 0
         };
@@ -391,6 +660,9 @@ $(document).ready(function() {
             if (resp.status === 'OK') {
                 cart.push(product);
                 renderCart();
+                actualizarPrecioPorRangoDeUuid(product.uuid, function() {
+                    renderCart();
+                });
             } else {
                 if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
                     toastr.error('Sin stock: ' + (resp.product.descripcion || resp.product.codigo || product.descripcion));
@@ -411,6 +683,16 @@ $(document).ready(function() {
         }).fail(function(){
             toastr.error('Error verificando stock');
         });
+    });
+
+    $(document).off('click' + EVENT_NS, '.view-photo-btn').on('click' + EVENT_NS, '.view-photo-btn', function() {
+        const index = $(this).data('index');
+        const item = cart[index];
+        if (!item || !item.imagen) {
+            toastr.info('Este producto no tiene foto');
+            return;
+        }
+        showProductPreview(item);
     });
 
     $('#cancel-btn').click(function() {
@@ -1012,7 +1294,7 @@ $(document).ready(function() {
         });
     });
 
-    $('#cart-items').on('keypress', '.quantity-input', function (e) {
+    $('#cart-items').off('keypress' + EVENT_NS, '.quantity-input').on('keypress' + EVENT_NS, '.quantity-input', function (e) {
         let char = String.fromCharCode(e.which);
         let allowed = /^[0-9.]$/;
     
@@ -1024,9 +1306,9 @@ $(document).ready(function() {
         if (char === '.' && $(this).val().includes('.')) {
             e.preventDefault();
         }
-    })
+    });
 
-    $('#cart-items').on('input', '.quantity-input', function () {
+    $('#cart-items').off('input' + EVENT_NS, '.quantity-input').on('input' + EVENT_NS, '.quantity-input', function () {
         let $input = $(this);
         let index = $input.closest('.product-row').data('index');
 
@@ -1053,51 +1335,51 @@ $(document).ready(function() {
             return; // Permitir escribir "0." antes del decimal o valores que terminan en punto
         }
 
-        // Verificar stock para la cantidad ingresada (incluyendo cantidad de otros items del mismo producto)
-        const otherQty = getCartTotalQuantity(cart[index].uuid, index);
-        const totalRequested = otherQty + newQuantity;
-        verificarStock(cart[index].uuid, totalRequested).done(function(resp){
-            if (resp.status === 'OK') {
-                cart[index].quantity = newQuantity;
-                cart[index].insufficient = false;
-                removeAlertByUuid(cart[index].uuid);
-            } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                // Permitir la cantidad solicitada, pero marcar insuficiente y mostrar alerta
-                const available = resp.product.stock || 0;
-                cart[index].quantity = newQuantity;
-                cart[index].insufficient = (available < totalRequested);
-                toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
-                pushAlertFromResp(resp, { requested: totalRequested });
-            } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                // Permitir la cantidad solicitada para la promoción, marcar insuficiente y mostrar alerta
-                cart[index].quantity = newQuantity;
-                cart[index].insufficient = true;
-                toastr.error('Promoción con faltantes. Revise los componentes.');
-                pushAlertFromResp(resp);
-            } else {
-                // Otros errores: actualizar la cantidad de todas formas
-                cart[index].quantity = newQuantity;
-            }
+        clearTimeout(quantityInputTimers[index]);
+        quantityInputTimers[index] = setTimeout(function() {
+            if (!cart[index]) return;
 
-            // Actualizar solo el total de ese producto
-            let total = Math.round(cart[index].precio_venta * cart[index].quantity * (1 - (parseFloat(cart[index].discount)||0)/100));
-            $input.closest('.product-row').find('.product-total').text(formatCurrency(total));
+            // Verificar stock para la cantidad ingresada (incluyendo cantidad de otros items del mismo producto)
+            const otherQty = getCartTotalQuantity(cart[index].uuid, index);
+            const totalRequested = otherQty + newQuantity;
+            verificarStock(cart[index].uuid, totalRequested).done(function(resp){
+                if (resp.status === 'OK') {
+                    cart[index].quantity = newQuantity;
+                    cart[index].insufficient = false;
+                    removeAlertByUuid(cart[index].uuid);
+                } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
+                    // Permitir la cantidad solicitada, pero marcar insuficiente y mostrar alerta
+                    const available = resp.product.stock || 0;
+                    cart[index].quantity = newQuantity;
+                    cart[index].insufficient = (available < totalRequested);
+                    toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
+                    pushAlertFromResp(resp, { requested: totalRequested });
+                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
+                    // Permitir la cantidad solicitada para la promoción, marcar insuficiente y mostrar alerta
+                    cart[index].quantity = newQuantity;
+                    cart[index].insufficient = true;
+                    toastr.error('Promoción con faltantes. Revise los componentes.');
+                    pushAlertFromResp(resp);
+                } else {
+                    // Otros errores: actualizar la cantidad de todas formas
+                    cart[index].quantity = newQuantity;
+                }
 
-            // Actualizar el total general y re-renderizar para reflejar la etiqueta Faltante
-            updateTotal();
-            renderCart();
-        }).fail(function(){
-            // En caso de error de red, permitir la cantidad de todas formas
-            cart[index].quantity = newQuantity;
-            let total = Math.round(cart[index].precio_venta * cart[index].quantity * (1 - (parseFloat(cart[index].discount)||0)/100));
-            $input.closest('.product-row').find('.product-total').text(formatCurrency(total));
-            updateTotal();
-            renderCart();
-        });
+                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                    renderCart();
+                });
+            }).fail(function(){
+                // En caso de error de red, permitir la cantidad de todas formas
+                cart[index].quantity = newQuantity;
+                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                    renderCart();
+                });
+            });
+        }, 180);
     });
 
     // Validar cantidad cuando el usuario sale del campo
-    $('#cart-items').on('blur', '.quantity-input', function () {
+    $('#cart-items').off('blur' + EVENT_NS, '.quantity-input').on('blur' + EVENT_NS, '.quantity-input', function () {
         let $input = $(this);
         let value = parseFloat($input.val());
         
@@ -1105,7 +1387,9 @@ $(document).ready(function() {
             $input.val('1');
             let index = $input.closest('.product-row').data('index');
             cart[index].quantity = 1;
-            renderCart();
+            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                renderCart();
+            });
         }
     });
 
@@ -1133,7 +1417,7 @@ $(document).ready(function() {
                 }
             });
     });
-    $('#btnCargarVenta').on('click', function () {
+    $('#btnCargarVenta').off('click' + EVENT_NS).on('click' + EVENT_NS, function () {
 
         // Recolectar filas y verificar stock en paralelo
         const rows = [];
@@ -1185,7 +1469,9 @@ $(document).ready(function() {
                 }
             });
 
-            renderCart();
+            actualizarPreciosPorRangoCarrito(function() {
+                renderCart();
+            });
             $('#modalDetalleBorrador').modal('hide');
             eliminarBorrador($('#uuid_borrador').val());
         }).catch(function(){
@@ -1270,7 +1556,8 @@ $('#btnConfirmarAperturaCaja').click(function() {
         data: {
             _token: $('#token').val(),
             monto_inicial: montoInicial,
-            observaciones: observaciones
+            observaciones: observaciones,
+            tipo_caja_origen: 'ALMACEN'
         },
         beforeSend: function() {
             $('#btnConfirmarAperturaCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Abriendo caja...');

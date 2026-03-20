@@ -14,6 +14,8 @@ class DetalleComanda extends Model
     protected $fillable = [
         'comanda_id',
         'producto_id',
+        'tipo_item',
+        'receta_id',
         'cantidad',
         'precio_unitario',
         'subtotal',
@@ -36,5 +38,10 @@ class DetalleComanda extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+
+    public function receta()
+    {
+        return $this->belongsTo(Receta::class, 'receta_id');
     }
 }

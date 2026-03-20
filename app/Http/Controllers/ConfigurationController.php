@@ -83,10 +83,16 @@ class ConfigurationController extends Controller
     public function globalesTable()
     {
         $query = Globales::select('globales.id', 'globales.nom_var', 'globales.valor_var', 'globales.descrip_var');
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
         
         // Solo mostrar TIPO_NEGOCIO si el usuario es Rodrigo Panes
         if (auth()->user()->name_complete !== 'Rodrigo Panes') {
             $query->where('nom_var', '!=', 'TIPO_NEGOCIO');
+        }
+
+        // Mostrar PORCENTAJE_PROPINA solo si TIPO_NEGOCIO es RESTAURANT
+        if ($tipoNegocio !== 'RESTAURANT') {
+            $query->where('nom_var', '!=', 'PORCENTAJE_PROPINA');
         }
         
         $globales = $query->get()

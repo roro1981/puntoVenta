@@ -30,7 +30,9 @@ class Promocion extends Model
         'fec_creacion',
         'user_creacion',
         'fec_modificacion',
-        'user_modificacion'
+        'user_modificacion',
+        'fec_eliminacion',
+        'user_eliminacion'
     ];
 
     public function detallePromocion()
@@ -129,8 +131,19 @@ class Promocion extends Model
         $promocion->estado = 'Inactivo';
         $promocion->fec_modificacion = now();
         $promocion->user_modificacion = auth()->user()->name;
+        $promocion->fec_eliminacion = now();
+        $promocion->user_eliminacion = optional(auth()->user())->name ?? 'SISTEMA';
         $promocion->save();
 
         return $promocion;
+    }
+
+    public function reactivarPromocion(): void
+    {
+        $this->update([
+            'estado'           => 'Activo',
+            'fec_eliminacion'  => null,
+            'user_eliminacion' => null,
+        ]);
     }
 }

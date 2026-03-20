@@ -12,7 +12,7 @@
             <hr style="height:1px;background-color: brown;width:100%;margin-top: 2pt;" />
         </div>
         
-        <div id="mesas-container" class="mesas-grid">
+        <div id="mesas-container-config" class="mesas-grid">
             <!-- Las mesas se cargarán dinámicamente aquí -->
         </div>
       </div>

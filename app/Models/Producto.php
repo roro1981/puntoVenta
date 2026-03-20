@@ -84,6 +84,12 @@ class Producto extends Model
     {
         return $this->hasMany(Borrador::class, 'product_uuid');
     }
+
+    private function currentUserName(): string
+    {
+        return optional(auth()->user())->name ?? 'SISTEMA';
+    }
+
     public function crearProducto(array $data)
     {
         $this->uuid = Str::uuid();
@@ -101,7 +107,7 @@ class Producto extends Model
         $this->imagen = $data['nom_foto'];
         $this->estado = 'Activo';
         $this->fec_creacion = now();
-        $this->user_creacion = auth()->user()->name;
+        $this->user_creacion = $this->currentUserName();
 
         $this->save();
 
@@ -122,7 +128,7 @@ class Producto extends Model
         $this->unidad_medida = $data['unidad_medida'];
         $this->imagen = $data['nom_foto'];
         $this->fec_modificacion = now();
-        $this->user_modificacion = auth()->user()->name;
+        $this->user_modificacion = $this->currentUserName();
 
         $this->update();
 
@@ -134,7 +140,16 @@ class Producto extends Model
         $this->update([
             'estado' => 'Inactivo',
             'fec_eliminacion' => now(),
-            'user_eliminacion' => auth()->user()->name,
+            'user_eliminacion' => $this->currentUserName(),
+        ]);
+    }
+
+    public function reactivateProduct(): void
+    {
+        $this->update([
+            'estado' => 'Activo',
+            'fec_eliminacion' => null,
+            'user_eliminacion' => null,
         ]);
     }
 }

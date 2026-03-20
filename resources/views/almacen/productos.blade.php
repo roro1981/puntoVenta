@@ -5,6 +5,8 @@
       <div style="width:100%">
         <div class='box-header' style="width:100%">
             <button class="btn btn-success" data-toggle="modal" id="nuevo_user" data-target="#modalNuevoProducto"><i class='fa fa fa-save'></i>Nuevo Producto</button>
+          <button class="btn btn-info" type="button" data-toggle="modal" data-target="#modalCargaMasivaProductos"><i class="fa fa-upload"></i>Carga Masiva Excel</button>
+          <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}"><i class="fa fa-download"></i>Descargar Plantilla Excel</a>
             <hr style="height:1px;background-color: brown;width:100%;margin-top: 2pt;" />
         </div>
         
@@ -249,4 +251,58 @@
   </div>
 </div>
         
+
+<div class="modal fade" id="modalCargaMasivaProductos" tabindex="-1" role="dialog" aria-labelledby="modalCargaMasivaProductosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalCargaMasivaProductosLabel">Carga Masiva de Productos por Excel</h3>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="importProductsExcelForm" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="archivo_excel">Archivo Excel</label>
+            <input type="file" class="form-control-file" id="archivo_excel" name="archivo_excel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <small class="form-text text-muted">La plantilla trae una hoja llamada Productos para cargar datos y otra hoja separada llamada Instrucciones.</small>
+          </div>
+        </form>
+
+        <div class="alert alert-info" style="margin-top: 15px;">
+          <strong>Columnas que debe completar en la hoja Productos:</strong>
+          <br>codigo: obligatorio y único.
+          <br>descripcion: obligatoria y única.
+          <br>precio_compra_neto: obligatorio.
+          <br>impuesto_1: obligatorio. Puede escribir el nombre del impuesto o su ID.
+          <br>impuesto_2: opcional. Puede escribir el nombre del impuesto, su ID o dejarlo vacío.
+          <br>precio_compra_bruto: opcional. Si lo deja vacío, el sistema lo calcula.
+          <br>precio_venta: obligatorio.
+          <br>stock_minimo: opcional.
+          <br>categoria: obligatoria. Debe escribir el nombre exacto de la categoría; el sistema la convierte al ID.
+          <br>unidad_medida: obligatoria. Acepta UN, L, KG, CJ o los textos UNIDAD, LITRO, KILOGRAMO, CAJA.
+          <br>tipo: obligatorio. Acepta P, S, I, PR, R o los textos PRODUCTO, NO AFECTO A STOCK, INSUMO, PROMOCION, RECETA.
+          <br>nom_foto: opcional. Solo debe informar una ruta ya existente en el sistema.
+        </div>
+
+        <div class="alert alert-warning">
+          <strong>Categorías activas en el sistema:</strong>
+          {{ $categorias->pluck('descripcion_categoria')->implode(', ') }}
+          <br><strong>Impuestos disponibles:</strong>
+          IVA: {{ $impuesto_iva->pluck('nom_imp')->implode(', ') }}
+          @if($impuesto_ad->count() > 0)
+            <br>Adicionales: {{ $impuesto_ad->pluck('nom_imp')->implode(', ') }}
+          @endif
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}">Descargar Plantilla</a>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-success" id="btnImportProductsExcel">Importar Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 

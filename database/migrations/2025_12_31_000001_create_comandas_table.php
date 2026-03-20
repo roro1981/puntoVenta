@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('mesa_id');
             $table->unsignedBigInteger('user_id'); // Mesero que atiende
             $table->string('numero_comanda', 20)->unique();
-            $table->enum('estado', ['ABIERTA', 'CERRADA', 'CANCELADA'])->default('ABIERTA');
+            $table->enum('estado', ['ABIERTA', 'EN CONSUMO', 'PENDIENTE DE PAGO', 'CERRADA'])->default('ABIERTA');
             $table->decimal('total', 10, 2)->default(0);
             $table->decimal('subtotal', 10, 2)->default(0);
             $table->decimal('impuestos', 10, 2)->default(0);

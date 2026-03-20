@@ -58,4 +58,9 @@ class Comanda extends Model
     {
         return $this->hasMany(DetalleComanda::class);
     }
+
+    public function historialEstados()
+    {
+        return $this->hasMany(HistorialEstadoComanda::class, 'comanda_id', 'id');
+    }
 }

@@ -15,6 +15,7 @@ class Caja extends Model
 
     protected $fillable = [
         'user_id',
+        'tipo_caja',
         'fecha_apertura',
         'fecha_cierre',
         'monto_inicial',
@@ -77,12 +78,17 @@ class Caja extends Model
     /**
      * Obtener caja abierta del usuario actual
      */
-    public static function cajaAbiertaUsuario($userId)
+    public static function cajaAbiertaUsuario($userId, $tipoCaja = null)
     {
-        return self::where('user_id', $userId)
+        $query = self::where('user_id', $userId)
             ->where('estado', 'abierta')
-            ->latest('fecha_apertura')
-            ->first();
+            ->latest('fecha_apertura');
+
+        if (!empty($tipoCaja)) {
+            $query->where('tipo_caja', $tipoCaja);
+        }
+
+        return $query->first();
     }
 
     /**

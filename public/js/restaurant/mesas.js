@@ -47,7 +47,7 @@ function cargarMesas() {
 }
 
 function renderizarMesas(mesas) {
-    const container = $('#mesas-container');
+    const container = $('#mesas-container-config');
     container.empty();
     
     mesas.forEach(function(mesa) {

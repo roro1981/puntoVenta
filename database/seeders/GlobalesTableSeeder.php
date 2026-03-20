@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class GlobalesTableSeeder extends Seeder
 {
@@ -15,7 +14,8 @@ class GlobalesTableSeeder extends Seeder
     {
         DB::table('globales')->insert([
             ['nom_var' => 'STOCK_NEGATIVO', 'valor_var' =>'0', 'descrip_var' =>'Permite o no stock negativo de productos 0:NO y 1:SI'],
-            ['nom_var' => 'TIPO_NEGOCIO', 'valor_var' =>'ALMACEN', 'descrip_var' =>'Determina si el negocio es almacen o restaurant']
+            ['nom_var' => 'TIPO_NEGOCIO', 'valor_var' =>'RESTAURANT', 'descrip_var' =>'Determina si el negocio es almacen o restaurant'],
+            ['nom_var' => 'PORCENTAJE_PROPINA', 'valor_var' =>'10', 'descrip_var' =>'Porcentaje de propina sugerida para comandas']
 
         ]);
     }

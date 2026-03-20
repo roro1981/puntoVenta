@@ -13,7 +13,11 @@ class Categoria extends Model
     protected $fillable = [
         'id',
         'descripcion_categoria',
-        'estado_categoria'
+        'estado_categoria',
+        'fec_creacion',
+        'user_creacion',
+        'fec_eliminacion',
+        'user_eliminacion',
     ];
 
     public $timestamps = false;
@@ -37,7 +41,9 @@ class Categoria extends Model
     {
         return Categoria::create([
             'descripcion_categoria' => strtoupper($categoriaRequest['descripcion_categoria']),
-            'estado_categoria' => 1
+            'estado_categoria' => 1,
+            'fec_creacion' => now(),
+            'user_creacion' => self::currentUserName(),
         ]);
     }
 
@@ -52,7 +58,23 @@ class Categoria extends Model
     public function deleteCategory()
     {
         $this->update([
-            'estado_categoria' => 0
+            'estado_categoria' => 0,
+            'fec_eliminacion' => now(),
+            'user_eliminacion' => self::currentUserName(),
         ]);
+    }
+
+    public function reactivateCategory(): void
+    {
+        $this->update([
+            'estado_categoria' => 1,
+            'fec_eliminacion' => null,
+            'user_eliminacion' => null,
+        ]);
+    }
+
+    private static function currentUserName(): string
+    {
+        return optional(auth()->user())->name ?? 'SISTEMA';
     }
 }

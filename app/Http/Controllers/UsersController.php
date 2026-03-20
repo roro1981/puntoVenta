@@ -9,7 +9,7 @@ use App\Models\MenuRole;
 use App\Models\Role;
 use App\Models\Submenu;
 use App\Models\User;
-use Psy\Readline\Userland;
+use App\Models\Globales;
 use Illuminate\Http\Request;
 use App\Http\Requests\UserRequest;
 use Illuminate\Support\Facades\Log;
@@ -68,8 +68,13 @@ class UsersController extends Controller
     {
         $menus = [];
         $role = $user->role;
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
 
         foreach ($role->submenus as $submenu) {
+            if ($this->debeOcultarSubmenuPorTipoNegocio($tipoNegocio, $submenu->submenu_route)) {
+                continue;
+            }
+
             $menuId = $submenu->menu->id;
 
             if (!isset($menus[$menuId])) {
@@ -90,6 +95,27 @@ class UsersController extends Controller
         }
 
         return array_values($menus);
+    }
+
+    private function debeOcultarSubmenuPorTipoNegocio(string $tipoNegocio, ?string $submenuRoute): bool
+    {
+        $ruta = strtolower(trim((string) $submenuRoute));
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            return in_array($ruta, [
+                '/generar_ventas',
+            ], true);
+        }
+
+        if ($tipoNegocio === 'ALMACEN') {
+            return in_array($ruta, [
+                '/generar_comandas',
+                '/cerrar_comandas',
+                '/restaurant/config-mesas',
+            ], true);
+        }
+
+        return false;
     }
 
     public function create(UserRequest $request)

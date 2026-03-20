@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
-use App\Models\FormaPago;
+use App\Models\Globales;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -24,7 +24,14 @@ class DatabaseSeeder extends Seeder
         $this->call(GlobalesTableSeeder::class);
         $this->call(ImpuestosTableSeeder::class);
         $this->call(CategoriasTableSeeder::class);
-        //$this->call(InsumosSeeder::class);
+
+        $tipoNegocio = (string) Globales::whereRaw('LOWER(nom_var) = ?', ['tipo_negocio'])
+            ->value('valor_var');
+
+        if (mb_strtoupper(trim($tipoNegocio), 'UTF-8') === 'RESTAURANT') {
+            $this->call(InsumosSeeder::class);
+        }
+
         $this->call(RegionSeeder::class);
         $this->call(FormasPagoTableSeeder::class);
         $this->call(ProductosTableSeeder::class);

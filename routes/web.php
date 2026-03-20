@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VentasController;
@@ -33,6 +31,8 @@ Route::get('/', function () {
 //menu almacen
 Route::get('/almacen/productos', [ProductosController::class, 'index']);
 Route::get('/almacen/productosCarga', [ProductosController::class, 'listProducts']);
+Route::get('/almacen/productos/plantilla-xlsx', [ProductosController::class, 'downloadProductsXlsxTemplate'])->name('productos.plantilla.xlsx');
+Route::post('/almacen/productos/importar-xlsx', [ProductosController::class, 'importProductsXlsx'])->name('productos.importar.xlsx');
 Route::get('/almacen/productos/{uuid}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
 Route::put('/almacen/productos/{uuid}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
 Route::delete('/almacen/productos/{prod}/delete', [ProductosController::class, 'deleteProd']);
@@ -70,6 +70,24 @@ Route::get('/almacen/precio_segun_cant/{uuid}/editar', [ProductosController::cla
 Route::put('/almacen/precio_segun_cant/{uuid}/actualizar', [ProductosController::class, 'updateRange']);
 Route::delete('/almacen/precio_segun_cant/{uuid}/delete', [ProductosController::class, 'deleteRange']);
 
+//menu re-activaciones
+Route::get('/reactivaciones/cats_elim', [ProductosController::class, 'indexDeletedCategories']);
+Route::get('/reactivaciones/cat_elim', [ProductosController::class, 'indexDeletedCategories']);
+Route::get('/reactivaciones/traeCategoriasEliminadas', [ProductosController::class, 'listDeletedCategories']);
+Route::put('/reactivaciones/{cat}/reactivar', [ProductosController::class, 'reactivateCategory']);
+Route::get('/reactivaciones/prods_elim', [ProductosController::class, 'indexDeletedProducts']);
+Route::get('/reactivaciones/traeProductosEliminados', [ProductosController::class, 'listDeletedProducts']);
+Route::put('/reactivaciones/prod/{uuid}/reactivar', [ProductosController::class, 'reactivateProduct']);
+Route::get('/reactivaciones/recetas_elim', [ProductosController::class, 'indexDeletedReceipes']);
+Route::get('/reactivaciones/traeRecetasEliminadas', [ProductosController::class, 'listDeletedReceipes']);
+Route::put('/reactivaciones/receta/{uuid}/reactivar', [ProductosController::class, 'reactivateReceipe']);
+Route::get('/reactivaciones/promos_elim', [ProductosController::class, 'indexDeletedPromos']);
+Route::get('/reactivaciones/traePromosEliminadas', [ProductosController::class, 'listDeletedPromos']);
+Route::put('/reactivaciones/promo/{uuid}/reactivar', [ProductosController::class, 'reactivatePromo']);
+Route::get('/reactivaciones/provs_elim', [ComprasController::class, 'indexDeletedProveedores']);
+Route::get('/reactivaciones/traeProveedoresEliminados', [ComprasController::class, 'listDeletedProveedores']);
+Route::put('/reactivaciones/prov/{uuid}/reactivar', [ComprasController::class, 'reactivateProveedor']);
+
 //menu compras
 Route::get('/compras/proveedores', [ComprasController::class, 'indexProveedores']);
 Route::get('/compras/proveedores_list', [ComprasController::class, 'listProveedores']);
@@ -97,6 +115,11 @@ Route::post('/compras/movimientos/grabar', [ComprasController::class, 'registrar
 
 //menu ventas
 Route::get('/ventas/generar_ventas', [VentasController::class, 'indexVentas']);
+Route::get('/ventas/cerrar_comandas', [ComandasController::class, 'indexCerrarComandas']);
+Route::get('/ventas/cerrar_comandas/pendientes', [ComandasController::class, 'obtenerComandasPendientesPago']);
+Route::get('/ventas/cerrar_comandas/info-caja', [ComandasController::class, 'obtenerInfoCajaCerrarComandas']);
+Route::post('/ventas/cerrar_comandas/cerrar-caja', [ComandasController::class, 'cerrarCajaCerrarComandas']);
+Route::post('/ventas/cerrar_comandas/cerrar/{comandaId}', [ComandasController::class, 'cerrarComanda']);
 Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
 Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword']);
 Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
@@ -110,6 +133,7 @@ Route::get('/ventas/detalle-ticket/{id}', [VentasController::class, 'obtenerDeta
 Route::post('/ventas/anular-ticket/{id}', [VentasController::class, 'anularTicket']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
 Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock']);
+Route::post('/ventas/precio-por-cantidad', [VentasController::class, 'obtenerPrecioPorCantidad']);
 Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
 Route::delete('/ventas/eliminar-borrador/{uuid_borrador}', [VentasController::class, 'eliminarBorrador']);
 Route::get('/ventas/traer-borradores', [VentasController::class, 'traer_borradores']);
@@ -159,14 +183,20 @@ Route::get('/restaurant/comandas/obtener-mesas', [ComandasController::class, 'ob
 Route::get('/restaurant/comandas/ver/{mesaId}', [ComandasController::class, 'verComanda']);
 Route::put('/restaurant/comandas/actualizar-comensales/{comandaId}', [ComandasController::class, 'actualizarComensales']);
 Route::get('/restaurant/comandas/obtener-productos', [ComandasController::class, 'obtenerProductos']);
+Route::post('/restaurant/comandas/verificar-stock-receta', [ComandasController::class, 'verificarStockReceta']);
 Route::get('/restaurant/comandas/obtener-garzones', [ComandasController::class, 'obtenerGarzones']);
 Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda']);
 Route::put('/restaurant/comandas/actualizar/{comandaId}', [ComandasController::class, 'actualizarComanda']);
+Route::put('/restaurant/comandas/cambiar-mesa/{comandaId}', [ComandasController::class, 'cambiarMesaComanda']);
+Route::put('/restaurant/comandas/solicitar-cuenta/{comandaId}', [ComandasController::class, 'solicitarCuenta']);
 Route::post('/restaurant/comandas/sincronizar-productos/{comandaId}', [ComandasController::class, 'sincronizarProductos']);
 Route::post('/restaurant/comandas/agregar-producto', [ComandasController::class, 'agregarProducto']);
 Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasController::class, 'actualizarProducto']);
 Route::delete('/restaurant/comandas/eliminar-producto/{detalleId}', [ComandasController::class, 'eliminarProducto']);
 Route::get('/restaurant/comandas/imprimir/{comandaId}', [ComandasController::class, 'imprimirComanda']);
+Route::get('/restaurant/comandas/ticket-pago/{comandaId}/{ventaId}', [ComandasController::class, 'imprimirTicketPagoComanda']);
+Route::get('/restaurant/comandas/layout-json', [ComandasController::class, 'obtenerLayoutMesas']);
+Route::post('/restaurant/comandas/layout-json', [ComandasController::class, 'guardarLayoutMesas']);
 
 //menu configuracion
 Route::get('/configuracion/datos_corp', [ConfigurationController::class, 'index']);

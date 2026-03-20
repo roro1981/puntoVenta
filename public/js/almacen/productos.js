@@ -4,6 +4,7 @@ $(document).ready(function () {
     $("#calcular-margen-editar").click(calcularPrecioVenta);
     $("#precio_venta").on("input", calcularMargen);
     $("#precio_venta_editar").on("input", calcularMargen);
+    $("#btnImportProductsExcel").on('click', importarProductosExcel);
 
     $(".upload").on('click', function () {
         var formData = new FormData();
@@ -55,6 +56,9 @@ $(document).ready(function () {
         return false;
     });
 
+});
+$('#modalCargaMasivaProductos').on('hidden.bs.modal', function () {
+    $('#importProductsExcelForm')[0].reset();
 });
 $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#producto_id').val('');
@@ -204,10 +208,11 @@ function cargaProductos() {
             { "data": "precio_venta" },
             { "data": "categoria" },
             { "data": "imagen" },
-            { "data": "fec_creacion" },
+            { "data": { "_": "fec_creacion", "sort": "fec_creacion_sort" } },
             { "data": "fec_modificacion" },
             { "data": "actions" }
         ],
+        "order": [[5, "desc"], [3, "asc"]],
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "pageLength": 10,
         "searching": true,
@@ -315,6 +320,46 @@ $('#createProdForm').submit(function (event) {
         }
     });
 });
+function importarProductosExcel() {
+    var inputFile = $('#archivo_excel')[0];
+
+    if (!inputFile.files.length) {
+        toastr.warning('Debe seleccionar un archivo Excel para importar.');
+        return;
+    }
+
+    var formData = new FormData($('#importProductsExcelForm')[0]);
+
+    $.ajax({
+        type: 'POST',
+        url: '/almacen/productos/importar-xlsx',
+        data: formData,
+        headers: {
+            'X-CSRF-TOKEN': $('#token').val()
+        },
+        contentType: false,
+        processData: false,
+        success: function (response) {
+            $('#modalCargaMasivaProductos').modal('hide');
+            toastr.success(response.message);
+            $('#contenido').load('/almacen/productos');
+        },
+        error: function (xhr) {
+            if (xhr.status === 422) {
+                var mensaje = xhr.responseJSON.message || 'El archivo contiene errores de validación.';
+
+                if (xhr.responseJSON.details && xhr.responseJSON.details.length) {
+                    mensaje += '<br><br>' + xhr.responseJSON.details.join('<br>');
+                }
+
+                toastr.warning(mensaje, 'Carga masiva no procesada', { timeOut: 12000 });
+                return;
+            }
+
+            toastr.error('Ocurrió un error al importar el archivo Excel.');
+        }
+    });
+}
 $(document).on('click', '.eliminar', function (event) {
     event.preventDefault();
     var prodId = $(this).data('prod');

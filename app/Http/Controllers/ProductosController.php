@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ProductosPlantillaExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoriaRequest;
 use App\Http\Requests\ProductoRequest;
@@ -13,11 +14,30 @@ use App\Models\RangoPrecio;
 use App\Models\Receta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpParser\Node\Stmt\TryCatch;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductosController extends Controller
 {
+    private const PRODUCT_IMPORT_HEADERS = [
+        'codigo',
+        'descripcion',
+        'precio_compra_neto',
+        'impuesto_1',
+        'impuesto_2',
+        'precio_compra_bruto',
+        'precio_venta',
+        'stock_minimo',
+        'categoria',
+        'unidad_medida',
+        'tipo',
+        'nom_foto',
+    ];
+
     public function index()
     {
         $impuesto_iva = Impuestos::where('id', 1)->get();
@@ -28,6 +48,7 @@ class ProductosController extends Controller
     public function listProducts()
     {
         $products = Producto::select(
+            'productos.id',
             'productos.uuid',
             'productos.codigo',
             'productos.descripcion',
@@ -39,18 +60,23 @@ class ProductosController extends Controller
         )
             ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
             ->where('productos.estado', 'Activo')
+            ->orderBy('productos.fec_creacion', 'desc')
+            ->orderBy('categorias.descripcion_categoria', 'asc')
             ->get();
         $products = $products->map(function ($product) {
+            $fecCreacion = $product->fec_creacion ? Carbon::parse($product->fec_creacion) : null;
+
             return [
                 'codigo' => $product->codigo,
                 'descripcion' => $product->descripcion,
                 'precio_venta' => $product->precio_venta,
                 'categoria' => $product->descripcion_categoria,
                 'imagen' => $product->imagen ? '<img src="' . $product->imagen . '" width="80" height="80">' : '<img src="/img/fotos_prod/sin_imagen.jpg" width="80" height="80">',
-                'fec_creacion' => $product->fec_creacion ? Carbon::parse($product->fec_creacion)->format('d-m-Y | H:i:s') : '',
+                'fec_creacion' => $fecCreacion ? $fecCreacion->format('d-m-Y | H:i:s') : '',
+                'fec_creacion_sort' => $fecCreacion ? $fecCreacion->timestamp : 0,
                 'fec_modificacion' => $product->fec_modificacion ? Carbon::parse($product->fec_modificacion)->format('d-m-Y | H:i:s') : '',
                 'actions' => '<a href="" class="btn btn-sm btn-primary editar_prod" data-target="#modalEditarProducto" data-uuid="' . $product->uuid . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $product->uuid . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-prod="' . $product->id . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
             ];
         });
 
@@ -83,6 +109,132 @@ class ProductosController extends Controller
 
         return $response;
     }
+    public function downloadProductsXlsxTemplate()
+    {
+        $categories = Categoria::where('estado_categoria', 1)
+            ->orderBy('descripcion_categoria')
+            ->pluck('descripcion_categoria')
+            ->map(fn($value) => strtoupper(trim($value)))
+            ->values()
+            ->all();
+
+        $taxes = Impuestos::orderBy('id')
+            ->get(['id', 'nom_imp', 'valor_imp'])
+            ->map(fn($tax) => sprintf('%s (%s%%)', strtoupper(trim($tax->nom_imp)), rtrim(rtrim((string) $tax->valor_imp, '0'), '.')))
+            ->values()
+            ->all();
+
+        $fileName = 'plantilla_productos_' . now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new ProductosPlantillaExport(self::PRODUCT_IMPORT_HEADERS, $categories, $taxes), $fileName);
+    }
+
+    public function importProductsXlsx(Request $request)
+    {
+        $request->validate([
+            'archivo_excel' => ['required', 'file', 'mimes:xlsx'],
+        ], [
+            'archivo_excel.required' => 'Debe seleccionar un archivo Excel.',
+            'archivo_excel.file' => 'El archivo seleccionado no es valido.',
+            'archivo_excel.mimes' => 'El archivo debe estar en formato XLSX.',
+        ]);
+
+        try {
+            $parsedWorkbook = $this->parseProductsImportWorkbook($request->file('archivo_excel')->getRealPath());
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'error' => 422,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error al leer Excel de productos: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 500,
+                'message' => 'No se pudo procesar el archivo Excel.',
+            ], 500);
+        }
+
+        if (empty($parsedWorkbook['rows'])) {
+            return response()->json([
+                'error' => 422,
+                'message' => 'La hoja Productos no contiene filas para importar.',
+            ], 422);
+        }
+
+        $errors = [];
+        $rowsToInsert = [];
+        $codesInFile = [];
+        $descriptionsInFile = [];
+
+        foreach ($parsedWorkbook['rows'] as $item) {
+            $rowNumber = $item['row_number'];
+            $row = $this->normalizeImportedProductRow($item['data']);
+
+            $validator = Validator::make(
+                $row,
+                ProductoRequest::buildRules(false),
+                ProductoRequest::buildMessages()
+            );
+
+            ProductoRequest::applyCrossEntityValidation($validator, $row, true);
+
+            $normalizedCode = strtoupper(trim((string) ($row['codigo'] ?? '')));
+            $normalizedDescription = strtoupper(trim((string) ($row['descripcion'] ?? '')));
+
+            if ($normalizedCode !== '') {
+                if (isset($codesInFile[$normalizedCode])) {
+                    $validator->errors()->add('codigo', 'El código está repetido dentro del archivo Excel.');
+                } else {
+                    $codesInFile[$normalizedCode] = $rowNumber;
+                }
+            }
+
+            if ($normalizedDescription !== '') {
+                if (isset($descriptionsInFile[$normalizedDescription])) {
+                    $validator->errors()->add('descripcion', 'La descripción está repetida dentro del archivo Excel.');
+                } else {
+                    $descriptionsInFile[$normalizedDescription] = $rowNumber;
+                }
+            }
+
+            if ($validator->fails()) {
+                $messages = [];
+
+                foreach ($validator->errors()->messages() as $fieldMessages) {
+                    foreach ($fieldMessages as $message) {
+                        $messages[] = $message;
+                    }
+                }
+
+                $errors[] = 'Fila ' . $rowNumber . ': ' . implode(' | ', $messages);
+                continue;
+            }
+
+            $rowsToInsert[] = $row;
+        }
+
+        if (!empty($errors)) {
+            return response()->json([
+                'error' => 422,
+                'message' => 'Se detectaron errores en el archivo Excel.',
+                'details' => $errors,
+            ], 422);
+        }
+
+        DB::transaction(function () use ($rowsToInsert) {
+            foreach ($rowsToInsert as $row) {
+                $product = new Producto();
+                $product->crearProducto($row);
+            }
+        });
+
+        return response()->json([
+            'error' => 200,
+            'message' => count($rowsToInsert) . ' productos importados correctamente.',
+        ]);
+    }
+
     public function showProduct($uuid)
     {
         $producto = Producto::where('uuid', $uuid)->firstOrFail();
@@ -134,14 +286,124 @@ class ProductosController extends Controller
         return view('almacen.categorias');
     }
 
+    public function indexDeletedCategories()
+    {
+        return view('reactivaciones.categorias_eliminadas');
+    }
+
+    public function listDeletedCategories()
+    {
+        $categories = Categoria::select('id', 'descripcion_categoria', 'fec_eliminacion', 'user_eliminacion')
+            ->where('estado_categoria', 0)
+            ->orderByDesc('fec_eliminacion')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'descripcion_categoria' => $category->descripcion_categoria,
+                    'fec_eliminacion' => $category->fec_eliminacion ? Carbon::parse($category->fec_eliminacion)->format('d-m-Y | H:i:s') : '',
+                    'user_eliminacion' => $category->user_eliminacion ?? 'SISTEMA',
+                    'actions' => '<button class="btn btn-sm btn-success reactivar-cat" data-cat="' . $category->id . '" data-namecat="' . $category->descripcion_categoria . '" title="Reactivar categoria ' . $category->descripcion_categoria . '"><i class="fa fa-refresh"></i></button>',
+                ];
+            });
+
+        return response()->json([
+            'data' => $categories,
+            'recordsTotal' => $categories->count(),
+            'recordsFiltered' => $categories->count(),
+        ]);
+    }
+
+    public function reactivateCategory($id)
+    {
+        try {
+            $category = Categoria::findOrFail($id);
+            $category->reactivateCategory();
+
+            return response()->json([
+                'error' => 200,
+                'message' => 'Categoria reactivada correctamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reactivar categoria ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 500,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function indexDeletedProducts()
+    {
+        return view('reactivaciones.productos_eliminados');
+    }
+
+    public function listDeletedProducts()
+    {
+        $products = Producto::select(
+            'productos.id',
+            'productos.uuid',
+            'productos.codigo',
+            'productos.descripcion',
+            'categorias.descripcion_categoria',
+            'productos.fec_eliminacion',
+            'productos.user_eliminacion'
+        )
+            ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
+            ->where('productos.estado', 'Inactivo')
+            ->orderByDesc('productos.fec_eliminacion')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id'                   => $product->id,
+                    'uuid'                 => $product->uuid,
+                    'codigo'               => $product->codigo,
+                    'descripcion'          => $product->descripcion,
+                    'descripcion_categoria' => $product->descripcion_categoria,
+                    'fec_eliminacion'      => $product->fec_eliminacion ? Carbon::parse($product->fec_eliminacion)->format('d-m-Y | H:i:s') : '',
+                    'user_eliminacion'     => $product->user_eliminacion ?? 'SISTEMA',
+                    'actions'              => '<button class="btn btn-sm btn-success reactivar-prod" data-uuid="' . $product->uuid . '" data-nameprod="' . $product->descripcion . '" title="Reactivar producto ' . $product->descripcion . '"><i class="fa fa-refresh"></i></button>',
+                ];
+            });
+
+        return response()->json([
+            'data'            => $products,
+            'recordsTotal'    => $products->count(),
+            'recordsFiltered' => $products->count(),
+        ]);
+    }
+
+    public function reactivateProduct($uuid)
+    {
+        try {
+            $product = Producto::where('uuid', $uuid)->firstOrFail();
+            $product->reactivateProduct();
+
+            return response()->json([
+                'error'   => 200,
+                'message' => 'Producto reactivado correctamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reactivar producto ' . $e->getMessage());
+
+            return response()->json([
+                'error'   => 500,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
     public function showCategories()
     {
-        $categories = Categoria::select('categorias.id', 'categorias.descripcion_categoria')
+        $categories = Categoria::select('categorias.id', 'categorias.descripcion_categoria', 'categorias.fec_creacion')
             ->withCount('productos as prods_asociados')
             ->where('categorias.estado_categoria', 1)
             ->where('categorias.id', '<>', 1)
             ->get()
             ->map(function ($categories) {
+                $categories->fec_creacion = $categories->fec_creacion ? Carbon::parse($categories->fec_creacion)->format('d-m-Y | H:i:s') : '';
                 $categories->actions = '<a href="" class="btn btn-sm btn-primary editar" data-target="#editCatModal" data-cat="' . $categories->id . '" data-toggle="modal" title="Editar categoria ' . $categories->descripcion_categoria . '"><i class="fa fa-edit"></i></a>
                                 <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-cat="' . $categories->id . '" data-namecat="' . $categories->descripcion_categoria . '" title="Eliminar categoria ' . $categories->descripcion_categoria . '"><i class="fa fa-trash"></i></a>';
                 return $categories;
@@ -433,6 +695,64 @@ class ProductosController extends Controller
         }
     }
 
+    public function indexDeletedReceipes()
+    {
+        return view('reactivaciones.recetas_eliminadas');
+    }
+
+    public function listDeletedReceipes()
+    {
+        $recetas = Receta::select(
+            'recetas.uuid',
+            'recetas.codigo',
+            'recetas.nombre',
+            'categorias.descripcion_categoria',
+            'recetas.fec_eliminacion',
+            'recetas.user_eliminacion'
+        )
+            ->join('categorias', 'recetas.categoria_id', '=', 'categorias.id')
+            ->where('recetas.estado', 'Inactivo')
+            ->orderByDesc('recetas.fec_eliminacion')
+            ->get()
+            ->map(function ($receta) {
+                return [
+                    'uuid'                  => $receta->uuid,
+                    'codigo'                => $receta->codigo,
+                    'nombre'                => $receta->nombre,
+                    'descripcion_categoria' => $receta->descripcion_categoria,
+                    'fec_eliminacion'       => $receta->fec_eliminacion ? Carbon::parse($receta->fec_eliminacion)->format('d-m-Y | H:i:s') : '',
+                    'user_eliminacion'      => $receta->user_eliminacion ?? 'SISTEMA',
+                    'actions'               => '<button class="btn btn-sm btn-success reactivar-receta" data-uuid="' . $receta->uuid . '" data-nomreceta="' . $receta->nombre . '" title="Reactivar receta ' . $receta->nombre . '"><i class="fa fa-refresh"></i></button>',
+                ];
+            });
+
+        return response()->json([
+            'data'            => $recetas,
+            'recordsTotal'    => $recetas->count(),
+            'recordsFiltered' => $recetas->count(),
+        ]);
+    }
+
+    public function reactivateReceipe($uuid)
+    {
+        try {
+            $receta = Receta::where('uuid', $uuid)->firstOrFail();
+            $receta->reactivarReceta();
+
+            return response()->json([
+                'error'   => 200,
+                'message' => 'Receta reactivada correctamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reactivar receta ' . $e->getMessage());
+
+            return response()->json([
+                'error'   => 500,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function indexPromoCreate()
     {
         $categorias = Categoria::where('estado_categoria', 1)->where('id', '<>', 1)->get();
@@ -592,6 +912,64 @@ class ProductosController extends Controller
         }
     }
 
+    public function indexDeletedPromos()
+    {
+        return view('reactivaciones.promociones_eliminadas');
+    }
+
+    public function listDeletedPromos()
+    {
+        $promos = Promocion::select(
+            'promociones.uuid',
+            'promociones.codigo',
+            'promociones.nombre',
+            'categorias.descripcion_categoria',
+            'promociones.fec_eliminacion',
+            'promociones.user_eliminacion'
+        )
+            ->join('categorias', 'promociones.categoria_id', '=', 'categorias.id')
+            ->where('promociones.estado', 'Inactivo')
+            ->orderByDesc('promociones.fec_eliminacion')
+            ->get()
+            ->map(function ($promo) {
+                return [
+                    'uuid'                  => $promo->uuid,
+                    'codigo'                => $promo->codigo,
+                    'nombre'                => $promo->nombre,
+                    'descripcion_categoria' => $promo->descripcion_categoria,
+                    'fec_eliminacion'       => $promo->fec_eliminacion ? Carbon::parse($promo->fec_eliminacion)->format('d-m-Y | H:i:s') : '',
+                    'user_eliminacion'      => $promo->user_eliminacion ?? 'SISTEMA',
+                    'actions'               => '<button class="btn btn-sm btn-success reactivar-promo" data-uuid="' . $promo->uuid . '" data-namepromo="' . $promo->nombre . '" title="Reactivar promoción ' . $promo->nombre . '"><i class="fa fa-refresh"></i></button>',
+                ];
+            });
+
+        return response()->json([
+            'data'            => $promos,
+            'recordsTotal'    => $promos->count(),
+            'recordsFiltered' => $promos->count(),
+        ]);
+    }
+
+    public function reactivatePromo($uuid)
+    {
+        try {
+            $promo = Promocion::where('uuid', $uuid)->firstOrFail();
+            $promo->reactivarPromocion();
+
+            return response()->json([
+                'error'   => 200,
+                'message' => 'Promoción reactivada correctamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reactivar promoción ' . $e->getMessage());
+
+            return response()->json([
+                'error'   => 500,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function indexRange()
     {
         return view('almacen.rango_precios');
@@ -729,5 +1107,225 @@ class ProductosController extends Controller
                 'message' => 'No se pudo eliminar el rango.'
             ], 500);
         }
+    }
+
+    private function parseProductsImportWorkbook(string $filePath): array
+    {
+        $spreadsheet = IOFactory::load($filePath);
+        $worksheet = $spreadsheet->getSheetByName('Productos') ?? $spreadsheet->getSheet(0);
+        $rows = $worksheet->toArray(null, false, false, false);
+
+        if (empty($rows)) {
+            throw new \InvalidArgumentException('La hoja Productos está vacía.');
+        }
+
+        $headers = array_map(fn($header) => $this->sanitizeImportHeader($header), $rows[0]);
+        $missingHeaders = array_diff(self::PRODUCT_IMPORT_HEADERS, $headers);
+
+        if (!empty($missingHeaders)) {
+            throw new \InvalidArgumentException(
+                'La hoja Productos no es válida. Faltan las columnas: ' . implode(', ', $missingHeaders)
+            );
+        }
+
+        $rows = [];
+        for ($index = 1; $index < count($worksheet->toArray(null, false, false, false)); $index++) {
+            $row = $worksheet->toArray(null, false, false, false)[$index];
+
+            $currentRow = [];
+            foreach (self::PRODUCT_IMPORT_HEADERS as $header) {
+                $columnIndex = array_search($header, $headers, true);
+                $currentRow[$header] = $columnIndex !== false ? trim((string) ($row[$columnIndex] ?? '')) : null;
+            }
+
+            if ($this->isImportedRowEmpty($currentRow)) {
+                continue;
+            }
+
+            $rows[] = [
+                'row_number' => $index + 1,
+                'data' => $currentRow,
+            ];
+        }
+
+        return ['rows' => $rows];
+    }
+
+    private function sanitizeImportHeader($header): string
+    {
+        $header = (string) $header;
+        $header = preg_replace('/^\xEF\xBB\xBF/', '', $header);
+
+        return trim(Str::lower($header));
+    }
+
+    private function isImportedRowEmpty(array $row): bool
+    {
+        foreach ($row as $value) {
+            if (trim((string) $value) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function normalizeImportedProductRow(array $row): array
+    {
+        $precioCompraNeto = $this->normalizeIntegerValue($row['precio_compra_neto'] ?? null);
+        $impuesto1 = $this->resolveTaxId($row['impuesto_1'] ?? null);
+        $impuesto2 = $this->resolveTaxId($row['impuesto_2'] ?? null, true);
+        $precioCompraBruto = $this->normalizeIntegerValue($row['precio_compra_bruto'] ?? null);
+
+        if (($precioCompraBruto === null || $precioCompraBruto === '') && $precioCompraNeto !== null && $impuesto1 !== null) {
+            $precioCompraBruto = $this->calculateGrossPrice($precioCompraNeto, $impuesto1, $impuesto2);
+        }
+
+        return [
+            'codigo' => trim((string) ($row['codigo'] ?? '')),
+            'descripcion' => trim((string) ($row['descripcion'] ?? '')),
+            'precio_compra_neto' => $precioCompraNeto,
+            'impuesto_1' => $impuesto1,
+            'impuesto_2' => $impuesto2,
+            'precio_compra_bruto' => $precioCompraBruto,
+            'precio_venta' => $this->normalizeIntegerValue($row['precio_venta'] ?? null),
+            'stock_minimo' => $this->normalizeDecimalValue($row['stock_minimo'] ?? null),
+            'categoria' => $this->resolveCategoryId($row['categoria'] ?? null),
+            'unidad_medida' => $this->normalizeUnit($row['unidad_medida'] ?? null),
+            'tipo' => $this->normalizeProductType($row['tipo'] ?? null),
+            'nom_foto' => $this->normalizeOptionalString($row['nom_foto'] ?? null),
+        ];
+    }
+
+    private function resolveCategoryId($category): ?int
+    {
+        $category = trim((string) $category);
+
+        if ($category === '') {
+            return null;
+        }
+
+        if (ctype_digit($category)) {
+            return Categoria::where('estado_categoria', 1)->where('id', (int) $category)->value('id');
+        }
+
+        $normalizedCategory = strtoupper(trim(Str::ascii($category)));
+
+        return Categoria::where('estado_categoria', 1)
+            ->get(['id', 'descripcion_categoria'])
+            ->first(function ($item) use ($normalizedCategory) {
+                return strtoupper(trim(Str::ascii($item->descripcion_categoria))) === $normalizedCategory;
+            })?->id;
+    }
+
+    private function resolveTaxId($tax, bool $allowNull = false): ?int
+    {
+        $tax = trim((string) $tax);
+
+        if ($tax === '' || $tax === '0') {
+            return $allowNull ? null : null;
+        }
+
+        if (ctype_digit($tax)) {
+            return Impuestos::where('id', (int) $tax)->value('id');
+        }
+
+        $normalizedTax = strtoupper(trim(Str::ascii($tax)));
+
+        return Impuestos::get(['id', 'nom_imp'])
+            ->first(function ($item) use ($normalizedTax) {
+                return strtoupper(trim(Str::ascii($item->nom_imp))) === $normalizedTax;
+            })?->id;
+    }
+
+    private function normalizeUnit($unit): ?string
+    {
+        $unit = strtoupper(trim(Str::ascii((string) $unit)));
+
+        if ($unit === '') {
+            return null;
+        }
+
+        return match ($unit) {
+            'UN', 'UNIDAD', 'UNIDADES' => 'UN',
+            'L', 'LT', 'LITRO', 'LITROS' => 'L',
+            'KG', 'KILO', 'KILOGRAMO', 'KILOGRAMOS' => 'KG',
+            'CJ', 'CAJA', 'CAJAS' => 'CJ',
+            default => $unit,
+        };
+    }
+
+    private function normalizeProductType($type): ?string
+    {
+        $type = strtoupper(trim(Str::ascii((string) $type)));
+
+        if ($type === '') {
+            return null;
+        }
+
+        return match ($type) {
+            'P', 'PRODUCTO' => 'P',
+            'S', 'SERVICIO', 'NO AFECTO A STOCK', 'NO AFECTO STOCK', 'SIN STOCK' => 'S',
+            'I', 'INSUMO' => 'I',
+            'PR', 'PROMOCION' => 'PR',
+            'R', 'RECETA' => 'R',
+            default => $type,
+        };
+    }
+
+    private function normalizeIntegerValue($value): ?int
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^0-9,.-]/', '', $value);
+        $normalized = str_replace('.', '', $normalized);
+        $normalized = str_replace(',', '.', $normalized);
+
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return null;
+        }
+
+        return (int) round((float) $normalized);
+    }
+
+    private function normalizeDecimalValue($value): ?float
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^0-9,.-]/', '', $value);
+        $normalized = str_replace('.', '', $normalized);
+        $normalized = str_replace(',', '.', $normalized);
+
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    private function normalizeOptionalString($value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function calculateGrossPrice(int $netPrice, int $tax1Id, ?int $tax2Id = null): int
+    {
+        $tax1Rate = (float) (Impuestos::where('id', $tax1Id)->value('valor_imp') ?? 0);
+        $tax2Rate = $tax2Id ? (float) (Impuestos::where('id', $tax2Id)->value('valor_imp') ?? 0) : 0;
+
+        $tax1Amount = ($netPrice * $tax1Rate) / 100;
+        $tax2Amount = ($netPrice * $tax2Rate) / 100;
+
+        return (int) round($netPrice + $tax1Amount + $tax2Amount);
     }
 }

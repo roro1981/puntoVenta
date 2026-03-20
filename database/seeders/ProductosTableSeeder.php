@@ -115,6 +115,16 @@ class ProductosTableSeeder extends Seeder
             [ 'uuid' => (string) Str::uuid(), 'codigo' => '0030', 'descripcion' => 'Bolsas Plástico 30un', 'precio_compra_neto' => 300.0, 'precio_compra_bruto' => 357, 'precio_venta' => 600, 'stock' => 100.0, 'stock_minimo' => 10.0, 'categoria_id' => 12, 'tipo' => 'P', 'impuesto1' => 1, 'impuesto2' => null, 'imagen' => null, 'unidad_medida' => 'UN', 'estado' => 'Activo', 'fec_creacion' => $now, 'user_creacion' => 'seeder', 'fec_modificacion' => null, 'user_modificacion' => null, 'fec_eliminacion' => null, 'user_eliminacion' => null ]
         ];
 
+        $productos = array_map(function (array $producto) {
+            if (!empty($producto['descripcion']) && is_string($producto['descripcion'])) {
+                $producto['descripcion'] = function_exists('mb_strtoupper')
+                    ? mb_strtoupper($producto['descripcion'], 'UTF-8')
+                    : strtoupper($producto['descripcion']);
+            }
+
+            return $producto;
+        }, $productos);
+
         DB::table('productos')->insert($productos);
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use App\Services\ComprasService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\{Facturas, DetalleFactura, Producto, HistorialMovimientos, Proveedor, FormaPago, Impuestos, Region, Boleta};
 
@@ -139,9 +140,71 @@ class ComprasController extends Controller
         return $response;
     }
 
+    public function indexDeletedProveedores()
+    {
+        return view('reactivaciones.proveedores_eliminados');
+    }
+
+    public function listDeletedProveedores()
+    {
+        $proveedores = Proveedor::select(
+            'proveedores.uuid',
+            'proveedores.rut',
+            'proveedores.razon_social',
+            'regiones.nom_region',
+            'comunas.nom_comuna',
+            'proveedores.fec_eliminacion',
+            'proveedores.user_eliminacion'
+        )
+            ->join('regiones', 'proveedores.region_id', '=', 'regiones.id')
+            ->join('comunas', 'proveedores.comuna_id', '=', 'comunas.id')
+            ->where('proveedores.estado', 'Inactivo')
+            ->orderByDesc('proveedores.fec_eliminacion')
+            ->get()
+            ->map(function ($proveedor) {
+                return [
+                    'uuid'              => $proveedor->uuid,
+                    'rut'               => $proveedor->rut,
+                    'razon_social'      => $proveedor->razon_social,
+                    'region_comuna'     => $proveedor->nom_region . ' - ' . $proveedor->nom_comuna,
+                    'fec_eliminacion'   => $proveedor->fec_eliminacion ? Carbon::parse($proveedor->fec_eliminacion)->format('d-m-Y | H:i:s') : '',
+                    'user_eliminacion'  => $proveedor->user_eliminacion ?? 'SISTEMA',
+                    'actions'           => '<button class="btn btn-sm btn-success reactivar-prov" data-uuid="' . $proveedor->uuid . '" data-nameprov="' . $proveedor->razon_social . '" title="Reactivar proveedor ' . $proveedor->razon_social . '"><i class="fa fa-refresh"></i></button>',
+                ];
+            });
+
+        return response()->json([
+            'data'            => $proveedores,
+            'recordsTotal'    => $proveedores->count(),
+            'recordsFiltered' => $proveedores->count(),
+        ]);
+    }
+
+    public function reactivateProveedor($uuid)
+    {
+        try {
+            $proveedor = Proveedor::where('uuid', $uuid)->firstOrFail();
+            $proveedor->reactivarProveedor();
+
+            return response()->json([
+                'error'   => 200,
+                'message' => 'Proveedor reactivado correctamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al reactivar proveedor ' . $e->getMessage());
+
+            return response()->json([
+                'error'   => 500,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function indexIngresos()
     {
-        $proveedores = Proveedor::all();
+        $proveedores = Proveedor::where('estado', 'Activo')
+            ->orderBy('razon_social')
+            ->get();
         $impuestos = Impuestos::all();
         return view('compras.ingresos', compact('proveedores','impuestos'));
     }
