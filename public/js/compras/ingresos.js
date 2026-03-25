@@ -259,7 +259,7 @@ $(document).ready(function() {
     }
    
    
-    function subtotales(){
+    window.subtotales = function subtotales(){
      var total=0;  
      var total_imp=0;
      var iva=0;
@@ -320,7 +320,7 @@ $(document).ready(function() {
         $("#tot_bruto2").text(bruto);
         
     }
-    function subtotales2(){
+    window.subtotales2 = function subtotales2(){
      var total=0;  
  
        $(".subt2").each(function(){

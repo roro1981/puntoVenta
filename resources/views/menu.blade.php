@@ -101,6 +101,9 @@
 <script type="text/javascript" charset="utf8" src="js/jquery-ui/jquery-ui.js"></script>
 <!-- Stacktable -->
 <script type="text/javascript" charset="utf8" src="js/stacktable.js"></script>
+
+<!-- Scripts de compras (subtotales, subtotales2, etc) -->
+<script src="js/compras/ingresos.js"></script>
 <!-- Custom Scripts -->
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script type="text/javascript" src="js/js.js?<?php echo date("YmdHis")+1; ?>"></script>
@@ -811,36 +814,68 @@
           <div class="modal-body">
             <div class="home-modal-note">Los productos agotados se agrupan por categoria para detectar rapidamente donde esta el quiebre operativo.</div>
             @if(count($dashboardData['details']['outOfStockByCategory']) > 0)
-              @foreach($dashboardData['details']['outOfStockByCategory'] as $group)
-                <div class="home-category-block">
-                  <div class="home-category-title">{{ $group['categoria'] }}</div>
-                  <div class="table-responsive">
-                    <table class="home-modal-table">
-                      <thead>
-                        <tr>
-                          <th>Producto</th>
-                          <th>Stock actual</th>
-                          <th>Minimo</th>
-                          <th>Precio venta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @foreach($group['items'] as $item)
-                          <tr>
-                            <td>{{ $item['descripcion'] }}</td>
-                            <td>{{ rtrim(rtrim(number_format($item['stock'], 2, ',', '.'), '0'), ',') }}</td>
-                            <td>{{ rtrim(rtrim(number_format($item['stock_minimo'], 2, ',', '.'), '0'), ',') }}</td>
-                            <td>${{ number_format($item['precio_venta'], 0, ',', '.') }}</td>
-                          </tr>
-                        @endforeach
-                      </tbody>
-                    </table>
+                <form id="formSinStock">
+                  <div style="text-align:right;margin-bottom:10px">
+                    <button type="button" id="btnAgregarCompra" class="btn btn-success" style="display:none">Agregar a compra</button>
                   </div>
-                </div>
-              @endforeach
+                  @foreach($dashboardData['details']['outOfStockByCategory'] as $group)
+                    <div class="home-category-block">
+                      <div class="home-category-title">{{ $group['categoria'] }}</div>
+                      <div class="table-responsive">
+                        <table class="home-modal-table">
+                          <thead>
+                            <tr>
+                              <th><input type="checkbox" class="check-all-cat"></th>
+                              <th>Producto</th>
+                              <th>Stock actual</th>
+                              <th>Minimo</th>
+                              <th>Precio venta</th>
+                              <th>Cant. a pedir</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @foreach($group['items'] as $item)
+                              <tr>
+                                <td><input type="checkbox" class="check-prod" name="productos[]" value="{{ json_encode($item) }}"></td>
+                                <td>{{ $item['descripcion'] }}</td>
+                                <td>{{ rtrim(rtrim(number_format($item['stock'], 2, ',', '.'), '0'), ',') }}</td>
+                                <td>{{ rtrim(rtrim(number_format($item['stock_minimo'], 2, ',', '.'), '0'), ',') }}</td>
+                                <td>${{ number_format($item['precio_venta'], 0, ',', '.') }}</td>
+                                <td><input type="number" min="1" class="form-control input-cant" style="width:80px" name="cantidades[]" disabled></td>
+                              </tr>
+                            @endforeach
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  @endforeach
+                </form>
             @else
               <div class="home-empty">No hay productos sin stock.</div>
             @endif
+          </div>
+          <!-- Modal para elegir tipo de documento -->
+          <div class="modal fade" id="modalTipoDoc" tabindex="-1" role="dialog" aria-labelledby="modalTipoDocLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="modalTipoDocLabel">Selecciona tipo de documento</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group">
+                    <label><input type="radio" name="tipo_doc" value="factura" checked> Factura de compra</label><br>
+                    <label><input type="radio" name="tipo_doc" value="boleta"> Boleta de compra</label>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-primary" id="confirmTipoDoc">Cargar productos</button>
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -964,4 +999,146 @@
       });
     </script>
   </body>
-</html>
+  <script>
+  $(function() {
+    // Habilitar cantidad solo si está seleccionado
+    $(document).on('change', '.check-prod', function() {
+      var row = $(this).closest('tr');
+      row.find('.input-cant').prop('disabled', !this.checked);
+      mostrarBotonAgregar();
+    });
+    // Selección por categoría
+    $(document).on('change', '.check-all-cat', function() {
+      var checked = this.checked;
+      $(this).closest('table').find('.check-prod').each(function() {
+        $(this).prop('checked', checked).trigger('change');
+      });
+    });
+    // Mostrar botón solo si hay productos seleccionados
+    function mostrarBotonAgregar() {
+      var haySeleccion = $('.check-prod:checked').length > 0;
+      $('#btnAgregarCompra').toggle(haySeleccion);
+    }
+    // Click en agregar a compra
+    $('#btnAgregarCompra').on('click', function() {
+      $('#modalTipoDoc').modal('show');
+    });
+    // Confirmar tipo de documento y cargar productos
+    $('#confirmTipoDoc').on('click', function() {
+      var tipo = $('input[name="tipo_doc"]:checked').val();
+      var productos = [];
+      $('.check-prod:checked').each(function(i, el) {
+        var item = JSON.parse($(el).val());
+        var cantidad = $(el).closest('tr').find('.input-cant').val();
+        if (!cantidad || cantidad < 1) {
+          toastr.error('Debes ingresar cantidad válida para cada producto seleccionado');
+          return false;
+        }
+        productos.push({
+          ...item,
+          cantidad: cantidad
+        });
+      });
+      if (productos.length === 0) return;
+      // Guardar productos y tipo en localStorage para que los tome el módulo de compras
+      localStorage.setItem('productosSinStock', JSON.stringify({ tipo: tipo, productos: productos }));
+      $('#modalTipoDoc').modal('hide');
+      $('#modalDashboardSinStock').modal('hide');
+      // Limpiar selección
+      $('.check-prod').prop('checked', false).trigger('change');
+      $('.input-cant').val('').prop('disabled', true);
+      mostrarBotonAgregar();
+      // Cargar módulo de compras para mostrar productos cargados
+      setTimeout(function() {
+        $('#contenido').load('/compras/ingresos');
+      }, 400);
+    });
+
+    // Al cargar el módulo de compras, si hay productos en localStorage, simular el flujo nativo de agregar productos
+    $(document).on('DOMNodeInserted', '#contenido', function(e) {
+      var contenido = $(e.target);
+      if (contenido.find('.compras').length || contenido.find('.compras2').length) {
+        var data = localStorage.getItem('productosSinStock');
+        if (data) {
+          try {
+            var obj = JSON.parse(data);
+            if (obj && Array.isArray(obj.productos) && obj.productos.length > 0) {
+              setTimeout(function() {
+                // Cambiar el formulario activo según tipo
+                if (typeof mostrarform === 'function') {
+                  if (obj.tipo === 'factura') mostrarform(1);
+                  if (obj.tipo === 'boleta') mostrarform(2);
+                }
+                // Simular click en el botón de agregar producto para abrir el modal
+                setTimeout(function() {
+                  var btn = contenido.find('#btnAgregarArt').first();
+                  if (btn.length) btn.trigger('click');
+                  // Esperar a que el modal esté visible y rellenar productos
+                  setTimeout(function() {
+                    // Aquí podrías automatizar la selección en el modal si el flujo lo permite
+                    // Pero como el modal espera selección manual, agregamos directamente
+                    obj.productos.forEach(function(prod) {
+                      if (typeof agregarDetalleSinStock === 'function') {
+                        agregarDetalleSinStock(prod, obj.tipo);
+                      }
+                    });
+                    // Limpiar localStorage
+                    localStorage.removeItem('productosSinStock');
+                  }, 600);
+                }, 400);
+              }, 400);
+            }
+          } catch (err) {
+            localStorage.removeItem('productosSinStock');
+          }
+        }
+      }
+    });
+    // Función para cargar productos en factura
+    window.cargarEnFactura = function(productos) {
+      productos.forEach(function(prod) {
+        // Simula el click en agregar producto y rellena los campos
+        agregarDetalleSinStock(prod, 'factura');
+      });
+    };
+    // Función para cargar productos en boleta
+    window.cargarEnBoleta = function(productos) {
+      productos.forEach(function(prod) {
+        agregarDetalleSinStock(prod, 'boleta');
+      });
+    };
+    // Lógica para agregar producto a la tabla de compras (sin guardar)
+    window.agregarDetalleSinStock = function agregarDetalleSinStock(prod, tipo) {
+      // Busca si ya existe el producto en la tabla, si sí, suma cantidad
+      var tabla = tipo === 'factura' ? '.compras' : '.compras2';
+      var existe = false;
+      $(tabla + ' tr').each(function() {
+        var nombre = $(this).find('td:eq(2)').text();
+        if (nombre === prod.descripcion) {
+          var inputCant = $(this).find('input[type=number]');
+          inputCant.val(parseInt(inputCant.val() || 0) + parseInt(prod.cantidad));
+          existe = true;
+          inputCant.trigger('input');
+        }
+      });
+      if (!existe) {
+        // Simula estructura de agregarDetalle
+        var id = Math.floor(Math.random()*1000000);
+        var fila = '<tr class="filas" id="produ_'+id+'">'+
+          '<td><button type="button" class="borrar btn btn-danger">X</button></td>'+ 
+          '<td>'+ (prod.codigo || '') +'</td>'+ 
+          '<td>'+ prod.descripcion +'</td>'+ 
+          '<td style="text-align:center"><input type="number" class="cantCompra'+(tipo==='factura'?'':'2')+'" style="width:60px;text-align:center" id="canti_'+id+'" value="'+prod.cantidad+'"></td>'+ 
+          '<td style="text-align:center"><input type="text" style="text-align:center" class="precio_'+(tipo==='factura'?'produ':'prod')+'" data-precio="'+prod.precio_venta+'" id="valor_'+id+'" value="'+prod.precio_venta+'" /></td>'+ 
+          '<td style="text-align:center"><input type="number" class="descuCompra'+(tipo==='factura'?'':'2')+'" id="descu_'+id+'" style="width:60px;text-align:center" value="0"></td>'+ 
+          '<td style="text-align:center" class="subt'+(tipo==='factura'?'':'2')+'" id="subtotal_'+id+'">'+(prod.precio_venta*prod.cantidad)+'</td>'+ 
+          '<input id="oculto2_'+id+'" type="hidden" value="'+prod.cantidad+'" >'+
+          (tipo==='factura'?'<input type="hidden" id="calc_imp_'+id+'" class="impuesto_prod" data-im1="IVA" data-vim1="0" data-valor1="0" data-im2="NO" data-vim2="0" data-valor2="0" >':'')+
+          '</tr>';
+        $(tabla).append(fila);
+        if(tipo==='factura'){ subtotales(); } else { subtotales2(); }
+      }
+    };
+  });
+  </script>
+  </html>
