@@ -105,6 +105,390 @@
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script type="text/javascript" src="js/js.js?<?php echo date("YmdHis")+1; ?>"></script>
 
+<style>
+  .home-dashboard {
+    padding: 8px 4px 4px;
+    color: #263238;
+  }
+
+  .home-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 20px 22px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #fff7e8 0%, #fff 52%, #eef6fb 100%);
+    border: 1px solid #f0dfbd;
+    box-shadow: 0 10px 28px rgba(23, 42, 58, 0.08);
+  }
+
+  .home-hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .home-hero-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #eadfcb;
+    padding: 8px;
+  }
+
+  .home-hero h3 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e2d3d;
+  }
+
+  .home-hero p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #4f6475;
+  }
+
+  .home-status-card {
+    min-width: 280px;
+    max-width: 360px;
+    border-radius: 14px;
+    padding: 16px 18px;
+    color: #fff;
+  }
+
+  .home-status-card.bien {
+    background: linear-gradient(135deg, #198754 0%, #2ea36d 100%);
+  }
+
+  .home-status-card.atencion {
+    background: linear-gradient(135deg, #d98a00 0%, #f0ad4e 100%);
+  }
+
+  .home-status-card.critico {
+    background: linear-gradient(135deg, #b73a3a 0%, #d9534f 100%);
+  }
+
+  .home-status-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  .home-status-title {
+    margin-top: 8px;
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  .home-status-text {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.55;
+    opacity: 0.95;
+  }
+
+  .home-grid-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .home-kpi {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #e8edf2;
+    box-shadow: 0 10px 24px rgba(23, 42, 58, 0.06);
+  }
+
+  .home-kpi:before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #e67e22, #f4b350);
+  }
+
+  .home-kpi-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #708090;
+    font-weight: 700;
+  }
+
+  .home-kpi-value {
+    margin-top: 12px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1d2b36;
+    line-height: 1.1;
+  }
+
+  .home-kpi-note {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #597081;
+  }
+
+  .home-kpi-actions {
+    margin-top: 12px;
+  }
+
+  .home-kpi-actions .btn {
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-width: 1px;
+  }
+
+  .home-panels {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .home-panel {
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #e8edf2;
+    box-shadow: 0 10px 24px rgba(23, 42, 58, 0.06);
+    padding: 18px;
+  }
+
+  .home-panel h4 {
+    margin: 0 0 14px;
+    color: #1d2b36;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .home-chart-wrap {
+    position: relative;
+    min-height: 270px;
+  }
+
+  .home-payment-list,
+  .home-insights,
+  .home-top-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .home-payment-item,
+  .home-top-item,
+  .home-insight-item {
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e5edf3;
+    padding: 12px 14px;
+  }
+
+  .home-payment-head,
+  .home-top-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #273746;
+  }
+
+  .home-payment-bar {
+    margin-top: 10px;
+    width: 100%;
+    height: 9px;
+    border-radius: 999px;
+    background: #dde7ef;
+    overflow: hidden;
+  }
+
+  .home-payment-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0f7c90, #2aa8b9);
+  }
+
+  .home-subgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .home-empty {
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px dashed #cfdbe6;
+    color: #607584;
+    padding: 20px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .home-modal .modal-content {
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .home-modal .modal-header {
+    background: linear-gradient(135deg, #1f5f8b 0%, #2e7da7 100%);
+    color: #fff;
+    border-bottom: none;
+  }
+
+  .home-modal .modal-title {
+    font-weight: 700;
+  }
+
+  .home-modal .close {
+    color: #fff;
+    opacity: 0.95;
+  }
+
+  .home-modal .modal-body {
+    background: #f7fafc;
+    padding: 18px;
+  }
+
+  .home-modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .home-modal-table th,
+  .home-modal-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e7edf3;
+    font-size: 13px;
+  }
+
+  .home-modal-table th {
+    background: #edf4f8;
+    color: #284052;
+    font-weight: 700;
+  }
+
+  .home-modal-table td:last-child,
+  .home-modal-table th:last-child {
+    text-align: right;
+  }
+
+  .home-category-block {
+    background: #fff;
+    border: 1px solid #e4ecf2;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .home-category-title {
+    padding: 12px 14px;
+    background: #edf4f8;
+    color: #284052;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .home-modal-note {
+    margin-bottom: 14px;
+    color: #5b7282;
+    font-size: 13px;
+  }
+
+  .home-cashbox-card {
+    background: #fff;
+    border: 1px solid #e4ecf2;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .home-cashbox-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    color: #243846;
+  }
+
+  .home-cashbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+  }
+
+  .home-cashbox-item strong {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #6d8494;
+    margin-bottom: 3px;
+  }
+
+  .home-cashbox-item span {
+    color: #243846;
+    font-weight: 600;
+  }
+
+  @media (max-width: 1199px) {
+    .home-grid-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-panels,
+    .home-subgrid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .home-hero {
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .home-grid-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .home-hero h3 {
+      font-size: 22px;
+    }
+
+    .home-status-card {
+      min-width: 0;
+      max-width: none;
+    }
+
+    .home-cashbox-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
   
     <script>
       toastr.options = {
@@ -204,7 +588,155 @@
                 <div class="box-body">
                   	<div class="row">
 	                  	<div id="contenido" class="col-md-12">
+                        <div class="home-dashboard">
+                          <div class="home-hero">
+                            <div>
+                              <div class="home-hero-brand">
+                                @if(!empty($dashboardData['empresa']['logo']))
+                                  <img class="home-hero-logo" src="{{ asset(ltrim($dashboardData['empresa']['logo'], '/')) }}" alt="Logo empresa">
+                                @endif
+                                <div>
+                                  <h3>{{ $dashboardData['empresa']['fantasia'] ?: $dashboardData['empresa']['nombre'] }}</h3>
+                                  <p>
+                                    {{ $dashboardData['empresa']['nombre'] }}
+                                    | {{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'Operacion Restaurant' : 'Operacion Almacen' }}
+                                  </p>
+                                </div>
+                              </div>
+                              <p style="margin-top:14px;max-width:720px;">
+                                Este panel muestra una foto operativa real del negocio con ventas, cajas, stock, medios de pago y productos que hoy requieren atencion.
+                              </p>
+                            </div>
 
+                            <div class="home-status-card {{ $dashboardData['status']['level'] }}">
+                              <div class="home-status-label">Estado general</div>
+                              <div class="home-status-title">{{ $dashboardData['status']['title'] }}</div>
+                              <div class="home-status-text">{{ $dashboardData['status']['message'] }}</div>
+                              <div class="home-status-text" style="margin-top:12px;font-weight:700;">Indice: {{ $dashboardData['status']['score'] }}/100</div>
+                            </div>
+                          </div>
+
+                          <div class="home-grid-cards">
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Ventas hoy</div>
+                              <div class="home-kpi-value">${{ number_format($dashboardData['summary']['ventasHoy'], 0, ',', '.') }}</div>
+                              <div class="home-kpi-note">Base diaria cerrada y no anulada.</div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Ventas del mes</div>
+                              <div class="home-kpi-value">${{ number_format($dashboardData['summary']['ventasMes'], 0, ',', '.') }}</div>
+                              <div class="home-kpi-note">Acumulado desde el primer dia del mes.</div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Ticket promedio hoy</div>
+                              <div class="home-kpi-value">${{ number_format($dashboardData['summary']['ticketPromedioHoy'], 0, ',', '.') }}</div>
+                              <div class="home-kpi-note">{{ $dashboardData['summary']['ticketsHoy'] }} {{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'comanda(s) cerrada(s)' : 'ticket(s) emitido(s)' }} hoy.</div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Cajas abiertas</div>
+                              <div class="home-kpi-value">{{ $dashboardData['summary']['cajasAbiertas'] }}</div>
+                              <div class="home-kpi-note">Operacion activa en este momento.</div>
+                              <div class="home-kpi-actions">
+                                <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modalDashboardCajas" {{ count($dashboardData['details']['openCashboxes']) === 0 ? 'disabled' : '' }}>
+                                  Ver detalle
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="home-grid-cards" style="margin-top:-4px;">
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Alertas de stock</div>
+                              <div class="home-kpi-value">{{ $dashboardData['summary']['alertasStock'] }}</div>
+                              <div class="home-kpi-note">Productos bajo o igual al minimo configurado.</div>
+                              <div class="home-kpi-actions">
+                                <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modalDashboardStockAlertas" {{ count($dashboardData['details']['stockAlerts']) === 0 ? 'disabled' : '' }}>
+                                  Ver productos
+                                </button>
+                              </div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Sin stock</div>
+                              <div class="home-kpi-value">{{ $dashboardData['summary']['stockCritico'] }}</div>
+                              <div class="home-kpi-note">Productos agotados que ya afectan venta o produccion.</div>
+                              <div class="home-kpi-actions">
+                                <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modalDashboardSinStock" {{ count($dashboardData['details']['outOfStockByCategory']) === 0 ? 'disabled' : '' }}>
+                                  Ver categorias
+                                </button>
+                              </div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">Promedio 7 dias</div>
+                              <div class="home-kpi-value">${{ number_format($dashboardData['summary']['promedio7Dias'], 0, ',', '.') }}</div>
+                              <div class="home-kpi-note">Promedio diario de ventas de la ultima semana.</div>
+                            </div>
+                            <div class="home-kpi">
+                              <div class="home-kpi-label">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'Comandas activas' : 'Tickets hoy' }}</div>
+                              <div class="home-kpi-value">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? $dashboardData['summary']['comandasPendientes'] : $dashboardData['summary']['ticketsHoy'] }}</div>
+                              <div class="home-kpi-note">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'En consumo o pendientes de pago.' : 'Cantidad de ventas registradas hoy.' }}</div>
+                            </div>
+                          </div>
+
+                          <div class="home-panels">
+                            <div class="home-panel">
+                              <h4>Tendencia de ventas ultimos 7 dias</h4>
+                              <div class="home-chart-wrap">
+                                <canvas id="homeSalesTrendChart"></canvas>
+                              </div>
+                            </div>
+
+                            <div class="home-panel">
+                              <h4>Desglose por forma de pago del mes</h4>
+                              @if(count($dashboardData['paymentBreakdown']) > 0)
+                                <div class="home-payment-list">
+                                  @foreach($dashboardData['paymentBreakdown'] as $payment)
+                                    <div class="home-payment-item">
+                                      <div class="home-payment-head">
+                                        <span>{{ $payment['label'] }}</span>
+                                        <span>${{ number_format($payment['amount'], 0, ',', '.') }} | {{ number_format($payment['percentage'], 1, ',', '.') }}%</span>
+                                      </div>
+                                      <div class="home-payment-bar">
+                                        <span style="width: {{ min(100, $payment['percentage']) }}%;"></span>
+                                      </div>
+                                    </div>
+                                  @endforeach
+                                </div>
+                              @else
+                                <div class="home-empty">Aun no hay pagos registrados este mes.</div>
+                              @endif
+                            </div>
+                          </div>
+
+                          <div class="home-subgrid">
+                            <div class="home-panel">
+                              <h4>Productos mas vendidos del mes</h4>
+                              @if(count($dashboardData['topProducts']) > 0)
+                                <div class="home-top-list">
+                                  @foreach($dashboardData['topProducts'] as $product)
+                                    <div class="home-top-item">
+                                      <div class="home-top-head">
+                                        <span>{{ $product['nombre'] }}</span>
+                                        <span>{{ rtrim(rtrim(number_format($product['cantidad'], 2, ',', '.'), '0'), ',') }} u.</span>
+                                      </div>
+                                      <div style="margin-top:8px;color:#5f7381;">Venta asociada: ${{ number_format($product['monto'], 0, ',', '.') }}</div>
+                                    </div>
+                                  @endforeach
+                                </div>
+                              @else
+                                <div class="home-empty">Todavia no hay productos vendidos en el periodo actual.</div>
+                              @endif
+                            </div>
+
+                            <div class="home-panel">
+                              <h4>Lectura gerencial</h4>
+                              <div class="home-insights">
+                                @foreach($dashboardData['insights'] as $insight)
+                                  <div class="home-insight-item">{{ $insight }}</div>
+                                @endforeach
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                   
                       </div>
                     </div>
@@ -226,5 +758,210 @@
         <strong><a href="#"></a>.</strong>
       </footer>
     </div>    
+
+    <div class="modal fade home-modal" id="modalDashboardStockAlertas" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Productos en alerta de stock</h4>
+          </div>
+          <div class="modal-body">
+            <div class="home-modal-note">Listado ordenado desde el producto que aun conserva mas stock al que menos tiene dentro del rango de alerta.</div>
+            @if(count($dashboardData['details']['stockAlerts']) > 0)
+              <div class="table-responsive">
+                <table class="home-modal-table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Categoria</th>
+                      <th>Stock actual</th>
+                      <th>Minimo</th>
+                      <th>Precio venta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @foreach($dashboardData['details']['stockAlerts'] as $item)
+                      <tr>
+                        <td>{{ $item['descripcion'] }}</td>
+                        <td>{{ $item['categoria'] }}</td>
+                        <td>{{ rtrim(rtrim(number_format($item['stock'], 2, ',', '.'), '0'), ',') }}</td>
+                        <td>{{ rtrim(rtrim(number_format($item['stock_minimo'], 2, ',', '.'), '0'), ',') }}</td>
+                        <td>${{ number_format($item['precio_venta'], 0, ',', '.') }}</td>
+                      </tr>
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+            @else
+              <div class="home-empty">No hay productos en alerta de stock.</div>
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade home-modal" id="modalDashboardSinStock" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Productos sin stock por categoria</h4>
+          </div>
+          <div class="modal-body">
+            <div class="home-modal-note">Los productos agotados se agrupan por categoria para detectar rapidamente donde esta el quiebre operativo.</div>
+            @if(count($dashboardData['details']['outOfStockByCategory']) > 0)
+              @foreach($dashboardData['details']['outOfStockByCategory'] as $group)
+                <div class="home-category-block">
+                  <div class="home-category-title">{{ $group['categoria'] }}</div>
+                  <div class="table-responsive">
+                    <table class="home-modal-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Stock actual</th>
+                          <th>Minimo</th>
+                          <th>Precio venta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach($group['items'] as $item)
+                          <tr>
+                            <td>{{ $item['descripcion'] }}</td>
+                            <td>{{ rtrim(rtrim(number_format($item['stock'], 2, ',', '.'), '0'), ',') }}</td>
+                            <td>{{ rtrim(rtrim(number_format($item['stock_minimo'], 2, ',', '.'), '0'), ',') }}</td>
+                            <td>${{ number_format($item['precio_venta'], 0, ',', '.') }}</td>
+                          </tr>
+                        @endforeach
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              @endforeach
+            @else
+              <div class="home-empty">No hay productos sin stock.</div>
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade home-modal" id="modalDashboardCajas" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Detalle de cajas abiertas</h4>
+          </div>
+          <div class="modal-body">
+            <div class="home-modal-note">Resumen operativo de cada caja abierta para revisar antiguedad, actividad comercial y monto esperado al cierre.</div>
+            @if(count($dashboardData['details']['openCashboxes']) > 0)
+              @foreach($dashboardData['details']['openCashboxes'] as $cashbox)
+                <div class="home-cashbox-card">
+                  <div class="home-cashbox-head">
+                    <span>Caja #{{ $cashbox['id'] }} | {{ $cashbox['tipo_caja'] }}</span>
+                    <span>{{ $cashbox['cantidad_ventas'] }} movimiento(s)</span>
+                  </div>
+                  <div class="home-cashbox-grid">
+                    <div class="home-cashbox-item">
+                      <strong>Cajero</strong>
+                      <span>{{ $cashbox['cajero'] }}</span>
+                    </div>
+                    <div class="home-cashbox-item">
+                      <strong>Apertura</strong>
+                      <span>{{ $cashbox['apertura'] }}</span>
+                    </div>
+                    <div class="home-cashbox-item">
+                      <strong>Tiempo abierta</strong>
+                      <span>{{ $cashbox['tiempo_abierta'] }}</span>
+                    </div>
+                    <div class="home-cashbox-item">
+                      <strong>Monto inicial</strong>
+                      <span>${{ number_format($cashbox['monto_inicial'], 0, ',', '.') }}</span>
+                    </div>
+                    <div class="home-cashbox-item">
+                      <strong>Monto vendido</strong>
+                      <span>${{ number_format($cashbox['monto_vendido'], 0, ',', '.') }}</span>
+                    </div>
+                    <div class="home-cashbox-item">
+                      <strong>Monto esperado</strong>
+                      <span>${{ number_format($cashbox['monto_esperado'], 0, ',', '.') }}</span>
+                    </div>
+                    <div class="home-cashbox-item" style="grid-column: 1 / -1;">
+                      <strong>Observaciones</strong>
+                      <span>{{ $cashbox['observaciones'] ?: 'Sin observaciones registradas.' }}</span>
+                    </div>
+                  </div>
+                </div>
+              @endforeach
+            @else
+              <div class="home-empty">No hay cajas abiertas en este momento.</div>
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var chartCanvas = document.getElementById('homeSalesTrendChart');
+
+        if (!chartCanvas || typeof Chart === 'undefined') {
+          return;
+        }
+
+        new Chart(chartCanvas, {
+          type: 'line',
+          data: {
+            labels: @json($dashboardData['trend']['labels']),
+            datasets: [{
+              label: 'Ventas',
+              data: @json($dashboardData['trend']['data']),
+              backgroundColor: 'rgba(230, 126, 34, 0.18)',
+              borderColor: '#e67e22',
+              borderWidth: 3,
+              pointBackgroundColor: '#1f5f8b',
+              pointBorderColor: '#ffffff',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              fill: true,
+              lineTension: 0.25
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            legend: {
+              display: false
+            },
+            tooltips: {
+              callbacks: {
+                label: function (tooltipItem) {
+                  return ' $' + Number(tooltipItem.yLabel || 0).toLocaleString('es-CL');
+                }
+              }
+            },
+            scales: {
+              yAxes: [{
+                ticks: {
+                  beginAtZero: true,
+                  callback: function (value) {
+                    return '$' + Number(value).toLocaleString('es-CL');
+                  }
+                },
+                gridLines: {
+                  color: 'rgba(132, 146, 166, 0.16)'
+                }
+              }],
+              xAxes: [{
+                gridLines: {
+                  display: false
+                }
+              }]
+            }
+          }
+        });
+      });
+    </script>
   </body>
 </html>

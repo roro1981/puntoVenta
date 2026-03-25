@@ -57,6 +57,8 @@
             justify-content: space-between;
             margin: 2px 0;
             font-weight: bold;
+            padding: 0 1mm;
+            box-sizing: border-box;
         }
         
         .separator {
@@ -111,6 +113,8 @@
             font-weight: bold;
             margin: 3px 0;
             font-size: 11px;
+            padding: 0 1mm;
+            box-sizing: border-box;
         }
         
         .total-label {

@@ -13,11 +13,13 @@
         
         body {
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 12px;
+            font-weight: bold;
             line-height: 1.3;
             color: #000;
-            width: 80mm;
-            padding: 3mm;
+            width: 72mm;
+            padding: 1mm 2mm 2mm 2mm;
+            max-width: 72mm;
         }
         
         .header {
@@ -39,28 +41,28 @@
         }
         
         .header h1 {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: bold;
             margin-bottom: 3px;
             text-align: center;
         }
         
         .header .fantasy-name {
-            font-size: 12px;
-            font-weight: normal;
+            font-size: 13px;
+            font-weight: bold;
             margin-bottom: 4px;
             text-align: center;
         }
         
         .header p {
-            font-size: 10px;
+            font-size: 11px;
             margin: 2px 0;
             text-align: center;
         }
         
         .info-section {
             margin: 8px 0;
-            font-size: 10px;
+            font-size: 11px;
             background: #f5f5f5;
             padding: 6px;
             border-radius: 3px;
@@ -73,7 +75,7 @@
         }
         
         .info-section .ticket-number {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             text-align: center;
             margin-bottom: 4px;
@@ -95,6 +97,8 @@
         .product-item {
             margin-bottom: 8px;
             padding-bottom: 6px;
+            padding-left: 1mm;
+            padding-right: 1mm;
             border-bottom: 1px dotted #ccc;
         }
         
@@ -104,7 +108,7 @@
         
         .product-name {
             font-weight: bold;
-            font-size: 11px;
+            font-size: 12px;
             margin-bottom: 3px;
             color: #333;
         }
@@ -112,8 +116,9 @@
         .product-details {
             display: flex;
             justify-content: space-between;
-            font-size: 10px;
+            font-size: 11px;
             color: #666;
+            padding: 0 1mm;
         }
         
         .product-details .left {
@@ -122,7 +127,7 @@
         }
         
         .product-discount {
-            font-size: 9px;
+            font-size: 10px;
             color: #d9534f;
             margin-top: 2px;
             font-style: italic;
@@ -140,11 +145,12 @@
             display: flex;
             justify-content: space-between;
             margin: 3px 0;
-            font-size: 11px;
+            font-size: 12px;
+            padding: 0 1mm;
         }
         
         .totals .total-final {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: bold;
             margin-top: 6px;
             padding-top: 6px;
@@ -153,7 +159,7 @@
         
         .payment-methods {
             margin-top: 8px;
-            font-size: 10px;
+            font-size: 11px;
             border-top: 1px dashed #000;
             padding-top: 6px;
         }
@@ -161,14 +167,14 @@
         .payment-methods .title {
             font-weight: bold;
             margin-bottom: 4px;
-            font-size: 11px;
+            font-size: 12px;
         }
         
         .payment-methods .method {
             display: flex;
             justify-content: space-between;
             margin: 2px 0;
-            padding: 2px 0;
+            padding: 2px 1mm;
         }
         
         .footer {
@@ -176,7 +182,7 @@
             margin-top: 12px;
             padding-top: 8px;
             border-top: 2px dashed #000;
-            font-size: 10px;
+            font-size: 11px;
         }
         
         .footer p {
@@ -185,7 +191,7 @@
         }
         
         .footer .thanks {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             margin-bottom: 5px;
         }
@@ -300,8 +306,8 @@
         <p>{{ $corporateData['name_enterprise'] }}</p>
         @endif
         <p>{{ now()->format('d/m/Y H:i:s') }}</p>
-        <p style="margin-top: 10px; font-size: 9px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px;">
-            ESTE TICKET NO ES VÁLIDO COMO BOLETA O FACTURA
+        <p style="margin-top: 10px; font-size: 10px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px;">
+            NO VALIDO COMO BOLETA O FACTURA
         </p>
     </div>
 </body>
