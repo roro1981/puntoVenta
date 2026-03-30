@@ -87,7 +87,10 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 3, 'submenu_id' => 32, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 33, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 34, 'created_at' => Carbon::now()->toDateTimeString()],
-            ['role_id' => 3, 'submenu_id' => 35, 'created_at' => Carbon::now()->toDateTimeString()]
+            ['role_id' => 3, 'submenu_id' => 35, 'created_at' => Carbon::now()->toDateTimeString()],
+            //Configurar Garzones (submenu_id = 36) - Administrador y Superadministrador
+            ['role_id' => 1, 'submenu_id' => 36, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 3, 'submenu_id' => 36, 'created_at' => Carbon::now()->toDateTimeString()],
         ]);
     }
 }

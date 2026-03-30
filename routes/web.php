@@ -10,6 +10,7 @@ use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\MesasController;
 use App\Http\Controllers\ComandasController;
+use App\Http\Controllers\GarzonesController;
 
 
 
@@ -100,6 +101,7 @@ Route::delete('/compras/{uuid}/delete', [ComprasController::class, 'deleteProvee
 Route::get('/compras/ingresos', [ComprasController::class, 'indexIngresos']);
 Route::get('/compras/pago-proveedor/{uuid}', [ComprasController::class, 'pagoProv']);
 Route::get('/compras/productos-compra', [ComprasController::class, 'productosCompra']);
+Route::get('/compras/productos-dashboard', [ComprasController::class, 'productosDesdeDashboard']);
 Route::get('/compras/trae-docs', [ComprasController::class, 'traeDocs']);
 Route::get('/compras/facturas-calendario', [ComprasController::class, 'facturasCalendario']);
 Route::get('/compras/facturas/{estado}', [ComprasController::class, 'traeDocsPorEstado']);
@@ -172,6 +174,11 @@ Route::get('/permisos/role/{roleId}', [PermisosController::class, 'permisosPorRo
 
 //menu restaurant
 Route::get('/configuracion/restaurant/config-mesas', [MesasController::class, 'index']);
+Route::get('/configuracion/restaurant/config-garzones', [GarzonesController::class, 'index']);
+Route::get('/restaurant/garzones/obtener', [GarzonesController::class, 'obtener']);
+Route::post('/restaurant/garzones/crear', [GarzonesController::class, 'crear']);
+Route::put('/restaurant/garzones/actualizar/{id}', [GarzonesController::class, 'actualizar']);
+Route::delete('/restaurant/garzones/eliminar/{id}', [GarzonesController::class, 'eliminar']);
 Route::get('/restaurant/mesas/obtener', [MesasController::class, 'obtener']);
 Route::post('/restaurant/mesas/crear', [MesasController::class, 'crear']);
 Route::put('/restaurant/mesas/actualizar/{id}', [MesasController::class, 'actualizar']);

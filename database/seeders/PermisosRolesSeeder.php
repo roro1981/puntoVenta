@@ -46,7 +46,25 @@ class PermisosRolesSeeder extends Seeder
                 'nombre' => 'Modificar Precios',
                 'descripcion' => 'Modificar precios de productos',
                 'modulo' => 'Productos'
-            ]
+            ],
+            [
+                'codigo' => Permiso::PERMISO_DASHBOARD_GERENCIAL,
+                'nombre' => 'Dashboard Gerencial',
+                'descripcion' => 'Acceso al dashboard gerencial con métricas de alto nivel del negocio',
+                'modulo' => 'Dashboard'
+            ],
+            [
+                'codigo' => Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
+                'nombre' => 'Dashboard Administrador',
+                'descripcion' => 'Acceso al dashboard de administrador con información operativa detallada',
+                'modulo' => 'Dashboard'
+            ],
+            [
+                'codigo' => Permiso::PERMISO_DASHBOARD_USUARIO,
+                'nombre' => 'Dashboard Usuario',
+                'descripcion' => 'Acceso al dashboard básico de usuario',
+                'modulo' => 'Dashboard'
+            ],
         ];
 
         $this->command->info("📋 Insertando permisos en la tabla permisos...");
@@ -77,8 +95,17 @@ class PermisosRolesSeeder extends Seeder
         
         $superAdmin = Role::where('role_name', 'SuperAdministrador')->first();
         
+        $excluirSuperAdmin = [
+            Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
+            Permiso::PERMISO_DASHBOARD_USUARIO,
+        ];
+
         if ($superAdmin) {
             foreach ($permisos as $permiso) {
+                if (in_array($permiso['codigo'], $excluirSuperAdmin)) {
+                    continue;
+                }
+
                 PermisoRole::updateOrCreate(
                     [
                         'role_id' => $superAdmin->id,
@@ -94,11 +121,50 @@ class PermisosRolesSeeder extends Seeder
             }
             
             $this->command->newLine();
-            $this->command->info("✓ Todos los permisos asignados correctamente a SuperAdministrador");
+            $this->command->info("✓ Permisos asignados correctamente a SuperAdministrador");
         } else {
             $this->command->newLine();
             $this->command->warn("⚠ No se encontró el rol SuperAdministrador. Ejecuta RolesTableSeeder primero.");
         }
+
+        // Asignar permisos de dashboard por rol
+        $this->command->newLine();
+        $this->command->info("🔧 Asignando permisos de dashboard por rol...");
+        $this->command->newLine();
+
+        $dashboardPorRol = [
+            'Administrador' => [
+                Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
+            ],
+            'Usuario' => [
+                Permiso::PERMISO_DASHBOARD_USUARIO,
+            ],
+        ];
+
+        foreach ($dashboardPorRol as $roleName => $codigos) {
+            $rol = Role::where('role_name', $roleName)->first();
+            if (!$rol) {
+                $this->command->warn("  ⚠ No se encontró el rol {$roleName}");
+                continue;
+            }
+            foreach ($codigos as $codigo) {
+                $permiso = collect($permisos)->firstWhere('codigo', $codigo);
+                PermisoRole::updateOrCreate(
+                    [
+                        'role_id' => $rol->id,
+                        'codigo_permiso' => $codigo,
+                    ],
+                    [
+                        'descripcion' => $permiso['descripcion'] ?? null,
+                        'activo' => true,
+                    ]
+                );
+                $this->command->info("  ✓ {$codigo} asignado a {$roleName}");
+            }
+        }
+
+        $this->command->newLine();
+        $this->command->info("✓ Permisos de dashboard asignados correctamente");
     }
 }
 

@@ -63,7 +63,7 @@ class Producto extends Model
 
     public function historialMovimientos()
     {
-        return $this->hasMany(HistorialMovimientos::class, 'prod_id', 'id');
+        return $this->hasMany(HistorialMovimientos::class, 'producto_id', 'id');
     }
 
     public function movimientosProd()

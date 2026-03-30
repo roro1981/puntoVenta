@@ -52,7 +52,90 @@ $(document).ready(function() {
     trae_productos_compra();
     trae_documentos();
 
+    // Cargar productos enviados desde el dashboard (sin stock)
+    var dashboardPedido = sessionStorage.getItem('dashboardPedido');
+    if (dashboardPedido) {
+        sessionStorage.removeItem('dashboardPedido');
+        try {
+            var obj = JSON.parse(dashboardPedido);
+            if (obj && obj.tipo && Array.isArray(obj.productos) && obj.productos.length > 0) {
+                if (obj.tipo === 'factura') {
+                    mostrarform(1);
+                } else {
+                    mostrarform(2);
+                }
+                obj.productos.forEach(function(prod) {
+                    agregarDetalleExterno(prod, obj.tipo);
+                });
+            }
+        } catch (e) {
+            console.error('Error al cargar productos del dashboard', e);
+        }
+    }
+
 });
+
+function agregarDetalleExterno(prod, tipo) {
+    var ida = getRandomInt(100, 10000);
+    var cantidad = parseInt(prod.cantidad) || 1;
+    var precio_compra = Math.floor(prod.precio_compra);
+    var codigo = prod.codigo || '';
+    var desc_prod = prod.descripcion;
+    var imp1 = prod.imp1;
+    var imp2 = prod.imp2 || 0;
+
+    if (tipo === 'factura') {
+        var i1 = (imp1 && imp1 != 0) ? imp1.toString().split('_') : ['0', 'IVA'];
+        var subtotal = cantidad * precio_compra;
+        var multi = parseInt(subtotal) * parseFloat(i1[0]);
+        var tot_impu1 = Math.round(parseInt(multi) / 100);
+        var nom_imp2, tot_impu2, val_imp2;
+        if (!imp2 || imp2 == 0) {
+            nom_imp2 = 'NO'; tot_impu2 = 0; val_imp2 = 0;
+        } else {
+            var i2 = imp2.toString().split('_');
+            multi = parseInt(subtotal) * parseFloat(i2[0]);
+            nom_imp2 = i2[1]; tot_impu2 = Math.round(parseInt(multi) / 100); val_imp2 = i2[0];
+        }
+        var fila = '<tr class="filas" id="produ_' + ida + '">' +
+            '<td><button type="button" id="elimina_' + ida + '" class="borrar btn btn-danger">X</button></td>' +
+            '<td id="cod_' + ida + '">' + codigo + '</td>' +
+            '<td id="nom_' + ida + '">' + desc_prod + '</td>' +
+            '<td style="text-align:center"><input type="number" class="cantCompra" style="width:60px;text-align:center" id="canti_' + ida + '" value="' + cantidad + '"></td>' +
+            '<td style="text-align:center"><input type="text" style="text-align:center" class="precio_produ" data-precio="' + precio_compra + '" id="valor_' + ida + '" value="' + precio_compra + '" /></td>' +
+            '<td style="text-align:center"><input type="number" class="descuCompra" id="descu_' + ida + '" style="width:60px;text-align:center" value="0"></td>' +
+            '<td style="text-align:center" class="subt" id="subtotal_' + ida + '" data-imp1="' + imp1 + '" data-imp2="' + imp2 + '">' + subtotal + '</td>' +
+            '<input id="oculto2_' + ida + '" type="hidden" value="' + cantidad + '" >' +
+            '<input type="hidden" id="calc_imp_' + ida + '" class="impuesto_prod" data-im1="' + i1[1] + '" data-vim1="' + tot_impu1 + '" data-valor1="' + i1[0] + '" data-im2="' + nom_imp2 + '" data-vim2="' + tot_impu2 + '" data-valor2="' + val_imp2 + '" >' +
+            '</tr>';
+        $('.compras').append(fila);
+        subtotales();
+    } else {
+        var i1b = (imp1 && imp1 != 0) ? imp1.toString().split('_') : ['0', 'IVA'];
+        var multi_b = parseInt(precio_compra) * parseFloat(i1b[0]);
+        var tot_impu1b = Math.round(parseInt(multi_b) / 100);
+        var tot_impu2b = 0;
+        if (imp2 && imp2 != 0) {
+            var i2b = imp2.toString().split('_');
+            multi_b = parseInt(precio_compra) * parseFloat(i2b[0]);
+            tot_impu2b = Math.round(parseInt(multi_b) / 100);
+        }
+        var precio_prod = precio_compra + tot_impu1b + tot_impu2b;
+        var subtotal_b = precio_prod * cantidad;
+        var fila_b = '<tr class="filas" id="produ_' + ida + '">' +
+            '<td><button type="button" id="elimina_' + ida + '" class="borrar btn btn-danger">X</button></td>' +
+            '<td id="cod_' + ida + '">' + codigo + '</td>' +
+            '<td id="nom_' + ida + '">' + desc_prod + '</td>' +
+            '<td style="text-align:center"><input type="number" class="cantCompra2" style="width:60px;text-align:center" id="canti_' + ida + '" value="' + cantidad + '"></td>' +
+            '<td style="text-align:center"><input type="text" style="text-align:center" class="precio_prod" data-precio="' + precio_prod + '" id="valor_' + ida + '" value="' + precio_prod + '" /></td>' +
+            '<td style="text-align:center"><input type="number" class="descuCompra2" id="descu_' + ida + '" style="width:60px;text-align:center" value="0"></td>' +
+            '<td style="text-align:center" class="subt2" id="subtotal_' + ida + '">' + subtotal_b + '</td>' +
+            '<input id="oculto2_' + ida + '" type="hidden" value="' + cantidad + '" >' +
+            '</tr>';
+        $('.compras2').append(fila_b);
+        subtotales2();
+    }
+}
     $('#fecha_doc, #fecha_venc_doc, #fecha_doc2, #vencimientos').datepicker({
         clearText: 'Borra',
 		clearStatus: 'Borra fecha actual',

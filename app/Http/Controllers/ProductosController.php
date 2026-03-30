@@ -245,6 +245,16 @@ class ProductosController extends Controller
         try {
             $validated = $request->validated();
             $product = Producto::where('uuid', $uuid)->firstOrFail();
+
+            if (isset($validated['precio_venta']) && (float)$validated['precio_venta'] !== (float)$product->precio_venta) {
+                if (!puedeModificarPrecios()) {
+                    return response()->json([
+                        'error' => 403,
+                        'message' => 'No tiene permiso para modificar el precio'
+                    ], 403);
+                }
+            }
+
             $product = $product->editarProducto($validated);
 
             $response = response()->json([
@@ -263,6 +273,13 @@ class ProductosController extends Controller
     }
     public function deleteProd($id)
     {
+        if (!puedeEliminarProductos()) {
+            return response()->json([
+                'error' => 403,
+                'message' => 'No tiene permiso para eliminar productos'
+            ], 403);
+        }
+
         try {
             $product = Producto::findOrFail($id);
             $product->deleteProduct();
@@ -469,6 +486,13 @@ class ProductosController extends Controller
 
     public function deleteCat($id)
     {
+        if (!puedeEliminarProductos()) {
+            return response()->json([
+                'error' => 403,
+                'message' => 'No tiene permiso para eliminar categorías'
+            ], 403);
+        }
+
         try {
             $category = Categoria::findOrFail($id);
 

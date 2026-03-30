@@ -62,9 +62,19 @@ class UsersController extends Controller
     {
         $fechaEnPalabras = session('fechaEnPalabras', '');
         $horaActual = session('horaActual', '');
-        $dashboardData = $this->buildDashboardData();
 
-        return view('menu', compact('fechaEnPalabras', 'horaActual', 'dashboardData'));
+        if (puedeVerDashboardGerencial()) {
+            $tipoDashboard = 'gerencial';
+            $dashboardData = $this->buildDashboardData();
+        } elseif (puedeVerDashboardAdministrador()) {
+            $tipoDashboard = 'administrador';
+            $dashboardData = $this->buildDashboardData();
+        } else {
+            $tipoDashboard = 'usuario';
+            $dashboardData = [];
+        }
+
+        return view('menu', compact('fechaEnPalabras', 'horaActual', 'dashboardData', 'tipoDashboard'));
     }
 
     private function buildDashboardData(): array
@@ -233,9 +243,10 @@ class UsersController extends Controller
             ->get()
             ->map(function ($producto) {
                 return [
+                    'codigo'      => $producto->codigo,
                     'descripcion' => $producto->descripcion,
-                    'categoria' => optional($producto->categoria)->descripcion_categoria ?? 'Sin categoria',
-                    'stock' => (float) $producto->stock,
+                    'categoria'   => optional($producto->categoria)->descripcion_categoria ?? 'Sin categoria',
+                    'stock'       => (float) $producto->stock,
                     'stock_minimo' => (float) $producto->stock_minimo,
                     'precio_venta' => (float) $producto->precio_venta,
                 ];
@@ -254,8 +265,9 @@ class UsersController extends Controller
                     'categoria' => $categoria,
                     'items' => $productos->map(function ($producto) {
                         return [
-                            'descripcion' => $producto->descripcion,
-                            'stock' => (float) $producto->stock,
+                            'codigo'       => $producto->codigo,
+                            'descripcion'  => $producto->descripcion,
+                            'stock'        => (float) $producto->stock,
                             'stock_minimo' => (float) $producto->stock_minimo,
                             'precio_venta' => (float) $producto->precio_venta,
                         ];
@@ -345,6 +357,229 @@ class UsersController extends Controller
             ->values()
             ->all();
 
+        // ============================================================
+        // NUEVOS KPIs GERENCIALES
+        // ============================================================
+
+        // 1. Ventas por hora del día de hoy
+        if ($tipoNegocio === 'RESTAURANT') {
+            $vphrRaw = DB::table('comandas')
+                ->selectRaw('HOUR(fecha_cierre) as hora, SUM(total) as total')
+                ->whereDate('fecha_cierre', $hoy)
+                ->where('estado', 'CERRADA')
+                ->groupBy(DB::raw('HOUR(fecha_cierre)'))
+                ->orderBy('hora')
+                ->get()->keyBy('hora');
+        } else {
+            $vphrRaw = DB::table('ventas')
+                ->join('cajas', 'cajas.id', '=', 'ventas.caja_id')
+                ->selectRaw('HOUR(ventas.fecha_venta) as hora, SUM(ventas.total) as total')
+                ->whereDate('ventas.fecha_venta', $hoy)
+                ->where('ventas.estado', '!=', 'anulada')
+                ->where('cajas.tipo_caja', $tipoCajaDashboard)
+                ->groupBy(DB::raw('HOUR(ventas.fecha_venta)'))
+                ->orderBy('hora')
+                ->get()->keyBy('hora');
+        }
+        $ventasPorHora = [];
+        for ($h = 8; $h <= 22; $h++) {
+            $ventasPorHora[] = [
+                'hora'  => str_pad($h, 2, '0', STR_PAD_LEFT) . ':00',
+                'total' => isset($vphrRaw[$h]) ? (float) $vphrRaw[$h]->total : 0,
+            ];
+        }
+
+        // 2. Ventas mes anterior y delta %
+        $inicioMesAnterior     = Carbon::now()->subMonth()->startOfMonth();
+        $finMesAnterior        = Carbon::now()->subMonth()->endOfMonth();
+        if ($tipoNegocio === 'RESTAURANT') {
+            $ventasMesAnteriorTotal = (float) DB::table('comandas')
+                ->where('estado', 'CERRADA')
+                ->whereBetween('fecha_cierre', [$inicioMesAnterior, $finMesAnterior])
+                ->sum('total');
+        } else {
+            $ventasMesAnteriorTotal = (float) DB::table('ventas')
+                ->join('cajas', 'cajas.id', '=', 'ventas.caja_id')
+                ->where('cajas.tipo_caja', $tipoCajaDashboard)
+                ->whereBetween('ventas.fecha_venta', [$inicioMesAnterior, $finMesAnterior])
+                ->where('ventas.estado', '!=', 'anulada')
+                ->sum('ventas.total');
+        }
+        $deltaMes = $ventasMesAnteriorTotal > 0
+            ? round((($ventasMesTotal - $ventasMesAnteriorTotal) / $ventasMesAnteriorTotal) * 100, 1)
+            : null;
+
+        // 3. Ventas por categoría del mes
+        if ($tipoNegocio === 'RESTAURANT') {
+            $vpcRaw = DB::table('detalle_comandas as dc')
+                ->join('comandas as com', 'com.id', '=', 'dc.comanda_id')
+                ->leftJoin('productos as p', 'p.id', '=', 'dc.producto_id')
+                ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+                ->where('com.estado', 'CERRADA')
+                ->whereBetween('com.fecha_cierre', [$inicioMes, Carbon::now()])
+                ->selectRaw('COALESCE(c.descripcion_categoria, "Sin categoria") as categoria, SUM(dc.subtotal) as total')
+                ->groupBy('c.descripcion_categoria')
+                ->orderByDesc(DB::raw('SUM(dc.subtotal)'))
+                ->limit(8)->get();
+        } else {
+            $vpcRaw = DB::table('detalles_ventas as dv')
+                ->join('ventas as v', 'v.id', '=', 'dv.venta_id')
+                ->join('cajas as ca', 'ca.id', '=', 'v.caja_id')
+                ->leftJoin('productos as p', 'p.uuid', '=', 'dv.producto_uuid')
+                ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+                ->where('ca.tipo_caja', $tipoCajaDashboard)
+                ->whereBetween('v.fecha_venta', [$inicioMes, Carbon::now()])
+                ->where('v.estado', '!=', 'anulada')
+                ->where(function ($q) { $q->whereNull('dv.anulado')->orWhere('dv.anulado', false); })
+                ->selectRaw('COALESCE(c.descripcion_categoria, "Sin categoria") as categoria, SUM(dv.subtotal_linea) as total')
+                ->groupBy('c.descripcion_categoria')
+                ->orderByDesc(DB::raw('SUM(dv.subtotal_linea)'))
+                ->limit(8)->get();
+        }
+        $ventasPorCategoria = $vpcRaw->map(fn ($r) => [
+            'categoria' => $r->categoria ?? 'Sin categoria',
+            'total'     => (float) $r->total,
+        ])->all();
+
+        // 4. Ventas por día de semana (promedio últimas 4 semanas)
+        $hace4Semanas = Carbon::today()->subDays(27)->startOfDay();
+        if ($tipoNegocio === 'RESTAURANT') {
+            $dsdRaw = DB::table('comandas')
+                ->selectRaw('DAYOFWEEK(fecha_cierre) as dow, SUM(total) as total, COUNT(DISTINCT DATE(fecha_cierre)) as dias')
+                ->where('estado', 'CERRADA')
+                ->whereBetween('fecha_cierre', [$hace4Semanas, Carbon::now()->endOfDay()])
+                ->groupBy(DB::raw('DAYOFWEEK(fecha_cierre)'))
+                ->get()->keyBy('dow');
+        } else {
+            $dsdRaw = DB::table('ventas')
+                ->join('cajas', 'cajas.id', '=', 'ventas.caja_id')
+                ->selectRaw('DAYOFWEEK(ventas.fecha_venta) as dow, SUM(ventas.total) as total, COUNT(DISTINCT DATE(ventas.fecha_venta)) as dias')
+                ->where('cajas.tipo_caja', $tipoCajaDashboard)
+                ->whereBetween('ventas.fecha_venta', [$hace4Semanas, Carbon::now()->endOfDay()])
+                ->where('ventas.estado', '!=', 'anulada')
+                ->groupBy(DB::raw('DAYOFWEEK(ventas.fecha_venta)'))
+                ->get()->keyBy('dow');
+        }
+        $diasNombres = [1 => 'Dom', 2 => 'Lun', 3 => 'Mar', 4 => 'Mie', 5 => 'Jue', 6 => 'Vie', 7 => 'Sab'];
+        $ventasPorDiaSemana = [];
+        foreach ($diasNombres as $dow => $nombre) {
+            $e = $dsdRaw[$dow] ?? null;
+            $ventasPorDiaSemana[] = [
+                'dia'   => $nombre,
+                'total' => $e ? (int) round((float) $e->total / max(1, (int) $e->dias)) : 0,
+            ];
+        }
+
+        // 5. Evolución últimos 6 meses (ventas + compras estimadas)
+        $labels6Meses      = [];
+        $data6MesesVentas  = [];
+        $data6MesesCompras = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $mes  = Carbon::now()->subMonths($i);
+            $iniM = $mes->copy()->startOfMonth();
+            $finM = $mes->copy()->endOfMonth();
+            $labels6Meses[] = $mes->isoFormat('MMM YY');
+            if ($tipoNegocio === 'RESTAURANT') {
+                $vtaM = (float) DB::table('comandas')
+                    ->where('estado', 'CERRADA')
+                    ->whereBetween('fecha_cierre', [$iniM, $finM])
+                    ->sum('total');
+            } else {
+                $vtaM = (float) DB::table('ventas')
+                    ->join('cajas', 'cajas.id', '=', 'ventas.caja_id')
+                    ->where('cajas.tipo_caja', $tipoCajaDashboard)
+                    ->whereBetween('ventas.fecha_venta', [$iniM, $finM])
+                    ->where('ventas.estado', '!=', 'anulada')
+                    ->sum('ventas.total');
+            }
+            $data6MesesVentas[] = $vtaM;
+            $compraM = (float) DB::table('historial_movimientos as hm')
+                ->join('productos as p', 'p.id', '=', 'hm.producto_id')
+                ->whereRaw('UPPER(hm.tipo_mov) LIKE "%COMPRA%"')
+                ->whereBetween('hm.fecha', [$iniM, $finM])
+                ->selectRaw('SUM(ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0)) as total')
+                ->value('total') ?? 0;
+            $data6MesesCompras[] = $compraM;
+        }
+
+        // 6. Margen bruto estimado del mes
+        if ($tipoNegocio === 'RESTAURANT') {
+            $margenRow = DB::table('detalle_comandas as dc')
+                ->join('comandas as com', 'com.id', '=', 'dc.comanda_id')
+                ->join('productos as p', 'p.id', '=', 'dc.producto_id')
+                ->where('com.estado', 'CERRADA')
+                ->whereBetween('com.fecha_cierre', [$inicioMes, Carbon::now()])
+                ->where('dc.tipo_item', 'PRODUCTO')
+                ->where('p.precio_compra_neto', '>', 0)
+                ->selectRaw('SUM(dc.subtotal) as vta, SUM(dc.cantidad * p.precio_compra_neto) as costo')
+                ->first();
+        } else {
+            $margenRow = DB::table('detalles_ventas as dv')
+                ->join('ventas as v', 'v.id', '=', 'dv.venta_id')
+                ->join('cajas as ca', 'ca.id', '=', 'v.caja_id')
+                ->join('productos as p', 'p.uuid', '=', 'dv.producto_uuid')
+                ->where('ca.tipo_caja', $tipoCajaDashboard)
+                ->whereBetween('v.fecha_venta', [$inicioMes, Carbon::now()])
+                ->where('v.estado', '!=', 'anulada')
+                ->where('p.precio_compra_neto', '>', 0)
+                ->selectRaw('SUM(dv.subtotal_linea) as vta, SUM(dv.cantidad * p.precio_compra_neto) as costo')
+                ->first();
+        }
+        $margenBruto = ($margenRow && $margenRow->vta > 0)
+            ? round((($margenRow->vta - $margenRow->costo) / $margenRow->vta) * 100, 1)
+            : null;
+
+        // 7. Rotación de inventario (top productos más vendidos últimos 30 días)
+        $hace30Dias  = Carbon::today()->subDays(29)->startOfDay();
+        $rotacionRaw = DB::table('historial_movimientos as hm')
+            ->join('productos as p', 'p.id', '=', 'hm.producto_id')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->whereRaw('UPPER(hm.tipo_mov) LIKE "%VENTA%"')
+            ->where('p.estado', 'Activo')
+            ->where('p.tipo', '<>', 'S')
+            ->where('p.stock', '>', 0)
+            ->whereBetween('hm.fecha', [$hace30Dias, Carbon::now()->endOfDay()])
+            ->selectRaw('hm.producto_id, p.descripcion, COALESCE(c.descripcion_categoria, "Sin categoria") as categoria, p.stock, SUM(ABS(hm.cantidad)) as vendido30')
+            ->groupBy('hm.producto_id', 'p.descripcion', 'p.stock', 'c.descripcion_categoria')
+            ->orderByDesc(DB::raw('SUM(ABS(hm.cantidad))'))
+            ->limit(15)
+            ->get();
+        $rotacionInventario = $rotacionRaw->map(function ($r) {
+            $diario    = $r->vendido30 / 30;
+            $diasStock = $diario > 0 ? (int) min(999, round($r->stock / $diario)) : 999;
+            return [
+                'nombre'    => $r->descripcion,
+                'categoria' => $r->categoria,
+                'stock'     => (float) $r->stock,
+                'vendido30' => (float) $r->vendido30,
+                'diasStock' => $diasStock,
+            ];
+        })->sortBy('diasStock')->values()->all();
+
+        // 8. Sobrestock (stock > minimo*3 sin movimiento en últimos 30 días)
+        $sobrestock = Producto::query()
+            ->with('categoria:id,descripcion_categoria')
+            ->where('estado', 'Activo')
+            ->where('tipo', '<>', 'S')
+            ->whereNotNull('stock_minimo')
+            ->where('stock_minimo', '>', 0)
+            ->whereRaw('stock > stock_minimo * 3')
+            ->whereDoesntHave('historialMovimientos', function ($q) use ($hace30Dias) {
+                $q->where('fecha', '>=', $hace30Dias);
+            })
+            ->orderByDesc('stock')
+            ->limit(15)
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'nombre'      => $p->descripcion,
+                    'categoria'   => optional($p->categoria)->descripcion_categoria ?? 'Sin categoria',
+                    'stock'       => (float) $p->stock,
+                    'stockMinimo' => (float) $p->stock_minimo,
+                    'exceso'      => (float) ($p->stock - $p->stock_minimo),
+                ];
+            })->all();
+
         $insights = [];
         $insights[] = $ticketsHoy > 0
             ? ($tipoNegocio === 'RESTAURANT'
@@ -399,6 +634,19 @@ class UsersController extends Controller
             'paymentBreakdown' => $paymentBreakdown,
             'topProducts' => $topProducts,
             'insights' => $insights,
+            'ventasPorHora' => $ventasPorHora,
+            'ventasMesAnterior' => $ventasMesAnteriorTotal,
+            'deltaMes' => $deltaMes,
+            'ventasPorCategoria' => $ventasPorCategoria,
+            'ventasPorDiaSemana' => $ventasPorDiaSemana,
+            'evolucion6Meses' => [
+                'labels'  => $labels6Meses,
+                'ventas'  => $data6MesesVentas,
+                'compras' => $data6MesesCompras,
+            ],
+            'margenBruto' => $margenBruto,
+            'rotacionInventario' => $rotacionInventario,
+            'sobrestock' => $sobrestock,
             'details' => [
                 'stockAlerts' => $alertaStockProductos,
                 'outOfStockByCategory' => $sinStockPorCategoria,
@@ -513,6 +761,7 @@ class UsersController extends Controller
             ];
         }
 
+        ksort($menus);
         return array_values($menus);
     }
 
@@ -531,6 +780,7 @@ class UsersController extends Controller
                 '/generar_comandas',
                 '/cerrar_comandas',
                 '/restaurant/config-mesas',
+                '/restaurant/config-garzones',
             ], true);
         }
 

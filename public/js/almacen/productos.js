@@ -181,8 +181,10 @@ $('#guardarCambios').click(function (event) {
                 });
 
                 toastr.warning(errorMessages, 'Campos obligatorios', { timeOut: 7000 });
-            } else {
-                toastr.error('Error al modificar producto');
+            } else if(xhr.status === 403){
+                toastr.error('No tiene permiso para modificar el precio a publico del producto');
+            }else{
+                toastr.error('Error al actualizar producto');
             }
         }
     });

@@ -50,6 +50,7 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 7, 'submenu_name' => 'Recetas eliminadas', 'submenu_route' => '/recetas_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Promociones eliminadas', 'submenu_route' => '/promos_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Proveedores eliminados', 'submenu_route' => '/provs_elim', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 6, 'submenu_name' => 'Configurar Garzones', 'submenu_route' => '/restaurant/config-garzones', 'created_at' => Carbon::now()->toDateTimeString()],
         ]);
     }
 }

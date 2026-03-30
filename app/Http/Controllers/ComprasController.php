@@ -264,6 +264,32 @@ class ComprasController extends Controller
         
             return response()->json($data);
     }
+    public function productosDesdeDashboard(Request $request): JsonResponse
+    {
+        $codigos = $request->input('codigos', []);
+        if (empty($codigos) || !is_array($codigos)) {
+            return response()->json([]);
+        }
+
+        $productos = Producto::whereIn('codigo', $codigos)
+            ->where('estado', 'Activo')
+            ->get(['codigo', 'descripcion', 'precio_compra_neto', 'impuesto1', 'impuesto2']);
+
+        $data = $productos->map(function ($pro) {
+            $imp1 = $pro->impuesto1 ? $this->traeImp($pro->impuesto1) : 0;
+            $imp2 = $pro->impuesto2 ? $this->traeImp($pro->impuesto2) : 0;
+            return [
+                'codigo'        => $pro->codigo,
+                'descripcion'   => $pro->descripcion,
+                'precio_compra' => (float) $pro->precio_compra_neto,
+                'imp1'          => $imp1,
+                'imp2'          => $imp2,
+            ];
+        })->keyBy('codigo');
+
+        return response()->json($data);
+    }
+
     private function traeImp($imp)
     {
         $impuesto = Impuestos::select('valor_imp', 'nom_imp')->where('id', $imp)->first();
