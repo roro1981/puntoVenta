@@ -1,0 +1,215 @@
+/* ================================================================
+   Reporte: Ventas por Garzón  —  vtas_garzon.css
+   ================================================================ */
+
+/* ---- Filtro ---- */
+.vg-filtro {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+}
+.vg-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.vg-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+.vg-filtro-group-wide {
+    min-width: 200px;
+    flex: 1;
+    max-width: 280px;
+}
+.vg-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5f7381;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.vg-filtro-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.vg-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+.vg-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-color: #c4d0d8 !important;
+    color: #5f7381 !important;
+}
+.vg-atajo.active,
+.vg-atajo:hover {
+    background: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+    color: #fff !important;
+}
+
+/* ---- Cards ---- */
+.vg-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+    .vg-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .vg-cards { grid-template-columns: 1fr; }
+}
+.vg-card {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+}
+.vg-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 20px;
+}
+.vg-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #7f929e;
+    font-weight: 600;
+}
+.vg-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.vg-card-value-sm {
+    font-size: 15px;
+}
+
+/* ---- Panels ---- */
+.vg-row-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 860px) {
+    .vg-row-2 { grid-template-columns: 1fr; }
+}
+.vg-panel {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+}
+.vg-panel h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+.vg-panel-full { width: 100%; }
+.vg-panel-wide { min-width: 0; }
+.vg-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+.vg-chart-wrap-bar {
+    position: relative;
+    height: 220px;
+    overflow-y: auto;
+}
+
+/* ---- Tabla ranking ---- */
+.vg-table thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.vg-table tbody tr:hover td { background: #f8fbfd; }
+.vg-table td { font-size: 13px; vertical-align: middle !important; }
+
+.vg-rank-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: #95a5a6;
+}
+.vg-rank-num.gold   { background: #f1c40f; color: #7d6608; }
+.vg-rank-num.silver { background: #bdc3c7; color: #555; }
+.vg-rank-num.bronze { background: #c07a3c; }
+
+.vg-bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.vg-bar-mini-track {
+    flex: 1;
+    height: 6px;
+    background: #eaf0f4;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 50px;
+}
+.vg-bar-mini-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #16a085, #1abc9c);
+    border-radius: 3px;
+    transition: width .4s ease;
+}
+
+/* ---- DataTable detalle ---- */
+.vg-table-dt thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.vg-table-dt td { font-size: 13px; vertical-align: middle !important; }
+
+/* ---- Vacío ---- */
+.vg-empty {
+    color: #9aabb6;
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+}

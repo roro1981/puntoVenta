@@ -378,7 +378,10 @@
                                 @endif
                               </div>
                               <div class="home-kpi">
-                                <div class="home-kpi-label">Sobrestock detectado</div>
+                                <div class="home-kpi-label">
+                                  Sobrestock detectado
+                                  <i class="fa fa-question-circle" style="margin-left:5px;color:#9aabb6;cursor:pointer;" data-toggle="tooltip" data-placement="top" title="Productos activos con más de 60 días de inventario disponible según su ritmo de venta. Excluye productos creados hace menos de 60 días."></i>
+                                </div>
                                 <div class="home-kpi-value">{{ count($dashboardData['sobrestock']) }}</div>
                                 <div class="home-kpi-note">Productos inmovilizados con exceso de stock.</div>
                               </div>
@@ -421,7 +424,10 @@
                             <div class="home-section-sub">Tablas</div>
                             <div class="home-subgrid home-subgrid-3">
                               <div class="home-panel">
-                                <h4>Productos mas vendidos del mes</h4>
+                                <h4>
+                                  Productos mas vendidos del mes
+                                  <i class="fa fa-question-circle" style="margin-left:6px;color:#9aabb6;cursor:pointer;font-size:13px;" data-toggle="tooltip" data-placement="top" title="Top 5 productos con mayor cantidad vendida en el mes en curso, ordenados por unidades. Incluye tanto el monto total como las unidades despachadas."></i>
+                                </h4>
                                 @if(count($dashboardData['topProducts']) > 0)
                                   <div class="home-top-list">
                                     @foreach($dashboardData['topProducts'] as $product)
@@ -440,7 +446,10 @@
                               </div>
 
                               <div class="home-panel">
-                                <h4>Rotacion de inventario (30 dias)</h4>
+                                <h4>
+                                  Rotacion de inventario (30 dias)
+                                  <i class="fa fa-question-circle" style="margin-left:6px;color:#9aabb6;cursor:pointer;font-size:13px;" data-toggle="tooltip" data-placement="top" title="Muestra los productos que más se vendieron en los últimos 30 días. 'Dias stock' indica cuántos días les queda inventario al ritmo actual: ≤7 días = crítico (rojo), ≤14 días = alerta (naranja), +14 días = ok (verde)."></i>
+                                </h4>
                                 @if(count($dashboardData['rotacionInventario']) > 0)
                                   <div class="table-responsive">
                                     <table class="home-modal-table">
@@ -476,7 +485,10 @@
                               </div>
 
                               <div class="home-panel">
-                                <h4>Sobrestock (inmovilizados 30+ dias)</h4>
+                                <h4>
+                                  Sobrestock (inmovilizados 30+ dias)
+                                  <i class="fa fa-question-circle" style="margin-left:6px;color:#9aabb6;cursor:pointer;font-size:13px;" data-toggle="tooltip" data-placement="top" title="Productos con más de 60 días de inventario disponible según ventas recientes. Días de inventario = stock ÷ (ventas 30d ÷ 30). 0-30 días: saludable | 30-60 días: alto | +60 días: sobrestock. No incluye productos nuevos (menos de 60 días desde su creación)."></i>
+                                </h4>
                                 @if(count($dashboardData['sobrestock']) > 0)
                                   <div class="table-responsive">
                                     <table class="home-modal-table">

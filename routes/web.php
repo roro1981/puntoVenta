@@ -148,6 +148,22 @@ Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTic
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
 Route::get('/reportes/trae_movimientos', [ReportesController::class, 'traeMovimientos']);
 Route::get('/reportes/exportar-movimientos', [ReportesController::class, 'exportarMovimientos']);
+Route::get('/reportes/vtas_fecha', [ReportesController::class, 'indexVentasFecha']);
+Route::get('/reportes/vtas_fecha/data', [ReportesController::class, 'dataVentasFecha']);
+Route::get('/reportes/vtas_fecha/exportar', [ReportesController::class, 'exportarVentasFecha']);
+Route::get('/reportes/vtas_forma_pago', [ReportesController::class, 'indexFormasPago']);
+Route::get('/reportes/vtas_forma_pago/data', [ReportesController::class, 'dataFormasPago']);
+Route::get('/reportes/vtas_forma_pago/exportar', [ReportesController::class, 'exportarFormasPago']);
+Route::get('/reportes/vtas_vendedor', [ReportesController::class, 'indexVendedor']);
+Route::get('/reportes/vtas_vendedor/data', [ReportesController::class, 'dataVendedor']);
+Route::get('/reportes/vtas_vendedor/exportar', [ReportesController::class, 'exportarVendedor']);
+Route::get('/reportes/vtas_garzon', [ReportesController::class, 'indexGarzon']);
+Route::get('/reportes/vtas_garzon/data', [ReportesController::class, 'dataGarzon']);
+Route::get('/reportes/vtas_garzon/exportar_ventas', [ReportesController::class, 'exportarVentasGarzon']);
+Route::get('/reportes/vtas_garzon/exportar_propinas', [ReportesController::class, 'exportarPropinasGarzon']);
+Route::get('/reportes/vtas_mesa', [ReportesController::class, 'indexMesa']);
+Route::get('/reportes/vtas_mesa/data', [ReportesController::class, 'dataMesa']);
+Route::get('/reportes/vtas_mesa/exportar', [ReportesController::class, 'exportarMesa']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

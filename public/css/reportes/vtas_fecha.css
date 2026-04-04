@@ -1,0 +1,185 @@
+/* ================================================================
+   Reporte: Ventas por fecha  —  vtas_fecha.css
+   ================================================================ */
+
+/* ---- Filtro ---- */
+.vf-filtro {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+}
+.vf-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.vf-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+.vf-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5f7381;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.vf-filtro-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.vf-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+.vf-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-color: #c4d0d8 !important;
+    color: #5f7381 !important;
+}
+.vf-atajo.active,
+.vf-atajo:hover {
+    background: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+    color: #fff !important;
+}
+
+/* ---- Cards ---- */
+.vf-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+    .vf-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .vf-cards { grid-template-columns: 1fr; }
+}
+.vf-card {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+}
+.vf-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 20px;
+}
+.vf-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #7f929e;
+    font-weight: 600;
+}
+.vf-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.vf-card-note {
+    font-size: 11px;
+    color: #9aabb6;
+    margin-top: 2px;
+}
+
+/* ---- Panels ---- */
+.vf-row-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 860px) {
+    .vf-row-2 { grid-template-columns: 1fr; }
+}
+.vf-panel {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px;
+}
+.vf-panel h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+.vf-panel-wide { /* ya definido por grid */ }
+.vf-panel-full {
+    width: 100%;
+    margin-bottom: 22px;
+}
+.vf-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+
+/* ---- Formas de pago ---- */
+.vf-fp-item { margin-bottom: 12px; }
+.vf-fp-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+.vf-fp-bar {
+    background: #eaf0f4;
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+}
+.vf-fp-bar span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #3c8dbc, #5dade2);
+    border-radius: 4px;
+    transition: width .4s ease;
+}
+
+/* ---- Tabla top productos ---- */
+.vf-table thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.vf-table tbody tr:hover td { background: #f8fbfd; }
+.vf-table td { font-size: 13px; vertical-align: middle !important; }
+
+/* ---- Vacío / spinner ---- */
+.vf-empty {
+    text-align: center;
+    color: #9aabb6;
+    padding: 18px 0;
+    font-size: 13px;
+}

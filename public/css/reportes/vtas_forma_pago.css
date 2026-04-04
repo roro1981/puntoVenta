@@ -1,0 +1,191 @@
+/* ================================================================
+   Reporte: Ventas por forma de pago  —  vtas_forma_pago.css
+   ================================================================ */
+
+/* ---- Filtro ---- */
+.fp-filtro {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+}
+.fp-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.fp-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+.fp-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5f7381;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.fp-filtro-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.fp-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+.fp-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-color: #c4d0d8 !important;
+    color: #5f7381 !important;
+}
+.fp-atajo.active,
+.fp-atajo:hover {
+    background: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+    color: #fff !important;
+}
+
+/* ---- Cards ---- */
+.fp-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+    .fp-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .fp-cards { grid-template-columns: 1fr; }
+}
+.fp-card {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+}
+.fp-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 20px;
+}
+.fp-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #7f929e;
+    font-weight: 600;
+}
+.fp-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.fp-card-value-sm {
+    font-size: 16px;
+}
+
+/* ---- Panels ---- */
+.fp-row-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 860px) {
+    .fp-row-2 { grid-template-columns: 1fr; }
+}
+.fp-panel {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px;
+}
+.fp-panel h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+.fp-panel-full {
+    width: 100%;
+    margin-bottom: 22px;
+}
+.fp-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+.fp-dona-wrap {
+    position: relative;
+    height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---- Tabla ---- */
+.fp-table thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.fp-table tbody tr:hover td { background: #f8fbfd; }
+.fp-table td { font-size: 13px; vertical-align: middle !important; }
+.fp-badge {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+.fp-bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.fp-bar-mini-track {
+    flex: 1;
+    height: 6px;
+    background: #eaf0f4;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+}
+.fp-bar-mini-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .4s ease;
+}
+
+/* ---- Vacío / spinner ---- */
+.fp-empty {
+    color: #9aabb6;
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+}

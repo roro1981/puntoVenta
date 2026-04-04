@@ -284,6 +284,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* inicializar tooltips de Bootstrap en los iconos de ayuda */
+    $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+
 });
 
 /* =========================================================

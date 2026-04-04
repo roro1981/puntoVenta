@@ -531,6 +531,8 @@ class UsersController extends Controller
 
         // 7. Rotación de inventario (top productos más vendidos últimos 30 días)
         $hace30Dias  = Carbon::today()->subDays(29)->startOfDay();
+        $hace60Dias  = Carbon::today()->subDays(60)->startOfDay();
+        $hace90Dias  = Carbon::today()->subDays(90)->startOfDay();
         $rotacionRaw = DB::table('historial_movimientos as hm')
             ->join('productos as p', 'p.id', '=', 'hm.producto_id')
             ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
@@ -556,27 +558,116 @@ class UsersController extends Controller
             ];
         })->sortBy('diasStock')->values()->all();
 
-        // 8. Sobrestock (stock > minimo*3 sin movimiento en últimos 30 días)
-        $sobrestock = Producto::query()
-            ->with('categoria:id,descripcion_categoria')
-            ->where('estado', 'Activo')
-            ->where('tipo', '<>', 'S')
-            ->whereNotNull('stock_minimo')
-            ->where('stock_minimo', '>', 0)
-            ->whereRaw('stock > stock_minimo * 3')
-            ->whereDoesntHave('historialMovimientos', function ($q) use ($hace30Dias) {
-                $q->where('fecha', '>=', $hace30Dias);
+        // 8. Sobrestock → días de inventario > 60
+        //    Días de inventario = stock / (unidades vendidas últimos 30 días / 30)
+        //    0–30 días: saludable | 30–60 días: alto | +60 días: sobrestock
+        $sobrestockRaw = DB::table('productos as p')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->leftJoin(DB::raw('(
+                SELECT producto_id, SUM(ABS(cantidad)) as vendido30
+                FROM historial_movimientos
+                WHERE UPPER(tipo_mov) LIKE "%VENTA%"
+                  AND fecha BETWEEN "' . $hace30Dias->toDateTimeString() . '"
+                                AND "' . Carbon::now()->endOfDay()->toDateTimeString() . '"
+                GROUP BY producto_id
+            ) as vm'), 'vm.producto_id', '=', 'p.id')
+            ->where('p.estado', 'Activo')
+            ->where('p.tipo', '<>', 'S')
+            ->where('p.stock', '>', 0)
+            ->where('p.fec_creacion', '<', $hace60Dias)  // excluir productos nuevos
+            ->whereNotNull('p.stock_minimo')
+            ->where('p.stock_minimo', '>', 0)
+            ->selectRaw('
+                p.descripcion,
+                COALESCE(c.descripcion_categoria, "Sin categoria") as categoria,
+                p.stock,
+                p.stock_minimo,
+                COALESCE(vm.vendido30, 0) as vendido30,
+                CASE WHEN COALESCE(vm.vendido30, 0) > 0
+                     THEN ROUND(p.stock / (COALESCE(vm.vendido30, 0) / 30), 1)
+                     ELSE 999
+                END as dias_inventario
+            ')
+            ->havingRaw('dias_inventario > 60')
+            ->orderByDesc('dias_inventario')
+            ->limit(15)
+            ->get();
+
+        $sobrestock = $sobrestockRaw->map(function ($r) {
+            return [
+                'nombre'      => $r->descripcion,
+                'categoria'   => $r->categoria,
+                'stock'       => (float) $r->stock,
+                'stockMinimo' => (float) $r->stock_minimo,
+                'exceso'      => (float) ($r->stock - $r->stock_minimo),
+            ];
+        })->all();
+
+        // 9. Productos nuevos (creados hace ≤60 días: aún no han tenido tiempo de rotar, no son problema)
+        $productosNuevos = DB::table('productos as p')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->where('p.estado', 'Activo')
+            ->where('p.tipo', '<>', 'S')
+            ->where('p.stock', '>', 0)
+            ->where('p.fec_creacion', '>=', $hace60Dias)
+            ->selectRaw('
+                p.descripcion,
+                COALESCE(c.descripcion_categoria, "Sin categoria") as categoria,
+                p.stock,
+                DATEDIFF(NOW(), p.fec_creacion) as dias_desde_creacion
+            ')
+            ->orderBy('p.fec_creacion', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($r) {
+                return [
+                    'nombre'            => $r->descripcion,
+                    'categoria'         => $r->categoria,
+                    'stock'             => (float) $r->stock,
+                    'diasDesdeCreacion' => (int) $r->dias_desde_creacion,
+                ];
+            })->all();
+
+        // 10. Productos estancados (sin ventas hace 30+ días, no son nuevos — estos son los peligrosos)
+        //     30–60 días sin venta: advertencia ⚠️ | 60–90 días: alto 🔴 | +90 días: crítico 🚨
+        $estancadosRaw = DB::table('productos as p')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->leftJoin(DB::raw('(
+                SELECT producto_id, MAX(fecha) as ult_venta
+                FROM historial_movimientos
+                WHERE UPPER(tipo_mov) LIKE "%VENTA%"
+                GROUP BY producto_id
+            ) as uv'), 'uv.producto_id', '=', 'p.id')
+            ->where('p.estado', 'Activo')
+            ->where('p.tipo', '<>', 'S')
+            ->where('p.stock', '>', 0)
+            ->where('p.fec_creacion', '<', $hace60Dias)  // excluir productos nuevos
+            ->where(function ($q) use ($hace30Dias) {
+                $q->whereNull('uv.ult_venta')
+                  ->orWhere('uv.ult_venta', '<', $hace30Dias);
             })
-            ->orderByDesc('stock')
+            ->selectRaw('
+                p.descripcion,
+                COALESCE(c.descripcion_categoria, "Sin categoria") as categoria,
+                p.stock,
+                uv.ult_venta,
+                CASE
+                    WHEN uv.ult_venta IS NULL THEN 999
+                    ELSE DATEDIFF(NOW(), uv.ult_venta)
+                END as dias_sin_venta
+            ')
+            ->orderByDesc(DB::raw('dias_sin_venta'))
             ->limit(15)
             ->get()
-            ->map(function ($p) {
+            ->map(function ($r) {
+                $dias = (int) $r->dias_sin_venta;
                 return [
-                    'nombre'      => $p->descripcion,
-                    'categoria'   => optional($p->categoria)->descripcion_categoria ?? 'Sin categoria',
-                    'stock'       => (float) $p->stock,
-                    'stockMinimo' => (float) $p->stock_minimo,
-                    'exceso'      => (float) ($p->stock - $p->stock_minimo),
+                    'nombre'       => $r->descripcion,
+                    'categoria'    => $r->categoria,
+                    'stock'        => (float) $r->stock,
+                    'ultVenta'     => $r->ult_venta,
+                    'diasSinVenta' => $dias,
+                    'nivel'        => $dias >= 90 ? 'critico' : ($dias >= 60 ? 'alto' : 'advertencia'),
                 ];
             })->all();
 
@@ -647,6 +738,8 @@ class UsersController extends Controller
             'margenBruto' => $margenBruto,
             'rotacionInventario' => $rotacionInventario,
             'sobrestock' => $sobrestock,
+            'productosNuevos' => $productosNuevos,
+            'productosEstancados' => $estancadosRaw,
             'details' => [
                 'stockAlerts' => $alertaStockProductos,
                 'outOfStockByCategory' => $sinStockPorCategoria,
@@ -781,6 +874,8 @@ class UsersController extends Controller
                 '/cerrar_comandas',
                 '/restaurant/config-mesas',
                 '/restaurant/config-garzones',
+                '/vtas_garzon',
+                '/vtas_mesa',
             ], true);
         }
 

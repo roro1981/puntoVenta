@@ -1,0 +1,223 @@
+/* ================================================================
+   Reporte: Ventas por Vendedor  —  vtas_vendedor.css
+   ================================================================ */
+
+/* ---- Filtro ---- */
+.vv-filtro {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+}
+.vv-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.vv-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+.vv-filtro-group-wide {
+    min-width: 200px;
+    flex: 1;
+    max-width: 280px;
+}
+.vv-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5f7381;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.vv-filtro-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.vv-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+.vv-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-color: #c4d0d8 !important;
+    color: #5f7381 !important;
+}
+.vv-atajo.active,
+.vv-atajo:hover {
+    background: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+    color: #fff !important;
+}
+
+/* ---- Cards ---- */
+.vv-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+    .vv-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .vv-cards { grid-template-columns: 1fr; }
+}
+.vv-card {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+}
+.vv-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 20px;
+}
+.vv-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #7f929e;
+    font-weight: 600;
+}
+.vv-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.vv-card-value-sm {
+    font-size: 15px;
+}
+
+/* ---- Panels ---- */
+.vv-row-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 860px) {
+    .vv-row-2 { grid-template-columns: 1fr; }
+}
+.vv-panel {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+}
+.vv-panel h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+.vv-panel-full { width: 100%; }
+.vv-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+.vv-chart-wrap-bar {
+    position: relative;
+    height: 220px;
+    overflow-y: auto;
+}
+
+/* ---- Tabla ranking ---- */
+.vv-table thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.vv-table tbody tr:hover td { background: #f8fbfd; }
+.vv-table td { font-size: 13px; vertical-align: middle !important; }
+.vv-rank-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: #95a5a6;
+}
+.vv-rank-num.gold   { background: #f1c40f; color: #7d6608; }
+.vv-rank-num.silver { background: #bdc3c7; color: #555; }
+.vv-rank-num.bronze { background: #c07a3c; }
+.vv-bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.vv-bar-mini-track {
+    flex: 1;
+    height: 6px;
+    background: #eaf0f4;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 50px;
+}
+.vv-bar-mini-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3c8dbc, #5dade2);
+    border-radius: 3px;
+    transition: width .4s ease;
+}
+
+/* ---- DataTable detalle ---- */
+.vv-table-dt thead th {
+    background: #f4f7f9;
+    color: #5f7381;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 2px solid #dce3e8 !important;
+}
+.vv-table-dt td { font-size: 13px; vertical-align: middle !important; }
+
+/* ---- Badges estado ---- */
+.vv-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.vv-badge-ok      { background: #d5f5e3; color: #1e8449; }
+.vv-badge-parcial { background: #fdebd0; color: #a04000; }
+
+/* ---- Vacío ---- */
+.vv-empty {
+    color: #9aabb6;
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+}
