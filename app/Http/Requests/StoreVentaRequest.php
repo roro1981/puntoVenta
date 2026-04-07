@@ -26,6 +26,7 @@ class StoreVentaRequest extends FormRequest
             'detalles' => 'required|array|min:1',
             'detalles.*.venta_id' => 'nullable|integer',
             'detalles.*.producto_uuid' => 'nullable|uuid',
+            'detalles.*.promo_id' => 'nullable|integer|exists:promociones,id',
             'detalles.*.descripcion_producto' => 'required|string|max:255',
             'detalles.*.cantidad' => 'required|numeric|min:0.01',
             'detalles.*.precio_unitario' => 'required|integer|min:0',

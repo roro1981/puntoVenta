@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\HistorialPrecio;
 use App\Models\Producto;
 use App\Models\PromocionDetalle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -77,6 +78,10 @@ class Promocion extends Model
                 }
             }
 
+            HistorialPrecio::registrar('PROMOCION', $promocion->id, [
+                'precio_venta' => [null, (float) $promocion->precio_venta],
+            ], $promocion->user_creacion);
+
             DB::commit();
             return $promocion;
         } catch (\Exception $e) {
@@ -90,6 +95,7 @@ class Promocion extends Model
         DB::beginTransaction();
         try {
             $promocion = self::where('uuid', $uuid)->firstOrFail();
+            $anteriorVenta = (float) $promocion->precio_venta;
 
             $promocion->update([
                 'codigo'        => Str::upper($data['codigo']),
@@ -101,6 +107,10 @@ class Promocion extends Model
                 'fecha_fin' => $data['fecha_fin'],
                 'fec_modificacion' => now(),
                 'user_modificacion' => auth()->user()->name,
+            ]);
+
+            HistorialPrecio::registrar('PROMOCION', $promocion->id, [
+                'precio_venta' => [$anteriorVenta, (float) $promocion->precio_venta],
             ]);
 
             $promocion->detallePromocion()->delete();

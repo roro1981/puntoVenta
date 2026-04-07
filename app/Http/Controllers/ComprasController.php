@@ -472,14 +472,13 @@ class ComprasController extends Controller
           
             foreach ($data as $item) {
                 $item->nfact = $factura->num_factura;
+
+                $producto = Producto::where('codigo', $item->cod)->firstOrFail();
+                $item->id_prod = $producto->id;
                 DetalleFactura::grabarDetalleFactura($item);
 
-                $producto = Producto::where('codigo', $item->cod)->first();
-
-                if ($producto) {
-                    $producto->stock += $item->cant;
-                    $producto->save();
-                }
+                $producto->stock += $item->cant;
+                $producto->save();
 
                 $idProducto = $producto->id;
 
@@ -569,12 +568,12 @@ class ComprasController extends Controller
     {
         if ($tip === 'Factura') {
             return DB::table('detalle_factura as df')
-                ->join('productos as p', 'p.codigo', '=', 'df.cod_producto')
+                ->join('productos as p', 'p.id', '=', 'df.id_prod')
                 ->join('impuestos as i', 'i.id', '=', 'p.impuesto1')
                 ->leftJoin('impuestos as i2', 'i2.id', '=', 'p.impuesto2')
                 ->join('facturas as f', 'f.num_factura', '=', 'df.num_factura')
                 ->where('df.num_factura', $num)
-                ->selectRaw('df.cod_producto, p.descripcion, df.cantidad, df.precio, df.descuento,
+                ->selectRaw('p.codigo as cod_producto, p.descripcion, df.cantidad, df.precio, df.descuento,
                              i.nom_imp as impuesto, i2.nom_imp as impuesto2,
                              f.desglose_impuestos, f.neto, f.impuestos, f.total_fact,
                              f.dias, f.vencimiento, f.fpago, f.estado')
@@ -583,10 +582,10 @@ class ComprasController extends Controller
 
         // Para boletas
         return DB::table('detalle_boleta as db')
-            ->join('productos as p', 'p.codigo', '=', 'db.cod_prod')
+            ->join('productos as p', 'p.id', '=', 'db.id_prod')
             ->join('boletas as b', 'b.num_boleta', '=', 'db.num_boleta')
             ->where('db.num_boleta', $num)
-            ->selectRaw('db.cod_prod as cod_producto, p.descripcion, db.cantidad, db.precio, db.descu as descuento,
+            ->selectRaw('p.codigo as cod_producto, p.descripcion, db.cantidad, db.precio, db.descu as descuento,
                          NULL as impuesto, NULL as impuesto2, NULL as desglose_impuestos, NULL as neto,
                          NULL as impuestos, b.tot_boleta,
                          NULL as dias, NULL as vencimiento, NULL as fpago, "NP" as estado')

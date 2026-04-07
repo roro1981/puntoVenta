@@ -1,0 +1,325 @@
+/* ================================================================
+   Reporte: Ventas por Categoría  —  vtas_categoria.css  (prefix vc-)
+   ================================================================ */
+
+/* ---- Filtro ---- */
+.vc-filtro {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px 20px 12px;
+    margin-bottom: 22px;
+}
+.vc-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.vc-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+.vc-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5f7381;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.vc-filtro-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.vc-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+.vc-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+    border-color: #c4d0d8 !important;
+    color: #5f7381 !important;
+}
+.vc-atajo.active,
+.vc-atajo:hover {
+    background: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+    color: #fff !important;
+}
+
+/* ---- Loader ---- */
+.vc-loader-wrap {
+    text-align: center;
+    padding: 40px;
+    color: #8a99a3;
+}
+.vc-loader-wrap span {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+/* ---- Section title ---- */
+.vc-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #444;
+    border-left: 4px solid #3c8dbc;
+    padding: 4px 0 4px 10px;
+    margin: 20px 0 12px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.vc-section-title i {
+    margin-right: 5px;
+}
+
+/* ---- Cards ---- */
+.vc-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+    .vc-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .vc-cards { grid-template-columns: 1fr; }
+}
+.vc-card {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+.vc-card-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    flex-shrink: 0;
+}
+.vc-card-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.vc-card-label {
+    font-size: 11px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+.vc-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+.vc-card-value-sm {
+    font-size: 14px !important;
+    white-space: normal;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.vc-card-variacion .vc-card-value { color: #888; }
+.vc-card-variacion.vc-var-up     .vc-card-value { color: #27ae60; }
+.vc-card-variacion.vc-var-down   .vc-card-value { color: #e74c3c; }
+
+/* ---- Panel genérico ---- */
+.vc-panel {
+    background: #fff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+.vc-panel h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: #344;
+}
+
+/* ---- Two-column layout (tabla + dona) ---- */
+.vc-row-2 {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+.vc-panel-wide {
+    flex: 2;
+    min-width: 0;
+}
+.vc-panel-narrow {
+    flex: 1;
+    min-width: 200px;
+}
+@media (max-width: 768px) {
+    .vc-row-2 { flex-direction: column; }
+}
+
+/* ---- Tabla ranking ---- */
+.vc-tabla {
+    font-size: 12px;
+    width: 100%;
+}
+.vc-tabla th {
+    background: #f4f6f8;
+    font-size: 11px;
+    font-weight: 700;
+    color: #5f7381;
+    border-bottom: 2px solid #dce3e8 !important;
+    white-space: nowrap;
+    padding: 7px 9px !important;
+}
+.vc-tabla td {
+    vertical-align: middle !important;
+    padding: 7px 9px !important;
+    border-bottom: 1px solid #eef1f5 !important;
+}
+.vc-tabla .vc-rank-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3c8dbc;
+}
+.vc-tabla .vc-rank-1  { color: #f39c12; }
+.vc-tabla .vc-rank-2  { color: #95a5a6; }
+.vc-tabla .vc-rank-3  { color: #a04000; }
+
+/* Barra de participación inline */
+.vc-bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.vc-bar-mini-track {
+    flex: 1;
+    height: 8px;
+    background: #eceff1;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 50px;
+}
+.vc-bar-mini-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: #3c8dbc;
+    transition: width .4s;
+}
+
+/* Chips variación */
+.vc-var {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.vc-var.vc-var-up   { background: #eafaf1; color: #1e8449; }
+.vc-var.vc-var-down { background: #fdedee; color: #c0392b; }
+.vc-var.vc-var-neu  { background: #f0f3f4; color: #7f8c8d; }
+
+/* Badge nueva categoría */
+.vc-badge-new {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    background: #eaf4fb;
+    color: #2471a3;
+    vertical-align: middle;
+}
+
+/* Cambio de rank */
+.vc-rank-up   { color: #27ae60; font-size: 12px; }
+.vc-rank-down { color: #e74c3c; font-size: 12px; }
+.vc-rank-new  { color: #2471a3; font-size: 12px; }
+
+/* ---- Tooltip hint en encabezados tabla ---- */
+.vc-th-info {
+    font-size: 11px;
+    color: #aaa;
+    margin-left: 3px;
+    cursor: help;
+}
+
+/* ---- Dona ---- */
+.vc-dona-wrap {
+    position: relative;
+    height: 260px;
+}
+
+/* ---- Gráfico tendencia ---- */
+.vc-chart-full {
+    margin-bottom: 18px;
+}
+.vc-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+
+/* ---- Hallazgos ---- */
+.vc-hallazgos-ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.vc-hallazgos-ul li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f3f4;
+    font-size: 13px;
+    color: #2c3e50;
+}
+.vc-hallazgos-ul li:last-child {
+    border-bottom: none;
+}
+.vc-hallazgo-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.vc-hallazgo-icon.vc-h-ok      { background: #eafaf1; color: #27ae60; }
+.vc-hallazgo-icon.vc-h-warning { background: #fef9e7; color: #e67e22; }
+.vc-hallazgo-icon.vc-h-info    { background: #eaf4fb; color: #2980b9; }
+.vc-hallazgo-icon.vc-h-bad     { background: #fdedee; color: #e74c3c; }
+
+.vc-empty-msg {
+    color: #aaa;
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 0;
+}

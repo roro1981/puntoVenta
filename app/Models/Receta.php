@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\HistorialPrecio;
 use App\Models\Producto;
 use App\Models\RecetaIngrediente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -77,6 +78,10 @@ class Receta extends Model
                 }
             }
 
+            HistorialPrecio::registrar('RECETA', $receta->id, [
+                'precio_venta' => [null, (float) $receta->precio_venta],
+            ], $receta->user_creacion);
+
             DB::commit();
             return $receta;
         } catch (\Exception $e) {
@@ -90,6 +95,7 @@ class Receta extends Model
         DB::beginTransaction();
         try {
             $receta = self::where('uuid', $uuid)->firstOrFail();
+            $anteriorVenta = (float) $receta->precio_venta;
 
             $receta->update([
                 'codigo'        => Str::upper($data['codigo']),
@@ -101,6 +107,10 @@ class Receta extends Model
                 'imagen'        => $data['foto'] ?? $receta->imagen,
                 'fec_modificacion' => now(),
                 'user_modificacion' => auth()->user()->name,
+            ]);
+
+            HistorialPrecio::registrar('RECETA', $receta->id, [
+                'precio_venta' => [$anteriorVenta, (float) $receta->precio_venta],
             ]);
 
             $receta->ingredientes()->delete();

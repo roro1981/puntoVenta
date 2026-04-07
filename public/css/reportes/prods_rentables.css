@@ -1,0 +1,301 @@
+/* ============================================================
+   Reporte: Productos más rentables
+   Prefix : pr-
+   ============================================================ */
+
+/* ── FILTRO ── */
+.pr-filtro {
+    background: #fff;
+    border: 1px solid #dde4f0;
+    border-radius: 6px;
+    padding: 14px 16px 10px;
+    margin-bottom: 18px;
+}
+.pr-filtro-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+}
+.pr-filtro-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+}
+.pr-filtro-group-select {
+    min-width: 200px;
+}
+.pr-filtro-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+}
+.pr-filtro-actions {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+}
+.pr-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: flex-end;
+}
+.pr-atajo {
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    transition: background .15s, color .15s;
+}
+.pr-atajo.active,
+.pr-atajo:focus.active {
+    background-color: #3490dc !important;
+    color: #fff !important;
+    border-color: #3490dc !important;
+}
+
+/* ── LOADER ── */
+.pr-loader-wrap {
+    text-align: center;
+    padding: 40px 0;
+    color: #888;
+}
+.pr-loader-wrap span {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+/* ── SECTION TITLE ── */
+.pr-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #3a3a3a;
+    border-left: 4px solid #3490dc;
+    padding-left: 10px;
+    margin: 20px 0 12px;
+}
+
+/* ── CARDS ── */
+.pr-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+.pr-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1 1 160px;
+    min-width: 150px;
+    border-radius: 8px;
+    padding: 16px 18px;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.10);
+}
+.pr-card-icon { font-size: 28px; opacity: .85; }
+.pr-card-val  { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.pr-card-val-sm { font-size: 14px; font-weight: 700; line-height: 1.4; }
+.pr-card-lbl  { font-size: 11px; opacity: .90; margin-top: 3px; }
+
+.pr-card-blue   { background: linear-gradient(135deg, #3490dc, #2271c3); }
+.pr-card-red    { background: linear-gradient(135deg, #e3342f, #c12929); }
+.pr-card-green  { background: linear-gradient(135deg, #38a169, #276647); }
+.pr-card-purple { background: linear-gradient(135deg, #805ad5, #6944c7); }
+.pr-card-gold   { background: linear-gradient(135deg, #d69e2e, #b7821a); }
+
+/* ── PANEL ── */
+.pr-panel {
+    background: #fff;
+    border: 1px solid #dde4f0;
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+.pr-panel-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: #444;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* ── TABLE ── */
+.pr-tabla thead th {
+    font-size: 12px;
+    background: #f3f6fb;
+    vertical-align: middle !important;
+}
+.pr-tabla tbody td {
+    font-size: 12px;
+    vertical-align: middle !important;
+}
+.pr-th-info {
+    color: #3490dc;
+    cursor: help;
+    margin-left: 3px;
+}
+
+/* ── SEMÁFORO BADGES ── */
+.pr-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+}
+.pr-badge-excelente { background: #38a169; }
+.pr-badge-bueno     { background: #3490dc; }
+.pr-badge-bajo      { background: #e07b1a; }
+.pr-badge-critico   { background: #e3342f; }
+
+/* ── VARIACIÓN ── */
+.pr-var-pos { color: #38a169; font-weight: 600; }
+.pr-var-neg { color: #e3342f; font-weight: 600; }
+.pr-var-neu { color: #888; }
+
+/* ── RANKING CHANGE ── */
+.pr-rank-up   { color: #38a169; font-weight: 700; }
+.pr-rank-down { color: #e3342f; font-weight: 700; }
+.pr-rank-new  { color: #805ad5; font-weight: 700; }
+.pr-rank-eq   { color: #888; }
+
+/* ── CHARTS ROW ── */
+.pr-row-charts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 6px;
+}
+.pr-chart-bar-wrap   { flex: 2 1 420px; min-width: 280px; }
+.pr-chart-donut-wrap { flex: 1 1 260px; min-width: 240px; }
+
+/* required for Chart.js */
+.pr-canvas-wrap {
+    position: relative;
+    width: 100%;
+}
+
+/* ── OPERATIVO ROW ── */
+.pr-row-operativo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 6px;
+}
+.pr-panel-estrellas { flex: 1 1 280px; }
+.pr-panel-alertas   { flex: 1 1 280px; }
+
+/* ── ESTRELLAS ── */
+.pr-estrella-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.pr-estrella-item:last-child { border-bottom: none; }
+.pr-estrella-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #d69e2e;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.pr-estrella-nombre {
+    font-size: 12px;
+    font-weight: 600;
+    flex: 1;
+}
+.pr-estrella-margen {
+    font-size: 12px;
+    font-weight: 700;
+    color: #38a169;
+}
+.pr-estrella-util {
+    font-size: 11px;
+    color: #888;
+}
+
+/* ── ALERTAS ── */
+.pr-alerta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.pr-alerta-item:last-child { border-bottom: none; }
+.pr-alerta-icon {
+    color: #e3342f;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.pr-alerta-nombre {
+    font-size: 12px;
+    font-weight: 600;
+    flex: 1;
+}
+.pr-alerta-margen {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e3342f;
+}
+.pr-alerta-util {
+    font-size: 11px;
+    color: #888;
+}
+
+.pr-icon-star  { color: #d69e2e; }
+.pr-icon-alert { color: #e3342f; }
+
+/* ── HALLAZGOS ── */
+.pr-panel-hallazgos { padding: 14px 18px; }
+.pr-hallazgos-ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.pr-hallazgos-ul li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f3f3f3;
+    font-size: 13px;
+    color: #444;
+}
+.pr-hallazgos-ul li:last-child { border-bottom: none; }
+.pr-hallazgos-ul li .pr-h-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.pr-h-ok      { color: #38a169; }
+.pr-h-info    { color: #3490dc; }
+.pr-h-warning { color: #e07b1a; }
+.pr-h-critico { color: #e3342f; }
+
+/* ── EMPTY MSG ── */
+.pr-empty-msg {
+    text-align: center;
+    color: #bbb;
+    font-size: 12px;
+    padding: 18px 0;
+    margin: 0;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+    .pr-cards           { gap: 8px; }
+    .pr-card            { flex: 1 1 120px; padding: 12px; }
+    .pr-card-val        { font-size: 18px; }
+    .pr-row-charts,
+    .pr-row-operativo   { flex-direction: column; }
+}

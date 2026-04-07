@@ -863,12 +863,17 @@ class UsersController extends Controller
         $ruta = strtolower(trim((string) $submenuRoute));
 
         if ($tipoNegocio === 'RESTAURANT') {
+            // En restaurant: ocultar generar_ventas y todo lo de promociones
             return in_array($ruta, [
                 '/generar_ventas',
+                '/promociones_crear',
+                '/promociones',
+                '/promos_elim',
             ], true);
         }
 
         if ($tipoNegocio === 'ALMACEN') {
+            // En almacen: ocultar cosas de restaurant y todo lo de recetas
             return in_array($ruta, [
                 '/generar_comandas',
                 '/cerrar_comandas',
@@ -876,6 +881,9 @@ class UsersController extends Controller
                 '/restaurant/config-garzones',
                 '/vtas_garzon',
                 '/vtas_mesa',
+                '/recetas_crear',
+                '/recetas',
+                '/recetas_elim',
             ], true);
         }
 

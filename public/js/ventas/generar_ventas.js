@@ -616,30 +616,43 @@ $(document).ready(function() {
         });
     });
 
+    let productSearchTimer = null;
+    let productSearchXhr = null;
+
     $('#product-search').on('keyup', function() {
         let query = $(this).val().toLowerCase();
+        clearTimeout(productSearchTimer);
+        if (productSearchXhr) {
+            productSearchXhr.abort();
+            productSearchXhr = null;
+        }
         if (!query){
             $('#product-list').html("");
             return false;
         }
-        $.ajax({
-            url: '/ventas/buscarProducto',
-            method: 'GET',
-            data: { q: query, tipo:2 },
-            success: function(products) {
-                
-                let productsHtml = products.map(product => `
-                    <div class="product-item">
-                        <span>${product.descripcion}</span>
-                        <div class="product-actions">
-                            <i class="fa fa-plus action-icon add-to-cart" data-uuid="${product.uuid}" data-code="${product.codigo || ''}" data-name="${product.descripcion}" data-price="${product.precio_venta}" data-image="${product.imagen || ''}"></i>
+        productSearchTimer = setTimeout(function() {
+            productSearchXhr = $.ajax({
+                url: '/ventas/buscarProducto',
+                method: 'GET',
+                data: { q: query, tipo:2 },
+                success: function(products) {
+                    if (!Array.isArray(products)) {
+                        $('#product-list').html("");
+                        return;
+                    }
+                    let productsHtml = products.map(product => `
+                        <div class="product-item">
+                            <span>${product.descripcion}</span>
+                            <div class="product-actions">
+                                <i class="fa fa-plus action-icon add-to-cart" data-uuid="${product.uuid}" data-code="${product.codigo || ''}" data-name="${product.descripcion}" data-price="${product.precio_venta}" data-image="${product.imagen || ''}"></i>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
-                
-                $('#product-list').html(productsHtml);
-            }
-        });
+                    `).join('');
+
+                    $('#product-list').html(productsHtml);
+                }
+            });
+        }, 300);
     });
 
     $(document).off('click' + EVENT_NS, '.add-to-cart').on('click' + EVENT_NS, '.add-to-cart', function() {

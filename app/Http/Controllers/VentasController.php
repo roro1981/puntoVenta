@@ -321,30 +321,56 @@ class VentasController extends Controller
 
         if ($tipo == 1) {
             $products = Producto::select('uuid', 'codigo', 'descripcion', 'precio_venta', 'imagen')
+                ->where('estado', 'Activo')
+                ->whereNull('fec_eliminacion')
+                ->where('tipo', '<>', 'I')
                 ->where('codigo', $query)
                 ->get();
 
             $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
+                ->where('estado', 'Activo')
+                ->whereNull('fec_eliminacion')
                 ->where('codigo', $query)
                 ->get();
         } else {
             $products = Producto::select('uuid', 'codigo', 'descripcion', 'precio_venta', 'imagen')
+                ->where('estado', 'Activo')
+                ->whereNull('fec_eliminacion')
+                ->where('tipo', '<>', 'I')
                 ->where(function($q) use ($query) {
                     $q->where('descripcion', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
                 })->get();
 
             $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
+                ->where('estado', 'Activo')
+                ->whereNull('fec_eliminacion')
                 ->where(function($q) use ($query) {
                     $q->where('nombre', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
                 })->get();
         }
 
-        // Merge collections so the response format is consistent
-        $results = $products->merge($promotions);
+        // Build explicit arrays to guarantee consistent JSON array output
+        $productsArr = $products->map(fn($p) => [
+            'uuid'         => $p->uuid,
+            'codigo'       => $p->codigo,
+            'descripcion'  => $p->descripcion,
+            'precio_venta' => $p->precio_venta,
+            'imagen'       => $p->imagen ?? null,
+            'es_promo'     => false,
+        ])->values()->all();
 
-        return response()->json($results);
+        $promosArr = $promotions->map(fn($p) => [
+            'uuid'         => $p->uuid,
+            'codigo'       => $p->codigo,
+            'descripcion'  => $p->descripcion,
+            'precio_venta' => $p->precio_venta,
+            'imagen'       => null,
+            'es_promo'     => true,
+        ])->values()->all();
+
+        return response()->json(array_values(array_merge($productsArr, $promosArr)));
     }
 
     public function guardarBorrador(Request $request)
@@ -582,9 +608,10 @@ class VentasController extends Controller
 
             // Guardar los detalles
             foreach ($request->detalles as $detalle) {
-                DetalleVenta::create([
+                $detalleVenta = DetalleVenta::create([
                     'venta_id' => $venta->id,
                     'producto_uuid' => $detalle['producto_uuid'] ?? null,
+                    'promo_id' => $detalle['promo_id'] ?? null,
                     'descripcion_producto' => $detalle['descripcion_producto'],
                     'cantidad' => $detalle['cantidad'],
                     'precio_unitario' => $detalle['precio_unitario'],
@@ -626,10 +653,16 @@ class VentasController extends Controller
                             ]);
                         }
                     } else {
-                        // Verificar si es una promoción
+                        // Verificar si es una promoción (buscada por UUID en tabla promociones)
                         $promocion = Promocion::where('uuid', $detalle['producto_uuid'])->first();
                         
                         if ($promocion) {
+                            // Actualizar el detalle ya creado: asignar promo_id y limpiar producto_uuid
+                            $detalleVenta->update([
+                                'promo_id'      => $promocion->id,
+                                'producto_uuid' => null,
+                            ]);
+
                             // Es una promoción: procesar cada producto de la promoción
                             $detallesPromocion = PromocionDetalle::where('promo_id', $promocion->id)
                                 ->with('producto')

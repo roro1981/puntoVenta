@@ -135,11 +135,13 @@ class ComprasService
             $grabaBoleta=Boleta::grabarBoleta($cabecera[0]);
      
             foreach ($items as $item) {
-                DetalleBoleta::grabarDetalleBoleta($item);
                 $total += (float) $item->precio * (float) $item->cant;
                 $producto = Producto::where('codigo', $item->cod)->first();
             
                 if ($producto) {
+                    $item->id_prod = $producto->id;
+                    DetalleBoleta::grabarDetalleBoleta($item);
+
                     $idProducto = $producto->id;
             
                     $producto->stock += $item->cant;

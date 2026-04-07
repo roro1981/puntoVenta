@@ -17,7 +17,7 @@ class DetalleBoleta extends Model
     protected $fillable = [
         'uuid',
         'num_boleta',
-        'cod_prod',
+        'id_prod',
         'cantidad',
         'precio',
         'descu',
@@ -33,7 +33,7 @@ class DetalleBoleta extends Model
         return self::create([
             'uuid' =>  Str::uuid(),
             'num_boleta' => $item->nbol,
-            'cod_prod' => $item->cod,
+            'id_prod' => $item->id_prod,
             'cantidad' => $item->cant,
             'precio' => $item->precio,
             'descu' => $item->descu

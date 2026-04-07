@@ -164,6 +164,23 @@ Route::get('/reportes/vtas_garzon/exportar_propinas', [ReportesController::class
 Route::get('/reportes/vtas_mesa', [ReportesController::class, 'indexMesa']);
 Route::get('/reportes/vtas_mesa/data', [ReportesController::class, 'dataMesa']);
 Route::get('/reportes/vtas_mesa/exportar', [ReportesController::class, 'exportarMesa']);
+Route::get('/reportes/prods_mas_vendidos', [ReportesController::class, 'indexProductosTop']);
+Route::get('/reportes/prods_mas_vendidos/data', [ReportesController::class, 'dataProductosTop']);
+Route::get('/reportes/prods_mas_vendidos/exportar', [ReportesController::class, 'exportarProductosTop']);
+Route::get('/reportes/prods_rentables', [ReportesController::class, 'indexProductosRentables']);
+Route::get('/reportes/prods_rentables/data', [ReportesController::class, 'dataProductosRentables']);
+Route::get('/reportes/prods_rentables/exportar', [ReportesController::class, 'exportarProductosRentables']);
+Route::get('/reportes/cat_mas_vendidas', [ReportesController::class, 'indexCategoriasVendidas']);
+Route::get('/reportes/cat_mas_vendidas/data', [ReportesController::class, 'dataCategoriasVendidas']);
+Route::get('/reportes/cat_mas_vendidas/exportar', [ReportesController::class, 'exportarCategoriasVendidas']);
+Route::get('/reportes/inventario', [ReportesController::class, 'indexInventario']);
+Route::get('/reportes/inventario/data', [ReportesController::class, 'dataInventario']);
+Route::get('/reportes/inventario/exportar', [ReportesController::class, 'exportarInventario']);
+Route::get('/reportes/hist_precio_prod', [ReportesController::class, 'indexHistorialPrecio']);
+Route::get('/reportes/hist_precio_prod/data', [ReportesController::class, 'dataHistorialPrecio']);
+Route::get('/reportes/hist_precio_prod/compras', [ReportesController::class, 'dataHistorialCompras']);
+Route::get('/reportes/hist_precio_prod/exportar', [ReportesController::class, 'exportarHistorialPrecio']);
+Route::get('/reportes/hist_precio_prod/search', [ReportesController::class, 'searchEntidadPrecio']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');

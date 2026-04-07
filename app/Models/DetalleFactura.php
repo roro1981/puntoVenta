@@ -17,7 +17,7 @@ class DetalleFactura extends Model
     protected $fillable = [
         'uuid',
         'num_factura',
-        'cod_producto',
+        'id_prod',
         'cantidad',
         'precio',
         'descuento',
@@ -30,7 +30,7 @@ class DetalleFactura extends Model
         return self::create([
             'uuid' =>  Str::uuid(),
             'num_factura' => $item->nfact,
-            'cod_producto' => $item->cod,
+            'id_prod' => $item->id_prod,
             'cantidad' => $item->cant,
             'precio' => $item->precio,
             'descuento' => $item->descu,

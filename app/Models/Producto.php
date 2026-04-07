@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Categoria;
+use App\Models\HistorialPrecio;
 use App\Models\Receta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -111,12 +112,20 @@ class Producto extends Model
 
         $this->save();
 
+        HistorialPrecio::registrar('PRODUCTO', $this->id, [
+            'precio_compra_neto' => [null, $this->precio_compra_neto],
+            'precio_venta'       => [null, $this->precio_venta],
+        ], $this->user_creacion);
+
         return $this;
     }
 
     public function editarProducto(array $data)
     {
         $this->descripcion = strtoupper($data['descripcion']);
+        $anteriorCosto = (float) $this->precio_compra_neto;
+        $anteriorVenta = (float) $this->precio_venta;
+
         $this->precio_compra_neto = $data['precio_compra_neto'];
         $this->precio_compra_bruto = $data['precio_compra_bruto'];
         $this->precio_venta = $data['precio_venta'];
@@ -131,6 +140,11 @@ class Producto extends Model
         $this->user_modificacion = $this->currentUserName();
 
         $this->update();
+
+        HistorialPrecio::registrar('PRODUCTO', $this->id, [
+            'precio_compra_neto' => [$anteriorCosto, (float) $this->precio_compra_neto],
+            'precio_venta'       => [$anteriorVenta, (float) $this->precio_venta],
+        ]);
 
         return $this;
     }
