@@ -2,68 +2,110 @@
     <link rel="stylesheet" href="css/reportes/movimientos_productos.css" />
     <script type="text/javascript" src="js/reportes/movimientos_productos.js"></script>
  </head>
-<input type="hidden" id="datos_repo" />
-<input type="hidden" id="datos_repo2" />
-<input type="hidden" id="tmov" />
-<input type="hidden" id="idpr" />
-<input type="hidden" id="fde" />
-<input type="hidden" id="fha" />
-        <div id="cabecera2"> 
-             <div style="margin-top:5px" class="form-group col-lg-2 col-md-2 col-sm-2 col-xs-12">
-                <label>TIPO MOVIMIENTO(*):</label>
-                <select class="form-control" id="tip_movi">
-                    <option value="0" selected>-- Seleccione --</option> 
-                    <option value="1">TODOS</option>
-                    <option value="2">VENTAS</option> 
-                    <option value="3">ENTRADAS</option> 
-                    <option value="4">SALIDAS</option> 
-                    <option value="5">MERMAS</option> 
-                    <option value="6">FACTURAS</option> 
-                    <option value="7">BOLETAS</option>
-                </select>     
-            </div>
-            <div style="margin-top:5px" class="form-group col-lg-3 col-md-3 col-sm-3 col-xs-12">
-                            <label>PRODUCTO(*):</label>
-                            
-                            <select id="produ_movi" class="selectpicker form-control" data-live-search="true" required="campo obligatorio">
-                            <option value="0">-- Seleccione producto --</option>  
-                                @foreach($productos as $prod)
-                                    <option value="{{ $prod->uuid }}">{{ $prod->descripcion }} ({{ $prod->stock }})</option>
-                                @endforeach
-                            </select>  
-                           
-            </div>
-             <div style="margin-top:5px" class="form-group col-lg-2 col-md-2 col-sm-2 col-xs-12">
-                <label>DESDE(*):</label>
-                <input id="fecha_desde" class="form-control" readonly required />
-             </div>
-             <div style="margin-top:5px" class="form-group col-lg-2 col-md-2 col-sm-2 col-xs-12">
-                <label>HASTA(*):</label>
-                <input id="fecha_hasta" class="form-control" readonly required />
-             </div>
-              <div style="margin-top:30px" class="form-group col-lg-1 col-md-1 col-sm-1 col-xs-12">
-                <button class="btn btn-info" id="btn_ver"><i class="fa fa-archive"></i> Generar</button>
-             </div>
-             <div style="margin-top:30px" class="form-group col-lg-2 col-md-2 col-sm-2 col-xs-12">
-                <button class="btn btn-success" id="excel"><i class="fa fa-file-excel-o"></i> Exportar a excel</button>
-             </div>
+
+{{-- ── Toolbar ─────────────────────────────────────────────── --}}
+<div class="mv-toolbar">
+
+    <div class="mv-toolbar-group mv-search-wrap">
+        <label>Producto</label>
+        <input type="text" id="mv_buscar" class="form-control input-sm mv-buscar-input"
+               placeholder="Código o nombre…" autocomplete="off" />
+        <div id="mv_sugerencias" class="mv-sugerencias" style="display:none;"></div>
+    </div>
+
+    <div class="mv-toolbar-group">
+        <label>Tipo movimiento</label>
+        <select class="form-control input-sm" id="tip_movi">
+            <option value="1">TODOS</option>
+            <option value="2">VENTAS</option>
+            <option value="3">ENTRADAS</option>
+            <option value="4">SALIDAS</option>
+            <option value="5">MERMAS</option>
+            <option value="6">FACTURAS COMPRA</option>
+            <option value="7">BOLETAS COMPRA</option>
+            <option value="8">ANULACIONES</option>
+        </select>
+    </div>
+
+    <div class="mv-toolbar-group">
+        <label>Desde</label>
+        <input id="fecha_desde" class="form-control input-sm" readonly placeholder="dd/mm/aaaa" />
+    </div>
+
+    <div class="mv-toolbar-group">
+        <label>Hasta</label>
+        <input id="fecha_hasta" class="form-control input-sm" readonly placeholder="dd/mm/aaaa" />
+    </div>
+
+    <div class="mv-toolbar-group mv-toolbar-btns">
+        <button class="btn btn-info btn-sm" id="btn_ver">
+            <i class="fa fa-search"></i> Generar
+        </button>
+        <button class="btn btn-success btn-sm" id="excel" disabled>
+            <i class="fa fa-file-excel-o"></i> Exportar
+        </button>
+    </div>
+
+    <div class="mv-toolbar-separador"></div>
+
+    <div class="mv-toolbar-group mv-fechas-rapidas-wrap">
+        <label>Período rápido</label>
+        <div class="mv-fechas-rapidas">
+            <button type="button" class="btn-fecha-rapida" data-periodo="semana">Última semana</button>
+            <button type="button" class="btn-fecha-rapida" data-periodo="mes">Último mes</button>
+            <button type="button" class="btn-fecha-rapida" data-periodo="3meses">Últimos 3 meses</button>
+            <button type="button" class="btn-fecha-rapida" data-periodo="6meses">Últimos 6 meses</button>
+            <button type="button" class="btn-fecha-rapida" data-periodo="anio">Último año</button>
         </div>
-         
-      <div id="tabla" class="col-lg-12 col-sm-12 col-md-12 col-xs-12">
-        <table id="tbl_movis" class="table table-responsive table-hover table-fixed">
-          <thead style="background-color:#A9D0F5">
+    </div>
+
+</div>
+
+{{-- ── Loader ───────────────────────────────────────────────── --}}
+<div id="mv_loader" class="mv-loader-wrap" style="display:none;">
+    <i class="fa fa-spinner fa-spin fa-2x"></i>
+</div>
+
+{{-- ── Nombre producto ──────────────────────────────────────── --}}
+<div id="mv_nombre_producto" class="mv-nombre-producto" style="display:none;"></div>
+
+{{-- ── Resultado ────────────────────────────────────────────── --}}
+<div id="mv_resultado" style="display:none;">
+
+    {{-- KPI bar --}}
+    <div class="mv-kpi-bar">
+        <div class="mv-kpi-item">
+            <span class="mv-kpi-label"><i class="fa fa-cubes"></i> Stock actual</span>
+            <span class="mv-kpi-valor" id="mv_kpi_stock">—</span>
+        </div>
+        <div class="mv-kpi-item kpi-entrada">
+            <span class="mv-kpi-label"><i class="fa fa-arrow-down"></i> Entradas período</span>
+            <span class="mv-kpi-valor" id="mv_kpi_entradas">—</span>
+        </div>
+        <div class="mv-kpi-item kpi-salida">
+            <span class="mv-kpi-label"><i class="fa fa-arrow-up"></i> Salidas período</span>
+            <span class="mv-kpi-valor" id="mv_kpi_salidas">—</span>
+        </div>
+        <div class="mv-kpi-item" id="mv_kpi_variacion_wrap">
+            <span class="mv-kpi-label"><i class="fa fa-exchange"></i> Variación neta</span>
+            <span class="mv-kpi-valor" id="mv_kpi_variacion">—</span>
+        </div>
+    </div>
+
+    {{-- Tabla --}}
+    <div class="mv-panel">
+        <table id="tbl_movis" class="table table-hover mv-tabla">
+            <thead>
                 <tr>
-                <th style="text-align:center">Fecha movimiento</th>
-                <th>Producto</th>
-                <th style="text-align:center">Tipo movimiento</th>
-                <th style="text-align:center">Cantidad</th>
-                <th style="text-align:center">Stock</th>
-                <th style="text-align:center">Observación</th>
-            </tr></thead>
-            <tbody class='movis_det'>
-              
-            </tbody>
+                    <th>Fecha</th>
+                    <th>Tipo movimiento</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">Stock resultante</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
         </table>
-        
-      </div>
-      
+    </div>
+
+</div>

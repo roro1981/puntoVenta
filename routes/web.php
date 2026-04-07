@@ -147,6 +147,7 @@ Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTic
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
 Route::get('/reportes/trae_movimientos', [ReportesController::class, 'traeMovimientos']);
+Route::get('/reportes/mov_productos/search', [ReportesController::class, 'searchProductosMovimientos']);
 Route::get('/reportes/exportar-movimientos', [ReportesController::class, 'exportarMovimientos']);
 Route::get('/reportes/vtas_fecha', [ReportesController::class, 'indexVentasFecha']);
 Route::get('/reportes/vtas_fecha/data', [ReportesController::class, 'dataVentasFecha']);

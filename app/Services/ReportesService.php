@@ -27,6 +27,7 @@ class ReportesService
             5 => 'MERMA',
             6 => 'FACTURA COMPRA',
             7 => 'BOLETA COMPRA',
+            8 => 'ANULACIÓN',
         ];
 
         $movi = $tipos[$tipoMov] ?? null;
@@ -65,6 +66,9 @@ class ReportesService
                     $obs = 'TICKET ' . $pro->num_doc;
                     break;
                 case 'ENTRADA':
+                    $signo = ' (+)';
+                    $obs = $pro->obs;
+                    break;
                 case 'SALIDA':
                 case 'MERMA':
                     $signo = ' (-)';
@@ -127,6 +131,7 @@ class ReportesService
                 '5' => 'MERMA',
                 '6' => 'FACTURA COMPRA',
                 '7' => 'BOLETA COMPRA',
+                '8' => 'ANULACIÓN',
             ];
             $tipoTexto = $mapeo[$tipoMov] ?? null;
 
@@ -137,5 +142,102 @@ class ReportesService
             }
         }
         return $query->orderBy('fecha', 'asc')->get();
+    }
+
+    /**
+     * Devuelve movimientos como array para respuesta JSON.
+     */
+    public function dataMovimientosJson(string $uuid, int $tipoMov, string $desde, string $hasta): array
+    {
+        $producto = Producto::where('uuid', $uuid)->first();
+        if (!$producto) {
+            return ['movimientos' => [], 'nombre' => '', 'stock_actual' => 0];
+        }
+
+        $registros = $this->traerMovimientos((string) $tipoMov, $uuid, $desde, $hasta);
+
+        $esEntrada = fn(string $t) => in_array($t, ['ENTRADA', 'FACTURA COMPRA', 'BOLETA COMPRA']);
+        $esSalida  = fn(string $t) => in_array($t, ['SALIDA', 'MERMA', 'VENTA', 'VENTA (RECETA)', 'VENTA (PROMO)']);
+
+        $totalEntradas = 0;
+        $totalSalidas  = 0;
+
+        $movimientos = $registros->map(function ($m) use ($esEntrada, $esSalida, &$totalEntradas, &$totalSalidas) {
+            $tipo = $m->tipo_mov;
+            if ($esEntrada($tipo)) {
+                $signo = '+';
+                $totalEntradas += abs((float) $m->cantidad);
+            } elseif ($esSalida($tipo)) {
+                $signo = '-';
+                $totalSalidas += abs((float) $m->cantidad);
+            } else {
+                $signo = '';
+            }
+
+            $numDoc  = $m->num_doc ?? '';
+            $obsRaw  = trim((string) ($m->obs ?? ''));
+            $sinObs  = $obsRaw === '' || $obsRaw === '-';
+            $obs = match (true) {
+                in_array($tipo, ['VENTA', 'VENTA (RECETA)', 'VENTA (PROMO)']) => $sinObs ? ('TICKET '  . $numDoc) : $obsRaw,
+                in_array($tipo, ['FACTURA COMPRA']) => $sinObs ? ('FACTURA ' . $numDoc) : $obsRaw,
+                in_array($tipo, ['BOLETA COMPRA'])  => $sinObs ? ('BOLETA '  . $numDoc) : $obsRaw,
+                $tipo === 'ENTRADA'   => $sinObs ? ($numDoc ? 'ENTRADA N° ' . $numDoc : 'ENTRADA')  : $obsRaw,
+                $tipo === 'SALIDA'    => $sinObs ? ($numDoc ? 'SALIDA N° '  . $numDoc : 'SALIDA')   : $obsRaw,
+                $tipo === 'MERMA'     => $sinObs ? ($numDoc ? 'MERMA N° '   . $numDoc : 'MERMA')    : $obsRaw,
+                $tipo === 'ANULACIÓN' => $sinObs ? ($numDoc ? 'ANULACIÓN N° '. $numDoc : 'ANULACIÓN') : $obsRaw,
+                default => $obsRaw,
+            };
+
+            return [
+                'fecha'    => Carbon::parse($m->fecha)->format('d-m-Y H:i'),
+                'tipo_mov' => $tipo,
+                'signo'    => $signo,
+                'cantidad' => abs((float) $m->cantidad),
+                'stock'    => (float) $m->stock,
+                'obs'      => $obs,
+            ];
+        })->values()->all();
+
+        return [
+            'nombre'         => $producto->descripcion,
+            'codigo'         => $producto->codigo ?? '',
+            'stock_actual'   => (float) $producto->stock,
+            'total_entradas' => $totalEntradas,
+            'total_salidas'  => $totalSalidas,
+            'variacion_neta' => $totalEntradas - $totalSalidas,
+            'movimientos'    => array_merge(
+                [[
+                    'fecha'    => Carbon::parse($producto->fec_creacion ?? $producto->created_at)->format('d-m-Y H:i'),
+                    'tipo_mov' => 'CREACIÓN',
+                    'signo'    => '',
+                    'cantidad' => 0,
+                    'stock'    => 0,
+                    'obs'      => 'Alta del producto en el sistema',
+                ]],
+                $movimientos
+            ),
+        ];
+    }
+
+    /**
+     * Búsqueda de productos para autocomplete.
+     */
+    public function buscarProductos(string $q): array
+    {
+        return Producto::where('estado', 'Activo')
+            ->where('tipo', '<>', 'S')
+            ->where(function ($query) use ($q) {
+                $query->where('descripcion', 'like', "%{$q}%")
+                      ->orWhere('codigo', 'like', "%{$q}%");
+            })
+            ->orderBy('descripcion')
+            ->limit(12)
+            ->get(['id', 'uuid', 'codigo', 'descripcion', 'stock'])
+            ->map(fn ($p) => [
+                'uuid'        => $p->uuid,
+                'codigo'      => $p->codigo ?? '',
+                'descripcion' => $p->descripcion,
+                'stock'       => (float) $p->stock,
+            ])->all();
     }
 }

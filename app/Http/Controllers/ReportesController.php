@@ -38,20 +38,35 @@ class ReportesController extends Controller
 
     public function indexMovimientos()
     {
-        $productos = Producto::where('estado', 'Activo')->where('tipo', '<>', 'S')->get();
-        return view('reportes.movimientos_productos', compact("productos"));
+        return view('reportes.movimientos_productos');
     }
 
     public function traeMovimientos(Request $request, ReportesService $service)
     {
-        $html = $service->traeMovimientos(
-            $request->idp,
-            $request->tipo_mov,
-            $request->fec_desde,
-            $request->fec_hasta
+        $request->validate([
+            'idp'       => 'required|string',
+            'tipo_mov'  => 'required|integer|min:1|max:8',
+            'fec_desde' => 'required|string',
+            'fec_hasta' => 'required|string',
+        ]);
+
+        $data = $service->dataMovimientosJson(
+            $request->input('idp'),
+            (int) $request->input('tipo_mov'),
+            $request->input('fec_desde'),
+            $request->input('fec_hasta')
         );
 
-        return response($html);
+        return response()->json($data);
+    }
+
+    public function searchProductosMovimientos(Request $request, ReportesService $service)
+    {
+        $q = trim($request->input('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+        return response()->json($service->buscarProductos($q));
     }
 
     public function exportarMovimientos(Request $request)
