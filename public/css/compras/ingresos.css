@@ -20,3 +20,27 @@ body {
     padding: 0 20px;
   }
 
+  /* Mantiene la tabla de articulos dentro del modal aunque haya nombres muy largos */
+  #modalProd .modal-body {
+    overflow-x: auto;
+  }
+
+  #modalProd #tblarticulos {
+    width: 100% !important;
+    table-layout: fixed;
+  }
+
+  #modalProd #tblarticulos th,
+  #modalProd #tblarticulos td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+  }
+
+  /* Columna Nombre */
+  #modalProd #tblarticulos th:nth-child(2),
+  #modalProd #tblarticulos td:nth-child(2) {
+    width: 32%;
+  }
+

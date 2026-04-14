@@ -144,6 +144,15 @@ Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta']
 Route::get('/ventas/ticket-pdf/{id}', [VentasController::class, 'generarTicketPDF']);
 Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTicketCierrePDF']);
 
+// Preventa (ALMACEN_PREVENTA)
+Route::get('/ventas/generar_preventa', [VentasController::class, 'indexPreventa']);
+Route::post('/ventas/procesar-preventa', [VentasController::class, 'procesarPreventa']);
+Route::get('/ventas/ticket-preventa-pdf/{id}', [VentasController::class, 'generarTicketPreventaPDF']);
+Route::get('/ventas/preventas-pendientes', [VentasController::class, 'listarPreventasPendientes']);
+Route::get('/ventas/cierre_preventa', [VentasController::class, 'indexCierrePreventa']);
+Route::post('/ventas/preventa/buscar', [VentasController::class, 'buscarPreventaPorCodigo']);
+Route::post('/ventas/preventa/cerrar', [VentasController::class, 'cerrarPreventa']);
+
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
 Route::get('/reportes/trae_movimientos', [ReportesController::class, 'traeMovimientos']);

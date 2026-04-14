@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use App\Models\{Facturas, DetalleFactura, Producto, HistorialMovimientos, Proveedor, FormaPago, Impuestos, Region, Boleta};
+use App\Models\{Facturas, DetalleFactura, Producto, HistorialMovimientos, Proveedor, FormaPago, Impuestos, Region, Boleta, Globales};
 
 class ComprasController extends Controller
 {
@@ -224,9 +224,15 @@ class ComprasController extends Controller
 
     public function productosCompra()
     {
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+
         $productos = Producto::with('categoria:id,descripcion_categoria')
             ->where('estado', 'Activo')
-            ->whereIn('tipo', ['P', 'I'])
+            ->when($tipoNegocio === 'RESTAURANT', function ($query) {
+                $query->whereIn('tipo', ['P', 'I']);
+            }, function ($query) {
+                $query->where('tipo', 'P');
+            })
             ->get(['uuid', 'descripcion', 'categoria_id', 'codigo', 'stock', 'imagen', 'precio_compra_neto', 'impuesto1', 'impuesto2']);
             $data = [];
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoriaRequest;
 use App\Http\Requests\ProductoRequest;
 use App\Models\Categoria;
+use App\Models\Globales;
 use App\Models\Impuestos;
 use App\Models\Producto;
 use App\Models\Promocion;
@@ -47,6 +48,8 @@ class ProductosController extends Controller
     }
     public function listProducts()
     {
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+
         $products = Producto::select(
             'productos.id',
             'productos.uuid',
@@ -60,6 +63,9 @@ class ProductosController extends Controller
         )
             ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
             ->where('productos.estado', 'Activo')
+            ->when($tipoNegocio === 'ALMACEN', function ($query) {
+                $query->whereRaw('UPPER(TRIM(categorias.descripcion_categoria)) <> ?', ['INSUMOS']);
+            })
             ->orderBy('productos.fec_creacion', 'desc')
             ->orderBy('categorias.descripcion_categoria', 'asc')
             ->get();

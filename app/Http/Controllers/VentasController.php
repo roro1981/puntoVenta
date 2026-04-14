@@ -17,8 +17,11 @@ use App\Models\Comanda;
 use App\Models\Globales;
 use App\Models\RangoPrecio;
 use App\Http\Requests\StoreVentaRequest;
+use App\Http\Requests\StorePreventaRequest;
 use App\Http\Requests\AperturaCajaRequest;
 use App\Http\Requests\CierreCajaRequest;
+use App\Models\HistorialEstadoVenta;
+use App\Helpers\BarcodeHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -1514,6 +1517,442 @@ class VentasController extends Controller
             'producto_uuid' => $detalle->producto_uuid,
             'detalle_id' => $detalle->id
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  MÓDULO PREVENTA (ALMACEN_PREVENTA)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Vista del módulo Generar Preventa
+     */
+    public function indexPreventa()
+    {
+        return view('ventas.generar_preventa');
+    }
+
+    /**
+     * Vista del módulo Cierre Preventa
+     */
+    public function indexCierrePreventa()
+    {
+        $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
+
+        return view('ventas.cierre_preventa', [
+            'cajaAbierta' => $cajaAbierta,
+        ]);
+    }
+
+    /**
+     * Procesa y guarda una preventa.
+     * No descuenta stock, no requiere caja ni forma de pago.
+     */
+    public function procesarPreventa(StorePreventaRequest $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $venta = Venta::create([
+                'total'            => $request->total,
+                'total_descuentos' => $request->total_descuentos ?? 0,
+                'user_id'          => Auth::id(),
+                'caja_id'          => null,
+                'forma_pago'       => null,
+                'estado'           => 'PREVENTA',
+                'fecha_venta'      => $request->fecha_venta ?? now(),
+            ]);
+
+            // Registrar en bitácora de estados
+            HistorialEstadoVenta::create([
+                'venta_id'        => $venta->id,
+                'estado_anterior' => null,
+                'estado_nuevo'    => 'PREVENTA',
+                'accion'          => 'GENERAR_PREVENTA',
+                'usuario_id'      => Auth::id(),
+                'fecha_cambio'    => now(),
+                'observacion'     => 'Preventa generada desde módulo ALMACEN_PREVENTA',
+            ]);
+
+            // Guardar detalles (sin descontar stock)
+            foreach ($request->detalles as $detalle) {
+                $detalleVenta = DetalleVenta::create([
+                    'venta_id'             => $venta->id,
+                    'producto_uuid'        => $detalle['producto_uuid'] ?? null,
+                    'promo_id'             => $detalle['promo_id'] ?? null,
+                    'descripcion_producto' => $detalle['descripcion_producto'],
+                    'cantidad'             => $detalle['cantidad'],
+                    'precio_unitario'      => $detalle['precio_unitario'],
+                    'descuento_porcentaje' => $detalle['descuento_porcentaje'] ?? 0,
+                    'subtotal_linea'       => $detalle['subtotal_linea'],
+                ]);
+
+                // Si el UUID corresponde a una promoción, normalizar el detalle
+                if (!empty($detalle['producto_uuid'])) {
+                    $esProducto = Producto::where('uuid', $detalle['producto_uuid'])->exists();
+                    if (!$esProducto) {
+                        $promocion = Promocion::where('uuid', $detalle['producto_uuid'])->first();
+                        if ($promocion) {
+                            $detalleVenta->update([
+                                'promo_id'      => $promocion->id,
+                                'producto_uuid' => null,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'          => 'OK',
+                'message'         => 'Preventa generada exitosamente',
+                'venta_id'        => $venta->id,
+                'numero_preventa' => str_pad($venta->id, 6, '0', STR_PAD_LEFT),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 'ERROR',
+                'message' => 'Error al generar la preventa: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Busca una preventa por código (compatible con scanner).
+     * El código esperado es el número mostrado en ticket (ej: 000123).
+     */
+    public function buscarPreventaPorCodigo(Request $request)
+    {
+        $request->validate([
+            'codigo_preventa' => 'required|string|max:100',
+        ]);
+
+        $codigoLimpio = preg_replace('/\D/', '', (string) $request->codigo_preventa);
+        $id = (int) ltrim((string) $codigoLimpio, '0');
+
+        if ($id <= 0) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Código de preventa inválido.',
+            ], 422);
+        }
+
+        $venta = Venta::with(['detalles'])
+            ->where('id', $id)
+            ->where('estado', 'PREVENTA')
+            ->first();
+
+        if (!$venta) {
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'No se encontró una preventa pendiente con ese código.',
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'OK',
+            'preventa' => [
+                'venta_id' => $venta->id,
+                'numero_preventa' => str_pad((string) $venta->id, 6, '0', STR_PAD_LEFT),
+                'fecha_preventa' => optional($venta->fecha_venta)->format('d/m/Y H:i:s'),
+                'total' => (int) $venta->total,
+                'total_descuentos' => (int) ($venta->total_descuentos ?? 0),
+                'detalles' => $venta->detalles->map(function ($detalle) {
+                    return [
+                        'detalle_id' => $detalle->id,
+                        'descripcion_producto' => $detalle->descripcion_producto,
+                        'cantidad' => (float) $detalle->cantidad,
+                        'precio_unitario' => (int) $detalle->precio_unitario,
+                        'descuento_porcentaje' => (float) ($detalle->descuento_porcentaje ?? 0),
+                        'subtotal_linea' => (int) $detalle->subtotal_linea,
+                    ];
+                })->values(),
+            ],
+        ]);
+    }
+
+    /**
+     * Lista preventas pendientes (estado PREVENTA) para panel de seguimiento.
+     */
+    public function listarPreventasPendientes()
+    {
+        $preventas = Venta::query()
+            ->where('estado', 'PREVENTA')
+            ->orderByDesc('id')
+            ->get(['id', 'total', 'fecha_venta']);
+
+        $data = $preventas->map(function ($venta) {
+            return [
+                'venta_id' => $venta->id,
+                'numero_preventa' => str_pad((string) $venta->id, 6, '0', STR_PAD_LEFT),
+                'total' => (int) $venta->total,
+                'fecha_preventa' => optional($venta->fecha_venta)->format('d/m/Y H:i:s'),
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'OK',
+            'preventas' => $data,
+        ]);
+    }
+
+    /**
+     * Cierra una preventa: la pasa a completada, asigna caja/forma de pago,
+     * descuenta stock y registra bitácora.
+     */
+    public function cerrarPreventa(Request $request)
+    {
+        $request->validate([
+            'venta_id' => 'required|integer|exists:ventas,id',
+            'forma_pago' => 'required|string|in:EFECTIVO,TARJETA_DEBITO,TARJETA_CREDITO,TRANSFERENCIA,CHEQUE,MIXTO',
+            'formas_pago_desglose' => 'nullable|array',
+            'formas_pago_desglose.*.forma' => 'required_with:formas_pago_desglose|string|in:EFECTIVO,TARJETA_DEBITO,TARJETA_CREDITO,TRANSFERENCIA,CHEQUE',
+            'formas_pago_desglose.*.monto' => 'required_with:formas_pago_desglose|integer|min:1',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $cajaAbierta = Caja::cajaAbiertaUsuario(Auth::id(), self::TIPO_CAJA_MODULO_VENTAS);
+            if (!$cajaAbierta) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'No tienes una caja abierta. Debes abrir caja antes de cerrar preventas.',
+                ], 400);
+            }
+
+            $venta = Venta::with(['detalles'])
+                ->lockForUpdate()
+                ->findOrFail($request->venta_id);
+
+            if ($venta->estado !== 'PREVENTA') {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'La venta seleccionada no está en estado PREVENTA.',
+                ], 400);
+            }
+
+            if ($venta->detalles->isEmpty()) {
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'La preventa no tiene productos para procesar.',
+                ], 400);
+            }
+
+            if ($request->forma_pago === 'MIXTO') {
+                $desglose = $request->formas_pago_desglose ?? [];
+                if (empty($desglose)) {
+                    return response()->json([
+                        'status' => 'ERROR',
+                        'message' => 'Debe ingresar el desglose para pago mixto.',
+                    ], 422);
+                }
+
+                $sumaDesglose = (int) collect($desglose)->sum(function ($item) {
+                    return (int) ($item['monto'] ?? 0);
+                });
+
+                if (abs($sumaDesglose - (int) $venta->total) > 1) {
+                    return response()->json([
+                        'status' => 'ERROR',
+                        'message' => 'La suma del desglose no coincide con el total de la preventa.',
+                    ], 422);
+                }
+            }
+
+            foreach ($venta->detalles as $detalle) {
+                $this->descontarStockYRegistrarMovimientoDesdeDetalle($venta, $detalle);
+            }
+
+            $estadoAnterior = $venta->estado;
+
+            $venta->update([
+                'caja_id' => $cajaAbierta->id,
+                'forma_pago' => $request->forma_pago,
+                'estado' => 'completada',
+                'fecha_venta' => now(),
+            ]);
+
+            FormaPagoVenta::where('venta_id', $venta->id)->delete();
+
+            if ($request->forma_pago === 'MIXTO') {
+                foreach (($request->formas_pago_desglose ?? []) as $formaPago) {
+                    FormaPagoVenta::create([
+                        'venta_id' => $venta->id,
+                        'forma_pago' => $formaPago['forma'],
+                        'monto' => $formaPago['monto'],
+                    ]);
+                }
+            } else {
+                FormaPagoVenta::create([
+                    'venta_id' => $venta->id,
+                    'forma_pago' => $request->forma_pago,
+                    'monto' => $venta->total,
+                ]);
+            }
+
+            HistorialEstadoVenta::create([
+                'venta_id' => $venta->id,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => 'completada',
+                'accion' => 'CIERRE_PREVENTA',
+                'usuario_id' => Auth::id(),
+                'fecha_cambio' => now(),
+                'observacion' => 'Preventa cerrada y convertida a venta final.',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'OK',
+                'message' => 'Preventa cerrada exitosamente.',
+                'venta_id' => $venta->id,
+                'numero_venta' => $venta->numero_venta,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Error al cerrar la preventa: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Descuenta stock y registra historial de movimiento de un detalle de venta existente.
+     */
+    private function descontarStockYRegistrarMovimientoDesdeDetalle(Venta $venta, DetalleVenta $detalle): void
+    {
+        $stockNegativo = Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var');
+        $permitirStockNegativo = ($stockNegativo == '1');
+
+        if (!empty($detalle->promo_id)) {
+            $promocion = Promocion::find($detalle->promo_id);
+            if (!$promocion) {
+                throw new \Exception('No se encontró la promoción asociada al detalle: ' . $detalle->descripcion_producto);
+            }
+
+            $detallesPromocion = PromocionDetalle::where('promo_id', $promocion->id)
+                ->with('producto')
+                ->get();
+
+            foreach ($detallesPromocion as $detallePromo) {
+                $productoPromo = $detallePromo->producto;
+                if (!$productoPromo) {
+                    continue;
+                }
+
+                $cantidadTotal = (float) $detallePromo->cantidad * (float) $detalle->cantidad;
+
+                if ($productoPromo->tipo === 'P') {
+                    $productoPromo = Producto::where('id', $productoPromo->id)->lockForUpdate()->first();
+                    if (!$productoPromo) {
+                        throw new \Exception('No se encontró un producto de la promoción: ' . $detalle->descripcion_producto);
+                    }
+
+                    if (!$permitirStockNegativo && (float) $productoPromo->stock < $cantidadTotal) {
+                        throw new \Exception('Stock insuficiente para cerrar la preventa en producto: ' . $productoPromo->descripcion);
+                    }
+
+                    $productoPromo->stock -= $cantidadTotal;
+                    $productoPromo->save();
+
+                    HistorialMovimientos::registrarMovimiento([
+                        'producto_id' => $productoPromo->id,
+                        'cantidad' => $cantidadTotal,
+                        'stock' => $productoPromo->stock,
+                        'tipo_mov' => 'VENTA',
+                        'fecha' => now(),
+                        'num_doc' => (string) $venta->id,
+                        'obs' => 'Cierre preventa como parte de promoción: ' . $promocion->nombre,
+                    ]);
+                } else {
+                    HistorialMovimientos::registrarMovimiento([
+                        'producto_id' => $productoPromo->id,
+                        'cantidad' => $cantidadTotal,
+                        'stock' => null,
+                        'tipo_mov' => 'VENTA',
+                        'fecha' => now(),
+                        'num_doc' => (string) $venta->id,
+                        'obs' => 'Cierre preventa (servicio) como parte de promoción: ' . $promocion->nombre,
+                    ]);
+                }
+            }
+
+            return;
+        }
+
+        if (!empty($detalle->producto_uuid)) {
+            $producto = Producto::where('uuid', $detalle->producto_uuid)->lockForUpdate()->first();
+
+            if (!$producto) {
+                // Compatibilidad por si quedó UUID de promoción sin normalizar
+                $promocion = Promocion::where('uuid', $detalle->producto_uuid)->first();
+                if ($promocion) {
+                    $detalleTemporal = clone $detalle;
+                    $detalleTemporal->promo_id = $promocion->id;
+                    $detalleTemporal->producto_uuid = null;
+                    $this->descontarStockYRegistrarMovimientoDesdeDetalle($venta, $detalleTemporal);
+                    return;
+                }
+
+                throw new \Exception('No se encontró el producto del detalle: ' . $detalle->descripcion_producto);
+            }
+
+            if ($producto->tipo === 'P') {
+                $cantidad = (float) $detalle->cantidad;
+                if (!$permitirStockNegativo && (float) $producto->stock < $cantidad) {
+                    throw new \Exception('Stock insuficiente para cerrar la preventa en producto: ' . $producto->descripcion);
+                }
+
+                $producto->stock -= $cantidad;
+                $producto->save();
+
+                HistorialMovimientos::registrarMovimiento([
+                    'producto_id' => $producto->id,
+                    'cantidad' => $cantidad,
+                    'stock' => $producto->stock,
+                    'tipo_mov' => 'VENTA',
+                    'fecha' => now(),
+                    'num_doc' => (string) $venta->id,
+                    'obs' => 'Cierre preventa',
+                ]);
+            } else {
+                HistorialMovimientos::registrarMovimiento([
+                    'producto_id' => $producto->id,
+                    'cantidad' => (float) $detalle->cantidad,
+                    'stock' => null,
+                    'tipo_mov' => 'VENTA',
+                    'fecha' => now(),
+                    'num_doc' => (string) $venta->id,
+                    'obs' => 'Cierre preventa (servicio)',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Genera el ticket PDF de una preventa (con código de barras Code39)
+     */
+    public function generarTicketPreventaPDF(int $ventaId)
+    {
+        $venta = Venta::with(['detalles', 'usuario'])->findOrFail($ventaId);
+
+        if ($venta->estado !== 'PREVENTA') {
+            abort(400, 'El ticket solicitado no es una preventa.');
+        }
+
+        $corporateData  = CorporateData::pluck('description_item', 'item')->toArray();
+        $numeroPreventa = str_pad($venta->id, 6, '0', STR_PAD_LEFT);
+        $barcodeSvg     = BarcodeHelper::generateSvg($numeroPreventa, 2, 55);
+
+        $pdf = Pdf::loadView('ventas.ticket_preventa', compact('venta', 'corporateData', 'numeroPreventa', 'barcodeSvg'));
+        $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+
+        return $pdf->stream('preventa-' . $numeroPreventa . '.pdf');
     }
 
 }

@@ -25,6 +25,8 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 2, 'submenu_name' => 'Compras', 'submenu_route' => '/ingresos', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 2, 'submenu_name' => 'Proveedores', 'submenu_route' => '/proveedores', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 2, 'submenu_name' => 'Entradas y salidas', 'submenu_route' => '/ent_sal', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 3, 'submenu_name' => 'Generar preventa', 'submenu_route' => '/generar_preventa', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 3, 'submenu_name' => 'Cierre preventa', 'submenu_route' => '/cierre_preventa', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 3, 'submenu_name' => 'Generar ventas', 'submenu_route' => '/generar_ventas', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 3, 'submenu_name' => 'Generar comandas', 'submenu_route' => '/generar_comandas', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 3, 'submenu_name' => 'Cerrar comandas', 'submenu_route' => '/cerrar_comandas', 'created_at' => Carbon::now()->toDateTimeString()],

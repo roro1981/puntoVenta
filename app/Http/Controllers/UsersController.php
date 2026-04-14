@@ -866,6 +866,8 @@ class UsersController extends Controller
             // En restaurant: ocultar generar_ventas y todo lo de promociones
             return in_array($ruta, [
                 '/generar_ventas',
+                '/generar_preventa',
+                '/cierre_preventa',
                 '/promociones_crear',
                 '/promociones',
                 '/promos_elim',
@@ -873,8 +875,26 @@ class UsersController extends Controller
         }
 
         if ($tipoNegocio === 'ALMACEN') {
-            // En almacen: ocultar cosas de restaurant y todo lo de recetas
+            // En almacen: ocultar cosas de restaurant, recetas y preventa
             return in_array($ruta, [
+                '/generar_comandas',
+                '/cerrar_comandas',
+                '/restaurant/config-mesas',
+                '/restaurant/config-garzones',
+                '/vtas_garzon',
+                '/vtas_mesa',
+                '/recetas_crear',
+                '/recetas',
+                '/recetas_elim',
+                '/generar_preventa',
+                '/cierre_preventa',
+            ], true);
+        }
+
+        if ($tipoNegocio === 'ALMACEN_PREVENTA') {
+            // En almacen preventa: ocultar generar_ventas normal y todo lo de restaurant/recetas
+            return in_array($ruta, [
+                '/generar_ventas',
                 '/generar_comandas',
                 '/cerrar_comandas',
                 '/restaurant/config-mesas',

@@ -51,6 +51,14 @@ class Venta extends Model
     }
 
     /**
+     * Relación: una venta tiene muchos registros de historial de estados
+     */
+    public function historialEstados()
+    {
+        return $this->hasMany(HistorialEstadoVenta::class, 'venta_id');
+    }
+
+    /**
      * Casteos de atributos
      */
     protected $casts = [

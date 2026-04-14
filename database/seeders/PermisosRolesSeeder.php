@@ -139,6 +139,9 @@ class PermisosRolesSeeder extends Seeder
             'Usuario' => [
                 Permiso::PERMISO_DASHBOARD_USUARIO,
             ],
+            'Cajero' => [
+                Permiso::PERMISO_DASHBOARD_USUARIO,
+            ],
         ];
 
         foreach ($dashboardPorRol as $roleName => $codigos) {

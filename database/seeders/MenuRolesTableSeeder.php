@@ -49,11 +49,18 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 1, 'submenu_id' => 29, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 30, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 31, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 1, 'submenu_id' => 32, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 1, 'submenu_id' => 33, 'created_at' => Carbon::now()->toDateTimeString()],
             //usuario
             ['role_id' => 2, 'submenu_id' => 10, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 2, 'submenu_id' => 11, 'created_at' => Carbon::now()->toDateTimeString()],
-            ['role_id' => 2, 'submenu_id' => 12, 'created_at' => Carbon::now()->toDateTimeString()],
-            ['role_id' => 2, 'submenu_id' => 16, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 2, 'submenu_id' => 13, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 2, 'submenu_id' => 14, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 2, 'submenu_id' => 17, 'created_at' => Carbon::now()->toDateTimeString()],
+            //cajero
+            ['role_id' => 4, 'submenu_id' => 12, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 4, 'submenu_id' => 15, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 4, 'submenu_id' => 16, 'created_at' => Carbon::now()->toDateTimeString()],
             //Superadministrador
             ['role_id' => 3, 'submenu_id' => 1, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 2, 'created_at' => Carbon::now()->toDateTimeString()],
@@ -97,6 +104,8 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 3, 'submenu_id' => 38, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 39, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 40, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 3, 'submenu_id' => 41, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 3, 'submenu_id' => 42, 'created_at' => Carbon::now()->toDateTimeString()]
         ]);
     }
 }
