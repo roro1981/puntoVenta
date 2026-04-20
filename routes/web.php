@@ -261,4 +261,5 @@ Route::put('/configuracion/update-impuesto/{id}', [ConfigurationController::clas
 
 Route::post('/login', [UsersController::class, 'login'])->name('login');
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');
+Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventasPendientesDashboard'])->middleware('auth')->name('dashboard.preventas-pendientes');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');

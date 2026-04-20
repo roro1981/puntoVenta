@@ -83,7 +83,15 @@ class UsersController extends Controller
         $inicioMes = Carbon::now()->startOfMonth();
         $hace6Dias = Carbon::today()->subDays(6);
         $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
-        $tipoCajaDashboard = $tipoNegocio === 'RESTAURANT' ? 'RESTAURANT' : 'ALMACEN';
+        
+        // Asignar tipo de caja específico según el tipo de negocio
+        $tipoCajaDashboard = match($tipoNegocio) {
+            'RESTAURANT' => 'RESTAURANT',
+            'ALMACEN' => 'ALMACEN', 
+            'ALMACEN_PREVENTA' => 'ALMACEN_PREVENTA',
+            default => 'ALMACEN'
+        };
+        
         $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
 
         $ventasMesPagos = Venta::query()
@@ -308,6 +316,12 @@ class UsersController extends Controller
         $comandasPendientes = $tipoNegocio === 'RESTAURANT'
             ? (int) Comanda::whereIn('estado', ['EN CONSUMO', 'PENDIENTE DE PAGO'])->count()
             : 0;
+
+        // Preventas pendientes para tipo ALMACEN_PREVENTA (solo para gerencial/administrador)
+        $preventasPendientes = 0;
+        if ($tipoNegocio === 'ALMACEN_PREVENTA') {
+            $preventasPendientes = (int) Venta::where('estado', 'PREVENTA')->count();
+        }
 
         $labels7Dias = [];
         $data7Dias = [];
@@ -716,6 +730,7 @@ class UsersController extends Controller
                 'alertasStock' => $alertasStock,
                 'stockCritico' => $stockCritico,
                 'comandasPendientes' => $comandasPendientes,
+                'preventasPendientes' => $preventasPendientes,
                 'promedio7Dias' => $promedio7Dias,
             ],
             'trend' => [
@@ -1206,6 +1221,79 @@ class UsersController extends Controller
             return response()->json(['success' => false, 'message' => 'Rol no encontrado'], 404);
         }
     }
+
+    /**
+     * Obtiene el detalle de todas las preventas pendientes para el dashboard gerencial/administrador.
+     * Solo para tipo de negocio ALMACEN_PREVENTA.
+     */
+    public function preventasPendientesDashboard()
+    {
+        // Verificar que el usuario tenga permisos para ver el dashboard gerencial/administrador
+        if (!puedeVerDashboardGerencial() && !puedeVerDashboardAdministrador()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para acceder a esta información'
+            ], 403);
+        }
+
+        // Verificar que el tipo de negocio sea ALMACEN_PREVENTA
+        $tipoNegocio = strtoupper(trim((string) \App\Models\Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        if ($tipoNegocio !== 'ALMACEN_PREVENTA') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta funcionalidad solo está disponible para negocios de tipo almacén con preventas'
+            ], 400);
+        }
+
+        $preventas = \App\Models\Venta::query()
+            ->with(['usuario:id,name,name_complete', 'detalles:venta_id,producto_uuid,cantidad,precio_unitario,subtotal_linea,descripcion_producto'])
+            ->where('estado', 'PREVENTA')
+            ->orderByDesc('id')
+            ->get(['id', 'total', 'fecha_venta', 'user_id']);
+
+        $data = $preventas->map(function ($venta) {
+            $totalItems = $venta->detalles->sum('cantidad');
+            
+            // Priorizar name_complete, luego name, como fallback usar "Usuario ID"
+            $vendedorNombre = 'N/A';
+            if ($venta->usuario) {
+                $vendedorNombre = $venta->usuario->name_complete ?? $venta->usuario->name ?? "Usuario #{$venta->user_id}";
+                
+                // Para almacén, usar término "vendedor" en lugar de nombres similares a garzones
+                if (empty($venta->usuario->name_complete) && !empty($venta->usuario->name)) {
+                    // Si solo tiene 'name', asumimos que es un usuario de sistema
+                    $vendedorNombre = "Vendedor: " . $venta->usuario->name;
+                }
+            } else {
+                $vendedorNombre = "Usuario #{$venta->user_id}";
+            }
+
+            return [
+                'venta_id' => $venta->id,
+                'numero_preventa' => str_pad((string) $venta->id, 6, '0', STR_PAD_LEFT),
+                'total' => (int) $venta->total,
+                'fecha_preventa' => optional($venta->fecha_venta)->format('d/m/Y H:i:s'),
+                'vendedor' => $vendedorNombre,
+                'total_items' => (int) $totalItems,
+                'productos' => $venta->detalles->map(function ($detalle) {
+                    return [
+                        'producto' => $detalle->descripcion_producto,
+                        'cantidad' => (float) $detalle->cantidad,
+                        'precio_unitario' => (float) $detalle->precio_unitario,
+                        'subtotal' => (float) $detalle->subtotal_linea,
+                    ];
+                })->toArray()
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'preventas' => $data,
+            'total_preventas' => $preventas->count(),
+            'monto_total' => $preventas->sum('total')
+        ]);
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();

@@ -2,7 +2,8 @@ $(document).ready(function() {
     const EVENT_NS = '.preventaGenerar';
 
     cargarBorradores();
-    cargarPreventasPendientes();
+    // Quitar carga inmediata de preventas pendientes
+    // cargarPreventasPendientes(); 
     let cart = [];
     let alerts = [];
     let addByCodeInProgress = false;
@@ -502,8 +503,24 @@ $(document).ready(function() {
     });
 
     $(document).on('change', '.discount-select', function() {
-        var index = $(this).closest('.product-row').data('index');
-        cart[index].discount = parseInt($(this).val());
+        var $row = $(this).closest('.product-row');
+        var index = parseInt($row.data('index'));
+        var uuid = $row.data('id');
+        
+        // Doble validación: por índice Y por UUID
+        if (index >= 0 && index < cart.length && cart[index] && cart[index].uuid === uuid) {
+            cart[index].discount = parseInt($(this).val()) || 0;
+        } else {
+            // Fallback: buscar por UUID si el índice no funciona
+            var foundIndex = cart.findIndex(function(item) { return item.uuid === uuid; });
+            if (foundIndex !== -1) {
+                cart[foundIndex].discount = parseInt($(this).val()) || 0;
+            } else {
+                console.warn('Error: No se pudo encontrar el producto en el carrito', { index: index, uuid: uuid });
+                renderCart(); // Refrescar carrito para sincronizar
+                return;
+            }
+        }
         renderCart();
     });
 
@@ -731,13 +748,18 @@ $(document).ready(function() {
         });
     }
 
-    // ── Tabs ──────────────────────────────────────────────────────────────────
+    // ── Tabs con carga lazy ──────────────────────────────────────────────────
     $('.tab-btn').on('click', function() {
         var tab = $(this).data('tab');
         $('.tab-btn').removeClass('active');
         $(this).addClass('active');
         $('.tab-content').removeClass('active');
         $('#tab-' + tab).addClass('active');
+        
+        // Carga lazy: solo cargar cuando se hace click en la pestaña
+        if (tab === 'preventas-pendientes') {
+            cargarPreventasPendientes();
+        }
     });
 
     // ── Borradores ────────────────────────────────────────────────────────────
@@ -874,13 +896,25 @@ function cargarPreventasPendientes() {
         dataType: 'json',
         success: function(response) {
             var data = response && response.preventas ? response.preventas : [];
+            var usuario = response && response.usuario_actual ? response.usuario_actual : 'Usuario';
 
             if (!data.length) {
-                $('#tab-preventas-pendientes').html('<div class="text-muted" style="padding:12px;">No hay preventas pendientes.</div>');
+                $('#tab-preventas-pendientes').html(
+                    '<div class="text-muted" style="padding:12px;">' +
+                    '<div style="text-align:center;margin-bottom:10px;font-weight:600;color:#666">' +
+                    '<i class="fa fa-user"></i> Mis Preventas Pendientes' +
+                    '</div>' +
+                    'No tienes preventas pendientes.' +
+                    '</div>'
+                );
                 return;
             }
 
-            var tablaHtml = '<table class="table"><thead><tr>' +
+            var tablaHtml = '<div style="margin-bottom:10px;padding:8px;background:#f8f9fa;border-radius:4px;text-align:center;">' +
+                '<i class="fa fa-user" style="color:#3bb3e0;margin-right:5px"></i>' +
+                '<span style="font-weight:600;color:#495057">Mis Preventas Pendientes (' + data.length + ')</span>' +
+                '</div>' +
+                '<table class="table"><thead><tr>' +
                 '<th>N° Ticket</th><th>Monto</th><th></th>' +
                 '</tr></thead><tbody>';
 

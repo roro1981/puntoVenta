@@ -1675,11 +1675,13 @@ class VentasController extends Controller
 
     /**
      * Lista preventas pendientes (estado PREVENTA) para panel de seguimiento.
+     * Filtra por usuario actual para mostrar solo sus preventas.
      */
     public function listarPreventasPendientes()
     {
         $preventas = Venta::query()
             ->where('estado', 'PREVENTA')
+            ->where('user_id', Auth::id()) // Filtrar por usuario actual
             ->orderByDesc('id')
             ->get(['id', 'total', 'fecha_venta']);
 
@@ -1695,6 +1697,7 @@ class VentasController extends Controller
         return response()->json([
             'status' => 'OK',
             'preventas' => $data,
+            'usuario_actual' => Auth::user()->name ?? 'N/A',
         ]);
     }
 

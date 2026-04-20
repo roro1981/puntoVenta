@@ -94,8 +94,8 @@
 
 .home-grid-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)); /* Cambiado de 4 a 5 para que quepan todas */
+  gap: 12px; /* Reducido el gap */
   margin-bottom: 18px;
 }
 
@@ -103,7 +103,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 14px;
-  padding: 18px;
+  padding: 14px; /* Reducido de 18px */
   background: #fff;
   border: 1px solid #e8edf2;
   box-shadow: 0 10px 24px rgba(23, 42, 58, 0.06);
@@ -127,21 +127,21 @@
 }
 
 .home-kpi-value {
-  margin-top: 12px;
-  font-size: 28px;
+  margin-top: 8px; /* Reducido de 12px */
+  font-size: 24px; /* Reducido de 28px */
   font-weight: 700;
   color: #1d2b36;
   line-height: 1.1;
 }
 
 .home-kpi-note {
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: 6px; /* Reducido de 8px */
+  font-size: 12px; /* Reducido de 13px */
   color: #597081;
 }
 
 .home-kpi-actions {
-  margin-top: 12px;
+  margin-top: 8px; /* Reducido de 12px */
 }
 
 .home-kpi-actions .btn {

@@ -71,13 +71,21 @@
     border: 1px solid #d8e0ec;
     border-radius: 10px;
     height: 46px;
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 500;
   }
 
   #preventa-code:focus,
   #forma-pago:focus {
     border-color: #8ab4ff;
     box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
+  }
+
+  #forma-pago option {
+    font-size: 1.6rem;
+    font-weight: 500;
+    padding: 10px 15px;
+    color: #333;
   }
 
   .cpv-input-group .input-group-text {
@@ -269,12 +277,12 @@
                 <label for="forma-pago" class="cpv-label">Forma de Pago</label>
                         <select id="forma-pago" class="form-control" required>
                             <option value="">-- Selecciona una forma de pago --</option>
-                            <option value="EFECTIVO">Efectivo</option>
-                            <option value="TARJETA_DEBITO">Tarjeta Debito</option>
-                            <option value="TARJETA_CREDITO">Tarjeta Credito</option>
-                            <option value="TRANSFERENCIA">Transferencia</option>
-                            <option value="CHEQUE">Cheque</option>
-                            <option value="MIXTO">Mixto</option>
+                            <option value="EFECTIVO">💵 Efectivo</option>
+                            <option value="TARJETA_DEBITO">🏦 Tarjeta Débito</option>
+                            <option value="TARJETA_CREDITO">💳 Tarjeta Crédito</option>
+                            <option value="TRANSFERENCIA">🔄 Transferencia</option>
+                            <option value="CHEQUE">📋 Cheque</option>
+                            <option value="MIXTO">🔀 Mixto</option>
                         </select>
                     </div>
 

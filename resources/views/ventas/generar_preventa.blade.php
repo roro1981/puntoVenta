@@ -13,31 +13,39 @@
             <!-- Cart items will be added here dynamically -->
         </div>
 
-        <div class="footer">
-            <div style="margin-left:240px" class="left-section">
-                <div class="action-buttons">
-                    <button class="action-btn" id="cancel-btn">
-                        <i class="fa fa-times"></i>
-                        cancelar
-                    </button>
-                    <button class="action-btn" id="save-draft-btn">
-                        <i class="fa fa-save"></i>
-                        guardar borrador
-                    </button>
-                </div>
+        <div class="action-buttons-panel">
+            <div class="left-actions">
+                <button class="action-btn" id="cancel-btn">
+                    <i class="fa fa-times"></i>
+                    CANCELAR
+                </button>
+                <button class="action-btn" id="save-draft-btn">
+                    <i class="fa fa-save"></i>
+                    GUARDAR BORRADOR
+                </button>
             </div>
-
-            <div class="total-section">
-                <span style="font-size: 2rem;" class="total-label">Descuentos</span>
-                <span style="margin-right:15px" class="total-amount" id="discount-amount">$ 0</span>
-                <span style="font-size: 2rem;" class="total-label">Total</span>
-                <span class="total-amount" id="cart-total">$ 0</span>
-                <button class="pay-btn" id="pay-btn">Generar Preventa</button>
+            <div class="right-actions">
+                <div class="discount-container">
+                    <span class="total-label-enhanced">DESCUENTOS</span>
+                    <span class="total-amount-secondary" id="discount-amount">$ 0</span>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="right-panel">
+        <!-- Header con total y botón centrados -->
+        <div class="right-panel-header">
+            <div class="main-total-container-centered">
+                <span class="total-label-main">TOTAL</span>
+                <span class="total-amount-main" id="cart-total">$ 0</span>
+            </div>
+            <button class="pay-btn-enhanced" id="pay-btn">
+                <i class="fa fa-receipt"></i>
+                Generar Preventa
+            </button>
+        </div>
+        
         <div class="products-section" id="products-tab">
             <div class="tab-content active" id="tab-products">
                 <div class="search-bar">

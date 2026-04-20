@@ -110,6 +110,7 @@
 <!-- Dashboard Home -->
 <link rel="stylesheet" href="{{ asset('css/dashboard-home.css') }}">
 <script src="{{ asset('js/dashboard-home.js') }}"></script>
+<script src="{{ asset('js/dashboard-preventas.js') }}"></script>
 
   </head>
   <body class="hold-transition skin-blue sidebar-mini">
@@ -256,6 +257,23 @@
                                 <div class="home-kpi-value">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? $dashboardData['summary']['comandasPendientes'] : $dashboardData['summary']['ticketsHoy'] }}</div>
                                 <div class="home-kpi-note">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'En consumo o pendientes de pago.' : 'Cantidad de ventas registradas hoy.' }}</div>
                               </div>
+                              
+                              @if($dashboardData['tipoNegocio'] === 'ALMACEN_PREVENTA' && isset($dashboardData['summary']['preventasPendientes']))
+                              <div class="home-kpi">
+                                <div class="home-kpi-label">Preventas pendientes</div>
+                                <div class="home-kpi-value" style="color: {{ $dashboardData['summary']['preventasPendientes'] > 0 ? '#e74c3c' : '#27ae60' }}">
+                                  {{ $dashboardData['summary']['preventasPendientes'] }}
+                                </div>
+                                <div class="home-kpi-note">Preventas por cerrar y convertir a venta.</div>
+                                @if($dashboardData['summary']['preventasPendientes'] > 0)
+                                <div class="home-kpi-actions">
+                                  <button type="button" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#modalPreventasPendientes">
+                                    Ver detalle
+                                  </button>
+                                </div>
+                                @endif
+                              </div>
+                              @endif
                             </div>
 
                             <div class="home-section-sub">Graficos</div>
@@ -612,17 +630,34 @@
                                 <div class="home-kpi-value">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? $dashboardData['summary']['comandasPendientes'] : $dashboardData['summary']['ticketsHoy'] }}</div>
                                 <div class="home-kpi-note">{{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'En consumo o pendientes de pago.' : 'Cantidad de ventas registradas hoy.' }}</div>
                               </div>
-                            </div>
+              
+              @if($dashboardData['tipoNegocio'] === 'ALMACEN_PREVENTA' && isset($dashboardData['summary']['preventasPendientes']))
+              <div class="home-kpi">
+                <div class="home-kpi-label">Preventas pendientes</div>
+                <div class="home-kpi-value" style="color: {{ $dashboardData['summary']['preventasPendientes'] > 0 ? '#e74c3c' : '#27ae60' }}">
+                  {{ $dashboardData['summary']['preventasPendientes'] }}
+                </div>
+                <div class="home-kpi-note">Preventas por cerrar y convertir a venta.</div>
+                @if($dashboardData['summary']['preventasPendientes'] > 0)
+                <div class="home-kpi-actions">
+                  <button type="button" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#modalPreventasPendientes">
+                    Ver detalle
+                  </button>
+                </div>
+                @endif
+              </div>
+              @endif
+            </div>
 
-                            <div class="home-section-sub">Graficos</div>
-                            <div class="home-panels home-panels-full">
-                              <div class="home-panel">
-                                <h4>Ventas por hora del dia</h4>
-                                <div class="home-chart-wrap">
-                                  <canvas id="homeHourlyChartAdmin"></canvas>
-                                </div>
-                              </div>
-                            </div>
+            <div class="home-section-sub">Graficos</div>
+            <div class="home-panels home-panels-full">
+              <div class="home-panel">
+                <h4>Ventas por hora del dia</h4>
+                <div class="home-chart-wrap">
+                  <canvas id="homeHourlyChartAdmin"></canvas>
+                </div>
+              </div>
+            </div>
                           </div>
 
                           {{-- ── SECCIÓN SEMANAL ────────────────────────────────── --}}
@@ -944,10 +979,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Preventas Pendientes -->
+    <div class="modal fade home-modal" id="modalPreventasPendientes" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Detalle de preventas pendientes</h4>
+          </div>
+          <div class="modal-body">
+            <div class="home-modal-note">Preventas generadas que aún no han sido cerradas y convertidas a venta final.</div>
+            <div id="preventasPendientesContainer">
+              <div class="text-center">
+                <i class="fa fa-spinner fa-spin"></i> Cargando preventas pendientes...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     @endif
 
   @if($tipoDashboard === 'gerencial')
   <script>
+    // Variables de datos para gráficos - Dashboard Gerencial
     window.homeTrendLabels      = @json($dashboardData['trend']['labels']);
     window.homeTrendData        = @json($dashboardData['trend']['data']);
     window.homeHourlyLabels     = @json(collect($dashboardData['ventasPorHora'])->pluck('hora'));
@@ -962,6 +1018,7 @@
   </script>
   @elseif($tipoDashboard === 'administrador')
   <script>
+    // Variables de datos para gráficos - Dashboard Administrador
     window.adminTrendLabels  = @json($dashboardData['trend']['labels']);
     window.adminTrendData    = @json($dashboardData['trend']['data']);
     window.adminHourlyLabels = @json(collect($dashboardData['ventasPorHora'])->pluck('hora'));
