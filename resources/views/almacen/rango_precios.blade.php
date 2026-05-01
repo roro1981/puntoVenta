@@ -119,3 +119,5 @@
   </div>
  <!-- Fin Modal para editar nuevo rango -->
 
+@include('partials.modal_ayuda', ['modulo' => 'almacen_rango_precios'])
+

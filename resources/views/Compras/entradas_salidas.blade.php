@@ -43,3 +43,5 @@
    </tbody>
 </table>
 </div>
+
+@include('partials.modal_ayuda', ['modulo' => 'compras_entradas_salidas'])

@@ -34,6 +34,8 @@
   </div>
 </div>
 
+@include('partials.modal_ayuda', ['modulo' => 'almacen_recetas'])
+
 
         
 

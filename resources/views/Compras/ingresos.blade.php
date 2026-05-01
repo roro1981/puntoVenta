@@ -430,3 +430,5 @@
                     </div>
   </div>  
   <!--fin modal-->
+
+@include('partials.modal_ayuda', ['modulo' => 'compras_ingresos'])

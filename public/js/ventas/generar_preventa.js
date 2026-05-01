@@ -1,6 +1,10 @@
 $(document).ready(function() {
     const EVENT_NS = '.preventaGenerar';
 
+    // Evita doble binding cuando se navega por modulos via AJAX y quedan listeners de ventas.
+    $(document).off('click.ventasGenerar', '.plus-btn');
+    $(document).off('click.ventasGenerar', '.minus-btn');
+
     cargarBorradores();
     // Quitar carga inmediata de preventas pendientes
     // cargarPreventasPendientes(); 
@@ -184,6 +188,69 @@ $(document).ready(function() {
         return jqxhr;
     }
 
+    function validarStockCarritoParaPreventa() {
+        alerts = [];
+        cart.forEach(function(item) { item.insufficient = false; });
+        renderAlerts();
+
+        var cantidadPorUuid = {};
+        var descripcionPorUuid = {};
+        cart.forEach(function(item) {
+            if (!item || !item.uuid) return;
+            cantidadPorUuid[item.uuid] = (cantidadPorUuid[item.uuid] || 0) + (parseFloat(item.quantity) || 0);
+            if (!descripcionPorUuid[item.uuid]) descripcionPorUuid[item.uuid] = item.descripcion || item.uuid;
+        });
+
+        var rows = Object.keys(cantidadPorUuid).map(function(uuid) {
+            return {
+                uuid: uuid,
+                cantidad: cantidadPorUuid[uuid],
+                descripcion: descripcionPorUuid[uuid]
+            };
+        });
+
+        if (!rows.length) return Promise.resolve(true);
+
+        var promises = rows.map(function(r) {
+            return verificarStock(r.uuid, r.cantidad)
+                .then(function(resp) { return { ok: true, resp: resp, row: r }; })
+                .catch(function(xhr) { return { ok: false, xhr: xhr, row: r }; });
+        });
+
+        return Promise.all(promises).then(function(results) {
+            var hasError = false;
+
+            results.forEach(function(result) {
+                var r = result.row;
+                var resp = result.ok
+                    ? result.resp
+                    : (result.xhr && result.xhr.responseJSON ? result.xhr.responseJSON : null);
+
+                if (resp && resp.status === 'OK') {
+                    return;
+                }
+
+                hasError = true;
+                cart.forEach(function(item) {
+                    if (item.uuid === r.uuid) item.insufficient = true;
+                });
+
+                if (resp && resp.code === 'OUT_OF_STOCK_PRODUCT') {
+                    toastr.error('Sin stock suficiente para ' + (resp.product && (resp.product.descripcion || resp.product.codigo) || r.descripcion));
+                    pushAlertFromResp(resp, { requested: r.cantidad });
+                } else if (resp && resp.code === 'PROMO_INSUFFICIENT_STOCK') {
+                    toastr.error('Promoción con faltantes: ' + (resp.promotion && (resp.promotion.nombre || resp.promotion.codigo) || r.descripcion));
+                    pushAlertFromResp(resp, { requested: r.cantidad });
+                } else {
+                    toastr.error('Error verificando stock para ' + r.descripcion);
+                }
+            });
+
+            renderCart();
+            return !hasError;
+        });
+    }
+
     function obtenerPrecioPorCantidad(uuid, cantidad, precioBase) {
         return $.ajax({
             url: '/ventas/precio-por-cantidad',
@@ -352,20 +419,11 @@ $(document).ready(function() {
 
         var cachedProduct = productByCodeCache.get(code);
         if (cachedProduct) {
-            var existingQty0 = getCartTotalQuantity(cachedProduct.uuid);
-            var totalReq0 = existingQty0 + quantity;
-            verificarStock(cachedProduct.uuid, totalReq0).done(function(resp) {
-                if (resp.status === 'OK') {
-                    cart.push({ uuid: cachedProduct.uuid, descripcion: cachedProduct.descripcion, precio_venta: cachedProduct.precio_venta, imagen: cachedProduct.imagen || '', quantity: quantity, discount: 0 });
-                    renderCart();
-                    actualizarPrecioPorRangoDeUuid(cachedProduct.uuid, function() { renderCart(); });
-                    input.val('');
-                } else {
-                    toastr.error(resp.message || 'No se puede agregar el producto');
-                }
-            }).fail(function() {
-                toastr.error('Error verificando stock');
-            }).always(function() { addByCodeInProgress = false; });
+            cart.push({ uuid: cachedProduct.uuid, descripcion: cachedProduct.descripcion, precio_venta: cachedProduct.precio_venta, imagen: cachedProduct.imagen || '', quantity: quantity, discount: 0, insufficient: false });
+            renderCart();
+            actualizarPrecioPorRangoDeUuid(cachedProduct.uuid, function() { renderCart(); });
+            input.val('');
+            addByCodeInProgress = false;
             return;
         }
 
@@ -377,35 +435,11 @@ $(document).ready(function() {
             success: function(product) {
                 if (product.length > 0) {
                     productByCodeCache.set(code, product[0]);
-                    var existingQty = getCartTotalQuantity(product[0].uuid);
-                    var totalRequested = existingQty + quantity;
-                    verificarStock(product[0].uuid, totalRequested).done(function(resp) {
-                        if (resp.status === 'OK') {
-                            cart.push({ uuid: product[0].uuid, descripcion: product[0].descripcion, precio_venta: product[0].precio_venta, imagen: product[0].imagen || '', quantity: quantity, discount: 0 });
-                            renderCart();
-                            actualizarPrecioPorRangoDeUuid(product[0].uuid, function() { renderCart(); });
-                            input.val('');
-                        } else {
-                            if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                                toastr.error('Sin stock: ' + (resp.product.descripcion || resp.product.codigo || product[0].descripcion));
-                                pushAlertFromResp(resp, { requested: totalRequested });
-                            } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                                toastr.error('Promoción con faltantes');
-                                pushAlertFromResp(resp);
-                            } else {
-                                toastr.error(resp.message || 'No se puede agregar el producto');
-                            }
-                        }
-                    }).fail(function(xhr) {
-                        if (xhr.responseJSON && xhr.responseJSON.status === 'OK') {
-                            cart.push({ uuid: product[0].uuid, descripcion: product[0].descripcion, precio_venta: product[0].precio_venta, imagen: product[0].imagen || '', quantity: quantity, discount: 0 });
-                            renderCart();
-                            actualizarPrecioPorRangoDeUuid(product[0].uuid, function() { renderCart(); });
-                            input.val('');
-                        } else {
-                            toastr.error('Error verificando stock');
-                        }
-                    }).always(function() { addByCodeInProgress = false; });
+                    cart.push({ uuid: product[0].uuid, descripcion: product[0].descripcion, precio_venta: product[0].precio_venta, imagen: product[0].imagen || '', quantity: quantity, discount: 0, insufficient: false });
+                    renderCart();
+                    actualizarPrecioPorRangoDeUuid(product[0].uuid, function() { renderCart(); });
+                    input.val('');
+                    addByCodeInProgress = false;
                 } else {
                     toastr.error('Producto no existe');
                     addByCodeInProgress = false;
@@ -421,31 +455,13 @@ $(document).ready(function() {
     // ── Controles de cantidad ────────────────────────────────────────────────
     $(document).off('click' + EVENT_NS, '.plus-btn').on('click' + EVENT_NS, '.plus-btn', function() {
         var index = $(this).closest('.product-row').data('index');
-        var newQty = cart[index].quantity + 1;
-        var otherQty = getCartTotalQuantity(cart[index].uuid, index);
-        var totalRequested = otherQty + newQty;
-        verificarStock(cart[index].uuid, totalRequested).done(function(resp) {
-            if (resp.status === 'OK') {
-                cart[index].quantity = newQty;
-                cart[index].insufficient = false;
-                removeAlertByUuid(cart[index].uuid);
-            } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                var available = resp.product.stock || 0;
-                cart[index].quantity = newQty;
-                cart[index].insufficient = (available < totalRequested);
-                toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
-                pushAlertFromResp(resp, { requested: totalRequested });
-            } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                cart[index].quantity = newQty;
-                cart[index].insufficient = true;
-                toastr.error('Promoción con faltantes. Revise los componentes.');
-                pushAlertFromResp(resp);
-            }
-            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() { renderCart(); });
-        }).fail(function() { toastr.error('Error verificando stock'); });
+        cart[index].quantity = cart[index].quantity + 1;
+        cart[index].insufficient = false;
+        removeAlertByUuid(cart[index].uuid);
+        actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() { renderCart(); });
     });
 
-    $(document).on('click', '.minus-btn', function() {
+    $(document).off('click' + EVENT_NS, '.minus-btn').on('click' + EVENT_NS, '.minus-btn', function() {
         var index = $(this).closest('.product-row').data('index');
         if (cart[index].quantity > 1) {
             cart[index].quantity--;
@@ -463,32 +479,10 @@ $(document).ready(function() {
         clearTimeout(quantityInputTimers[index]);
         quantityInputTimers[index] = setTimeout(function() {
             if (!cart[index]) return;
-            var otherQty = getCartTotalQuantity(cart[index].uuid, index);
-            var totalRequested = otherQty + newQuantity;
-            verificarStock(cart[index].uuid, totalRequested).done(function(resp) {
-                if (resp.status === 'OK') {
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = false;
-                    removeAlertByUuid(cart[index].uuid);
-                } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                    var available = resp.product.stock || 0;
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = (available < totalRequested);
-                    toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
-                    pushAlertFromResp(resp, { requested: totalRequested });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = true;
-                    toastr.error('Promoción con faltantes.');
-                    pushAlertFromResp(resp);
-                } else {
-                    cart[index].quantity = newQuantity;
-                }
-                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() { renderCart(); });
-            }).fail(function() {
-                cart[index].quantity = newQuantity;
-                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() { renderCart(); });
-            });
+            cart[index].quantity = newQuantity;
+            cart[index].insufficient = false;
+            removeAlertByUuid(cart[index].uuid);
+            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() { renderCart(); });
         }, 180);
     });
 
@@ -573,24 +567,12 @@ $(document).ready(function() {
             discount: 0
         };
         var existingQty = getCartTotalQuantity(product.uuid);
-        var totalRequested = existingQty + 1;
-        verificarStock(product.uuid, totalRequested).done(function(resp) {
-            if (resp.status === 'OK') {
-                cart.push(product);
-                renderCart();
-                actualizarPrecioPorRangoDeUuid(product.uuid, function() { renderCart(); });
-            } else {
-                if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                    toastr.error('Sin stock: ' + (resp.product.descripcion || resp.product.codigo || product.descripcion));
-                    pushAlertFromResp(resp, { requested: totalRequested });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    toastr.error('Promoción con faltantes');
-                    pushAlertFromResp(resp);
-                } else {
-                    toastr.error(resp.message || 'No se puede agregar el producto');
-                }
-            }
-        }).fail(function() { toastr.error('Error verificando stock'); });
+        if (existingQty >= 0) {
+            product.insufficient = false;
+            cart.push(product);
+            renderCart();
+            actualizarPrecioPorRangoDeUuid(product.uuid, function() { renderCart(); });
+        }
     });
 
     $(document).off('click' + EVENT_NS, '.view-photo-btn').on('click' + EVENT_NS, '.view-photo-btn', function() {
@@ -668,12 +650,23 @@ $(document).ready(function() {
             toastr.warning('Agregue productos al carrito para continuar');
             return;
         }
-        var anyInsufficient = cart.some(function(it) { return it.insufficient === true; });
-        if (anyInsufficient) {
-            toastr.error('No puede generar preventa: hay productos con stock insuficiente');
-            return;
-        }
-        generarPreventa();
+
+        var $btn = $('#pay-btn');
+        $btn.prop('disabled', true).text('Validando stock...');
+
+        validarStockCarritoParaPreventa().then(function(ok) {
+            if (!ok) {
+                toastr.error('No puede generar preventa: hay productos con stock insuficiente');
+                return;
+            }
+            generarPreventa();
+        }).catch(function() {
+            toastr.error('Error al validar stock antes de generar la preventa');
+        }).finally(function() {
+            if ($btn.text() === 'Validando stock...') {
+                $btn.prop('disabled', false).text('Generar Preventa');
+            }
+        });
     });
 
     function generarPreventa() {
@@ -709,8 +702,6 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.status === 'OK') {
-                    toastr.success(response.message);
-
                     // Mostrar ticket de preventa en modal
                     if (response.venta_id) {
                         var ticketUrl = '/ventas/ticket-preventa-pdf/' + response.venta_id;
@@ -800,35 +791,15 @@ $(document).ready(function() {
 
         if (rows.length === 0) { $('#modalDetalleBorrador').modal('hide'); return; }
 
-        var promises = rows.map(function(r) {
-            var existingQty = getCartTotalQuantity(r.uuid);
-            return verificarStock(r.uuid, existingQty + r.cantidad);
-        });
-
-        Promise.all(promises).then(function(results) {
-            results.forEach(function(resp, idx) {
-                var r = rows[idx];
-                if (resp.status === 'OK') {
-                    cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: false });
-                } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                    var available = resp.product.stock || 0;
-                    var totalReq = getCartTotalQuantity(r.uuid) + r.cantidad;
-                    cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: (available < totalReq) });
-                    toastr.error('Stock insuficiente para ' + r.descripcion + '. Solo hay ' + available + ' disponibles.');
-                    pushAlertFromResp(resp, { requested: totalReq });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: true });
-                    toastr.error('Promoción con faltantes');
-                    pushAlertFromResp(resp);
-                } else {
-                    toastr.error('No se pudo cargar: ' + (r.descripcion || r.uuid));
-                }
+        Promise.resolve().then(function() {
+            rows.forEach(function(r) {
+                cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: false });
             });
             actualizarPreciosPorRangoCarrito(function() { renderCart(); });
             $('#modalDetalleBorrador').modal('hide');
             eliminarBorrador($('#uuid_borrador').val());
         }).catch(function() {
-            toastr.error('Error verificando stock al cargar borrador');
+            toastr.error('Error al cargar borrador en el carrito');
         });
     });
 

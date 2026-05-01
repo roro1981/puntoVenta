@@ -1,6 +1,10 @@
 $(document).ready(function() {
     const EVENT_NS = '.ventasGenerar';
 
+    // Evita doble binding cuando se navega por modulos via AJAX y quedan listeners de preventa.
+    $(document).off('click.preventaGenerar', '.plus-btn');
+    $(document).off('click.preventaGenerar', '.minus-btn');
+
     // Verificar apertura de caja
     if (typeof cajaAbierta !== 'undefined' && !cajaAbierta) {
         $('#modalAperturaCaja').modal('show');
@@ -208,6 +212,67 @@ $(document).ready(function() {
         });
 
         return jqxhr;
+    }
+
+    function validarStockCarritoParaVenta() {
+        alerts = [];
+        cart.forEach(item => { item.insufficient = false; });
+        renderAlerts();
+
+        const cantidadPorUuid = {};
+        const descripcionPorUuid = {};
+        cart.forEach(item => {
+            if (!item || !item.uuid) return;
+            cantidadPorUuid[item.uuid] = (cantidadPorUuid[item.uuid] || 0) + (parseFloat(item.quantity) || 0);
+            if (!descripcionPorUuid[item.uuid]) descripcionPorUuid[item.uuid] = item.descripcion || item.uuid;
+        });
+
+        const rows = Object.keys(cantidadPorUuid).map(uuid => ({
+            uuid: uuid,
+            cantidad: cantidadPorUuid[uuid],
+            descripcion: descripcionPorUuid[uuid]
+        }));
+
+        if (!rows.length) return Promise.resolve(true);
+
+        const promises = rows.map(r => {
+            return verificarStock(r.uuid, r.cantidad)
+                .then(resp => ({ ok: true, resp: resp, row: r }))
+                .catch(xhr => ({ ok: false, xhr: xhr, row: r }));
+        });
+
+        return Promise.all(promises).then(results => {
+            let hasError = false;
+
+            results.forEach(result => {
+                const r = result.row;
+                const resp = result.ok
+                    ? result.resp
+                    : (result.xhr && result.xhr.responseJSON ? result.xhr.responseJSON : null);
+
+                if (resp && resp.status === 'OK') {
+                    return;
+                }
+
+                hasError = true;
+                cart.forEach(item => {
+                    if (item.uuid === r.uuid) item.insufficient = true;
+                });
+
+                if (resp && resp.code === 'OUT_OF_STOCK_PRODUCT') {
+                    toastr.error('Sin stock suficiente para ' + ((resp.product && (resp.product.descripcion || resp.product.codigo)) || r.descripcion));
+                    pushAlertFromResp(resp, { requested: r.cantidad });
+                } else if (resp && resp.code === 'PROMO_INSUFFICIENT_STOCK') {
+                    toastr.error('Promoción con faltantes: ' + ((resp.promotion && (resp.promotion.nombre || resp.promotion.codigo)) || r.descripcion));
+                    pushAlertFromResp(resp, { requested: r.cantidad });
+                } else {
+                    toastr.error('Error verificando stock para ' + r.descripcion);
+                }
+            });
+
+            renderCart();
+            return !hasError;
+        });
     }
 
     function obtenerPrecioPorCantidad(uuid, cantidad, precioBase) {
@@ -433,31 +498,21 @@ $(document).ready(function() {
 
             const cachedProduct = productByCodeCache.get(code);
             if (cachedProduct) {
-                const existingQty = getCartTotalQuantity(cachedProduct.uuid);
-                const totalRequested = existingQty + quantity;
-                verificarStock(cachedProduct.uuid, totalRequested).done(function(resp){
-                    if (resp.status === 'OK') {
-                        cart.push({
-                            uuid: cachedProduct.uuid,
-                            descripcion: cachedProduct.descripcion,
-                            precio_venta: cachedProduct.precio_venta,
-                            imagen: cachedProduct.imagen || '',
-                            quantity: quantity,
-                            discount: 0
-                        });
-                        renderCart();
-                        actualizarPrecioPorRangoDeUuid(cachedProduct.uuid, function() {
-                            renderCart();
-                        });
-                        input.val('');
-                    } else {
-                        toastr.error(resp.message || 'No se puede agregar el producto');
-                    }
-                }).fail(function() {
-                    toastr.error('Error verificando stock');
-                }).always(function() {
-                    addByCodeInProgress = false;
+                cart.push({
+                    uuid: cachedProduct.uuid,
+                    descripcion: cachedProduct.descripcion,
+                    precio_venta: cachedProduct.precio_venta,
+                    imagen: cachedProduct.imagen || '',
+                    quantity: quantity,
+                    discount: 0,
+                    insufficient: false
                 });
+                renderCart();
+                actualizarPrecioPorRangoDeUuid(cachedProduct.uuid, function() {
+                    renderCart();
+                });
+                input.val('');
+                addByCodeInProgress = false;
                 return;
             }
             
@@ -469,70 +524,21 @@ $(document).ready(function() {
                 success: function(product) {
                     if(product.length > 0){
                         productByCodeCache.set(code, product[0]);
-                        // verificar stock antes de añadir (asíncrono) - incluyendo cantidad total del mismo producto en carrito
-                        const existingQty = getCartTotalQuantity(product[0].uuid);
-                        const totalRequested = existingQty + quantity;
-                        verificarStock(product[0].uuid, totalRequested).done(function(resp){
-                            if (resp.status === 'OK') {
-                                cart.push({
-                                    uuid: product[0].uuid,
-                                    descripcion: product[0].descripcion,
-                                    precio_venta: product[0].precio_venta,
-                                    imagen: product[0].imagen || '',
-                                    quantity: quantity,
-                                    discount: 0
-                                });
-                                renderCart();
-                                actualizarPrecioPorRangoDeUuid(product[0].uuid, function() {
-                                    renderCart();
-                                });
-                                input.val('');
-                            } else {
-                                // mostrar mensaje con detalle si disponible
-                                if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                                    toastr.error('Sin stock: ' + (resp.product.descripcion || resp.product.codigo || product[0].descripcion));
-                                    pushAlertFromResp(resp, { requested: totalRequested });
-                                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                                    let msg = 'Promoción con faltantes:\n';
-                                    resp.items.forEach(function(it){
-                                        if (!it.sufficient) {
-                                            msg += `${it.descripcion} - stock: ${it.stock}, requerido: ${it.required_total}\n`;
-                                        }
-                                    });
-                                    toastr.error(msg);
-                                    pushAlertFromResp(resp);
-                                } else {
-                                    toastr.error(resp.message || 'No se puede agregar el producto');
-                                }
-                            }
-                        }).fail(function(xhr){
-                            // Si el servidor devuelve información, intentar usarla
-                            if (xhr.responseJSON) {
-                                let resp = xhr.responseJSON;
-                                if (resp.status === 'OK') {
-                                    // Producto válido, agregar al carrito
-                                    cart.push({
-                                        uuid: product[0].uuid,
-                                        descripcion: product[0].descripcion,
-                                        precio_venta: product[0].precio_venta,
-                                        imagen: product[0].imagen || '',
-                                        quantity: quantity,
-                                        discount: 0
-                                    });
-                                    renderCart();
-                                    actualizarPrecioPorRangoDeUuid(product[0].uuid, function() {
-                                        renderCart();
-                                    });
-                                    input.val('');
-                                } else {
-                                    toastr.error(resp.message || 'Error verificando stock');
-                                }
-                            } else {
-                                toastr.error('Error verificando stock');
-                            }
-                        }).always(function() {
-                            addByCodeInProgress = false;
+                        cart.push({
+                            uuid: product[0].uuid,
+                            descripcion: product[0].descripcion,
+                            precio_venta: product[0].precio_venta,
+                            imagen: product[0].imagen || '',
+                            quantity: quantity,
+                            discount: 0,
+                            insufficient: false
                         });
+                        renderCart();
+                        actualizarPrecioPorRangoDeUuid(product[0].uuid, function() {
+                            renderCart();
+                        });
+                        input.val('');
+                        addByCodeInProgress = false;
                         
                     }else{
                         toastr.error("Producto no existe");
@@ -550,38 +556,15 @@ $(document).ready(function() {
 
     $(document).off('click' + EVENT_NS, '.plus-btn').on('click' + EVENT_NS, '.plus-btn', function() {
         let index = $(this).closest('.product-row').data('index');
-        // incrementar y verificar stock (incluyendo cantidad de otros items del mismo producto)
-        const newQty = cart[index].quantity + 1;
-        const otherQty = getCartTotalQuantity(cart[index].uuid, index);
-        const totalRequested = otherQty + newQty;
-        verificarStock(cart[index].uuid, totalRequested).done(function(resp){
-            if (resp.status === 'OK') {
-                cart[index].quantity = newQty;
-                cart[index].insufficient = false;
-                removeAlertByUuid(cart[index].uuid);
-            } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                // Permitir aumentar la cantidad pero marcar como insuficiente
-                const available = resp.product.stock || 0;
-                cart[index].quantity = newQty;
-                cart[index].insufficient = (available < totalRequested);
-                toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
-                pushAlertFromResp(resp, { requested: totalRequested });
-            } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                // Permitir aumentar la cantidad de la promoción pero marcar como insuficiente
-                cart[index].quantity = newQty;
-                cart[index].insufficient = true;
-                toastr.error('Promoción con faltantes. Revise los componentes.');
-                pushAlertFromResp(resp);
-            }
-            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
-                renderCart();
-            });
-        }).fail(function(){
-            toastr.error('Error verificando stock');
+        cart[index].quantity = cart[index].quantity + 1;
+        cart[index].insufficient = false;
+        removeAlertByUuid(cart[index].uuid);
+        actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+            renderCart();
         });
     });
 
-    $(document).on('click', '.minus-btn', function() {
+    $(document).off('click' + EVENT_NS, '.minus-btn').on('click' + EVENT_NS, '.minus-btn', function() {
         let index = $(this).closest('.product-row').data('index');
         if(cart[index].quantity > 1) {
             const newQty = cart[index].quantity - 1;
@@ -666,35 +649,11 @@ $(document).ready(function() {
             discount: 0
         };
 
-        // verificar stock antes de añadir - incluyendo cantidad total del mismo producto en carrito
-        const existingQty = getCartTotalQuantity(product.uuid);
-        const totalRequested = existingQty + 1;
-        verificarStock(product.uuid, totalRequested).done(function(resp){
-            if (resp.status === 'OK') {
-                cart.push(product);
-                renderCart();
-                actualizarPrecioPorRangoDeUuid(product.uuid, function() {
-                    renderCart();
-                });
-            } else {
-                if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                    toastr.error('Sin stock: ' + (resp.product.descripcion || resp.product.codigo || product.descripcion));
-                    pushAlertFromResp(resp, { requested: totalRequested });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    let msg = 'Promoción con faltantes:\n';
-                    resp.items.forEach(function(it){
-                        if (!it.sufficient) {
-                            msg += `${it.descripcion} - stock: ${it.stock}, requerido: ${it.required_total}\n`;
-                        }
-                    });
-                    toastr.error(msg);
-                    pushAlertFromResp(resp);
-                } else {
-                    toastr.error(resp.message || 'No se puede agregar el producto');
-                }
-            }
-        }).fail(function(){
-            toastr.error('Error verificando stock');
+        product.insufficient = false;
+        cart.push(product);
+        renderCart();
+        actualizarPrecioPorRangoDeUuid(product.uuid, function() {
+            renderCart();
         });
     });
 
@@ -789,27 +748,37 @@ $(document).ready(function() {
             return;
         }
 
-        const anyInsufficient = cart.some(it => it.insufficient === true);
-        if (anyInsufficient) {
-            toastr.error('No puede procesar: hay productos con stock insuficiente');
-            return;
-        }
+        const $btn = $('#pay-btn');
+        $btn.prop('disabled', true).text('Validando stock...');
 
-        // Si es MIXTO, abrir modal
-        if (formaPago === 'MIXTO') {
-            pagosMixtos = [];
-            const total = parseInt($('#cart-total').text().replace(/[^\d]/g, ''));
-            $('#totalPagoMixto').text(formatCurrency(total));
-            $('#pendientePagoMixto').text(formatCurrency(total));
-            $('#tablaPagoMixto tbody').html('');
-            $('#montoPagoMixto').val('');
-            $('#formaPagoMixtoSelect').val('');
-            $('#modalPagoMixto').modal('show');
-            return;
-        }
+        validarStockCarritoParaVenta().then(function(ok) {
+            if (!ok) {
+                toastr.error('No puede procesar: hay productos con stock insuficiente');
+                return;
+            }
 
-        // Pago simple (no mixto)
-        procesarPago(formaPago, null);
+            // Si es MIXTO, abrir modal
+            if (formaPago === 'MIXTO') {
+                pagosMixtos = [];
+                const total = parseInt($('#cart-total').text().replace(/[^\d]/g, ''));
+                $('#totalPagoMixto').text(formatCurrency(total));
+                $('#pendientePagoMixto').text(formatCurrency(total));
+                $('#tablaPagoMixto tbody').html('');
+                $('#montoPagoMixto').val('');
+                $('#formaPagoMixtoSelect').val('');
+                $('#modalPagoMixto').modal('show');
+                return;
+            }
+
+            // Pago simple (no mixto)
+            procesarPago(formaPago, null);
+        }).catch(function() {
+            toastr.error('Error al validar stock antes de procesar la venta');
+        }).finally(function() {
+            if ($btn.text() === 'Validando stock...') {
+                $btn.prop('disabled', false).text('PAGAR');
+            }
+        });
     });
 
     // Agregar forma de pago al desglose MIXTO
@@ -1351,42 +1320,11 @@ $(document).ready(function() {
         clearTimeout(quantityInputTimers[index]);
         quantityInputTimers[index] = setTimeout(function() {
             if (!cart[index]) return;
-
-            // Verificar stock para la cantidad ingresada (incluyendo cantidad de otros items del mismo producto)
-            const otherQty = getCartTotalQuantity(cart[index].uuid, index);
-            const totalRequested = otherQty + newQuantity;
-            verificarStock(cart[index].uuid, totalRequested).done(function(resp){
-                if (resp.status === 'OK') {
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = false;
-                    removeAlertByUuid(cart[index].uuid);
-                } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                    // Permitir la cantidad solicitada, pero marcar insuficiente y mostrar alerta
-                    const available = resp.product.stock || 0;
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = (available < totalRequested);
-                    toastr.warning('Cantidad mayor al stock. Solo hay ' + available + ' disponibles para ' + cart[index].descripcion);
-                    pushAlertFromResp(resp, { requested: totalRequested });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    // Permitir la cantidad solicitada para la promoción, marcar insuficiente y mostrar alerta
-                    cart[index].quantity = newQuantity;
-                    cart[index].insufficient = true;
-                    toastr.error('Promoción con faltantes. Revise los componentes.');
-                    pushAlertFromResp(resp);
-                } else {
-                    // Otros errores: actualizar la cantidad de todas formas
-                    cart[index].quantity = newQuantity;
-                }
-
-                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
-                    renderCart();
-                });
-            }).fail(function(){
-                // En caso de error de red, permitir la cantidad de todas formas
-                cart[index].quantity = newQuantity;
-                actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
-                    renderCart();
-                });
+            cart[index].quantity = newQuantity;
+            cart[index].insufficient = false;
+            removeAlertByUuid(cart[index].uuid);
+            actualizarPrecioPorRangoDeUuid(cart[index].uuid, function() {
+                renderCart();
             });
         }, 180);
     });
@@ -1432,7 +1370,7 @@ $(document).ready(function() {
     });
     $('#btnCargarVenta').off('click' + EVENT_NS).on('click' + EVENT_NS, function () {
 
-        // Recolectar filas y verificar stock en paralelo
+        // Recolectar filas y cargar directo al carrito; stock se valida al presionar PAGAR.
         const rows = [];
         $('#detalle-borrador-body tr').each(function () {
             rows.push({
@@ -1449,37 +1387,9 @@ $(document).ready(function() {
             return;
         }
 
-        const promises = rows.map(r => {
-            const existingQty = getCartTotalQuantity(r.uuid);
-            const totalRequested = existingQty + r.cantidad;
-            return verificarStock(r.uuid, totalRequested);
-        });
-
-        Promise.all(promises).then(function(results) {
-            results.forEach(function(resp, idx) {
-                const r = rows[idx];
-                if (resp.status === 'OK') {
-                    cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: false });
-                } else if (resp.code === 'OUT_OF_STOCK_PRODUCT') {
-                        const available = resp.product.stock || 0;
-                        const existingQty = getCartTotalQuantity(r.uuid);
-                        const totalRequested = existingQty + r.cantidad;
-                        // No ajustar la cantidad al cargar el borrador; mantener la solicitada y marcar insuficiente
-                        cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: (available < totalRequested) });
-                        toastr.error('Stock insuficiente para ' + r.descripcion + '. Solo hay ' + available + ' disponibles.');
-                        pushAlertFromResp(resp, { requested: totalRequested });
-                } else if (resp.code === 'PROMO_INSUFFICIENT_STOCK') {
-                    // marcar promocion como insuficiente y adjuntar detalles
-                    cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: true, missingItems: resp.items });
-                    let msg = 'Promoción contiene productos con faltante:\n';
-                    resp.items.forEach(function(it){
-                        if (!it.sufficient) msg += `${it.descripcion} - stock:${it.stock}, requerido:${it.required_total}\n`;
-                    });
-                    toastr.error(msg);
-                    pushAlertFromResp(resp);
-                } else {
-                    toastr.error('No se pudo cargar el ítem: ' + (r.descripcion || r.uuid));
-                }
+        Promise.resolve().then(function() {
+            rows.forEach(function(r) {
+                cart.push({ uuid: r.uuid, descripcion: r.descripcion, precio_venta: r.precio_venta, quantity: r.cantidad, discount: r.descuento, insufficient: false });
             });
 
             actualizarPreciosPorRangoCarrito(function() {
@@ -1488,7 +1398,7 @@ $(document).ready(function() {
             $('#modalDetalleBorrador').modal('hide');
             eliminarBorrador($('#uuid_borrador').val());
         }).catch(function(){
-            toastr.error('Error verificando stock al cargar borrador');
+            toastr.error('Error al cargar borrador en el carrito');
         });
     });
 

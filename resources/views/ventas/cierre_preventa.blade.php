@@ -528,3 +528,5 @@
 <script>
   const cajaAbierta = @json($cajaAbierta);
 </script>
+
+@include('partials.modal_ayuda', ['modulo' => 'cierre_preventa'])

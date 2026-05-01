@@ -126,3 +126,5 @@
         </div>
     </div>
 </div>
+
+@include('partials.modal_ayuda', ['modulo' => 'preventa'])

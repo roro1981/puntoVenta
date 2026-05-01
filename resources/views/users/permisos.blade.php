@@ -20,4 +20,6 @@
     <div id="menusContainer" class="row">
     
     </div>  
-</div> 
+</div>
+
+@include('partials.modal_ayuda', ['modulo' => 'permisos_menu'])

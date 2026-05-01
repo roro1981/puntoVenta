@@ -121,7 +121,7 @@ Route::get('/ventas/cerrar_comandas', [ComandasController::class, 'indexCerrarCo
 Route::get('/ventas/cerrar_comandas/pendientes', [ComandasController::class, 'obtenerComandasPendientesPago']);
 Route::get('/ventas/cerrar_comandas/info-caja', [ComandasController::class, 'obtenerInfoCajaCerrarComandas']);
 Route::post('/ventas/cerrar_comandas/cerrar-caja', [ComandasController::class, 'cerrarCajaCerrarComandas']);
-Route::post('/ventas/cerrar_comandas/cerrar/{comandaId}', [ComandasController::class, 'cerrarComanda']);
+Route::post('/ventas/cerrar_comandas/cerrar/{comandaId}', [ComandasController::class, 'cerrarComanda'])->middleware('sistema.activo');
 Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
 Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword']);
 Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
@@ -140,18 +140,18 @@ Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrad
 Route::delete('/ventas/eliminar-borrador/{uuid_borrador}', [VentasController::class, 'eliminarBorrador']);
 Route::get('/ventas/traer-borradores', [VentasController::class, 'traer_borradores']);
 Route::get('/ventas/borrador/{uuid}/productos', [VentasController::class, 'productosPorUuid']);
-Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta']);
+Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta'])->middleware('sistema.activo');
 Route::get('/ventas/ticket-pdf/{id}', [VentasController::class, 'generarTicketPDF']);
 Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTicketCierrePDF']);
 
 // Preventa (ALMACEN_PREVENTA)
 Route::get('/ventas/generar_preventa', [VentasController::class, 'indexPreventa']);
-Route::post('/ventas/procesar-preventa', [VentasController::class, 'procesarPreventa']);
+Route::post('/ventas/procesar-preventa', [VentasController::class, 'procesarPreventa'])->middleware('sistema.activo');
 Route::get('/ventas/ticket-preventa-pdf/{id}', [VentasController::class, 'generarTicketPreventaPDF']);
 Route::get('/ventas/preventas-pendientes', [VentasController::class, 'listarPreventasPendientes']);
 Route::get('/ventas/cierre_preventa', [VentasController::class, 'indexCierrePreventa']);
 Route::post('/ventas/preventa/buscar', [VentasController::class, 'buscarPreventaPorCodigo']);
-Route::post('/ventas/preventa/cerrar', [VentasController::class, 'cerrarPreventa']);
+Route::post('/ventas/preventa/cerrar', [VentasController::class, 'cerrarPreventa'])->middleware('sistema.activo');
 
 //menu reportes
 Route::get('/reportes/mov_productos', [ReportesController::class, 'indexMovimientos']);
@@ -235,13 +235,13 @@ Route::put('/restaurant/comandas/actualizar-comensales/{comandaId}', [ComandasCo
 Route::get('/restaurant/comandas/obtener-productos', [ComandasController::class, 'obtenerProductos']);
 Route::post('/restaurant/comandas/verificar-stock-receta', [ComandasController::class, 'verificarStockReceta']);
 Route::get('/restaurant/comandas/obtener-garzones', [ComandasController::class, 'obtenerGarzones']);
-Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda']);
-Route::put('/restaurant/comandas/actualizar/{comandaId}', [ComandasController::class, 'actualizarComanda']);
+Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda'])->middleware('sistema.activo');
+Route::put('/restaurant/comandas/actualizar/{comandaId}', [ComandasController::class, 'actualizarComanda'])->middleware('sistema.activo');
 Route::put('/restaurant/comandas/cambiar-mesa/{comandaId}', [ComandasController::class, 'cambiarMesaComanda']);
 Route::put('/restaurant/comandas/solicitar-cuenta/{comandaId}', [ComandasController::class, 'solicitarCuenta']);
-Route::post('/restaurant/comandas/sincronizar-productos/{comandaId}', [ComandasController::class, 'sincronizarProductos']);
-Route::post('/restaurant/comandas/agregar-producto', [ComandasController::class, 'agregarProducto']);
-Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasController::class, 'actualizarProducto']);
+Route::post('/restaurant/comandas/sincronizar-productos/{comandaId}', [ComandasController::class, 'sincronizarProductos'])->middleware('sistema.activo');
+Route::post('/restaurant/comandas/agregar-producto', [ComandasController::class, 'agregarProducto'])->middleware('sistema.activo');
+Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasController::class, 'actualizarProducto'])->middleware('sistema.activo');
 Route::delete('/restaurant/comandas/eliminar-producto/{detalleId}', [ComandasController::class, 'eliminarProducto']);
 Route::get('/restaurant/comandas/imprimir/{comandaId}', [ComandasController::class, 'imprimirComanda']);
 Route::get('/restaurant/comandas/ticket-pago/{comandaId}/{ventaId}', [ComandasController::class, 'imprimirTicketPagoComanda']);

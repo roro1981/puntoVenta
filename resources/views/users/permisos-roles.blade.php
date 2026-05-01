@@ -21,3 +21,5 @@
     
     </div>  
 </div>
+
+@include('partials.modal_ayuda', ['modulo' => 'permisos_roles'])

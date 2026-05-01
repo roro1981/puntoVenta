@@ -1181,8 +1181,13 @@ class UsersController extends Controller
     public function getMenus(Request $request)
     {
         $roleId = $request->role_id;
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+
         $submenus = Submenu::with('menu')
             ->get()
+            ->filter(function ($submenu) use ($tipoNegocio) {
+                return !$this->debeOcultarSubmenuPorTipoNegocio($tipoNegocio, $submenu->submenu_route);
+            })
             ->groupBy('menu_id');
 
         $selectedSubmenus = Role::find($roleId)->submenus->pluck('id')->toArray();

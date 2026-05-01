@@ -85,10 +85,9 @@ class ConfigurationController extends Controller
         $query = Globales::select('globales.id', 'globales.nom_var', 'globales.valor_var', 'globales.descrip_var');
         $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
         
-        // Solo mostrar TIPO_NEGOCIO si el usuario es Rodrigo Panes
-        if (auth()->user()->name_complete !== 'Rodrigo Panes') {
-            $query->where('nom_var', '!=', 'TIPO_NEGOCIO');
-        }
+        // SISTEMA_ACTIVO y TIPO_NEGOCIO nunca se muestran en la UI (solo modificables por base de datos)
+        $query->where('nom_var', '!=', 'SISTEMA_ACTIVO')
+              ->where('nom_var', '!=', 'TIPO_NEGOCIO');
 
         // Mostrar PORCENTAJE_PROPINA solo si TIPO_NEGOCIO es RESTAURANT
         if ($tipoNegocio !== 'RESTAURANT') {
@@ -119,6 +118,15 @@ class ConfigurationController extends Controller
         $validated = $request->validated();
         try{
             $global = Globales::findOrFail($id);
+
+            // SISTEMA_ACTIVO y TIPO_NEGOCIO solo son modificables directamente por base de datos
+            if (in_array($global->nom_var, ['SISTEMA_ACTIVO', 'TIPO_NEGOCIO'])) {
+                return response()->json([
+                    'error' => 403,
+                    'message' => 'Esta variable no puede modificarse desde la aplicacion'
+                ], 403);
+            }
+
             $global->updateVar($request);
 
             $response = response()->json([

@@ -87,3 +87,5 @@
     </div>
 </div>
 
+@include('partials.modal_ayuda', ['modulo' => 'cierres_caja'])
+

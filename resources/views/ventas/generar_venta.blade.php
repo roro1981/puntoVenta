@@ -349,3 +349,5 @@
   // Variable para saber si hay caja abierta
   const cajaAbierta = @json($cajaAbierta);
 </script>
+
+@include('partials.modal_ayuda', ['modulo' => 'ventas'])

@@ -17,6 +17,8 @@
   </div>
 </div>
 
+@include('partials.modal_ayuda', ['modulo' => 'config_datos_glob'])
+
 
 
 

@@ -106,3 +106,5 @@
              </form>
              </div>
            </div>
+
+@include('partials.modal_ayuda', ['modulo' => 'almacen_crear_recetas'])

@@ -229,3 +229,5 @@
     window.posPropinaPorcentaje = @json((float)($porcentajePropina ?? 10));
 </script>
 
+@include('partials.modal_ayuda', ['modulo' => 'comandas'])
+

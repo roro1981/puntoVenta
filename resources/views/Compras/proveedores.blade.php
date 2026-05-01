@@ -255,5 +255,7 @@ aria-labelledby="editProveedorModalLabel" aria-hidden="true">
 </div>
 </div>
 </div>
+
+@include('partials.modal_ayuda', ['modulo' => 'compras_proveedores'])
         
 

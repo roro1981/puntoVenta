@@ -81,6 +81,9 @@
           </div>
       </div>
   </div>
- <!-- Fin Modal para editar categoria -->
+</div>
+<!-- Fin Modal para editar categoria -->
+
+@include('partials.modal_ayuda', ['modulo' => 'almacen_categorias'])
         
 

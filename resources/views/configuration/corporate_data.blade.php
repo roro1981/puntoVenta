@@ -61,3 +61,5 @@
         <button type="button" id="saveCorporateDataBtn" class="btn btn-primary">Guardar</button>
     </div>    
 </form>
+
+@include('partials.modal_ayuda', ['modulo' => 'config_datos_corp'])

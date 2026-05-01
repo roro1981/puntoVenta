@@ -117,6 +117,9 @@
           </div>
       </div>
   </div>
- <!-- Fin Modal para editar usuario -->
+</div>
+<!-- Fin Modal para editar usuario -->
+
+@include('partials.modal_ayuda', ['modulo' => 'usuarios'])
         
 

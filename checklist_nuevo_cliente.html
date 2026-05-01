@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Checklist Nuevo Cliente - PVenta App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            color: #2c2c2c;
+            background: #fff;
+            padding: 30px 40px;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+
+        /* HEADER */
+        .header {
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .header h1 {
+            font-size: 22px;
+            color: #2c3e50;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .header .subtitle {
+            font-size: 12px;
+            color: #777;
+            margin-top: 3px;
+        }
+        .header .doc-info {
+            text-align: right;
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        /* DATOS DEL CLIENTE */
+        .client-card {
+            background: #f4f7fb;
+            border: 1px solid #d0dce8;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin-bottom: 22px;
+        }
+        .client-card h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        .client-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 30px;
+        }
+        .field-row {
+            display: flex;
+            flex-direction: column;
+        }
+        .field-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        .field-value {
+            border-bottom: 1.5px solid #a0b4c8;
+            min-height: 20px;
+            font-size: 12px;
+            color: #2c2c2c;
+            padding-bottom: 2px;
+        }
+        .field-full {
+            grid-column: 1 / -1;
+        }
+
+        /* SECCIONES */
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #fff;
+            background: #2c3e50;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+
+        /* CHECKLIST */
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            display: flex;
+            align-items: flex-start;
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            gap: 10px;
+        }
+        .checklist li:last-child { border-bottom: none; }
+        .checklist li:nth-child(even) { background: #f9f9f9; }
+
+        .checkbox {
+            width: 15px;
+            height: 15px;
+            border: 1.5px solid #2c3e50;
+            border-radius: 2px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .step-num {
+            font-weight: 700;
+            color: #2c3e50;
+            min-width: 18px;
+            font-size: 12px;
+        }
+        .step-text {
+            flex: 1;
+            line-height: 1.5;
+        }
+        .step-text strong { color: #2c3e50; }
+        .step-note {
+            font-size: 10.5px;
+            color: #888;
+            display: block;
+            margin-top: 1px;
+        }
+        .badge {
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-weight: 600;
+            flex-shrink: 0;
+            margin-top: 2px;
+            height: fit-content;
+        }
+        .badge-red    { background: #fde8e8; color: #c0392b; border: 1px solid #e8b5b5; }
+        .badge-yellow { background: #fef9e7; color: #b7950b; border: 1px solid #f0d98a; }
+        .badge-green  { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+
+        /* ENV BOX */
+        .env-box {
+            background: #1e2b38;
+            color: #a8d8a8;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 12px 16px;
+            border-radius: 5px;
+            line-height: 1.8;
+            margin-top: 8px;
+        }
+        .env-box .comment { color: #6a8fa0; }
+        .env-box .key     { color: #e0c97f; }
+        .env-box .val     { color: #a8d8a8; }
+
+        /* SQL BOX */
+        .sql-box {
+            background: #1e2b38;
+            color: #a8d8a8;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 10px 14px;
+            border-radius: 5px;
+            line-height: 1.9;
+            margin-top: 8px;
+        }
+        .sql-box .kw   { color: #79aacc; }
+        .sql-box .str  { color: #f0a070; }
+        .sql-box .cmt  { color: #6a8fa0; }
+
+        /* TABLA CLIENTES */
+        .tabla-clientes {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-top: 8px;
+        }
+        .tabla-clientes th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tabla-clientes td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .tabla-clientes tr:nth-child(even) td { background: #f5f8fb; }
+        .estado-activo    { color: #1e8449; font-weight: 700; }
+        .estado-suspendido { color: #c0392b; font-weight: 700; }
+
+        /* COMANDOS */
+        .cmd-box {
+            background: #f4f7fb;
+            border-left: 3px solid #2c3e50;
+            font-family: 'Courier New', monospace;
+            font-size: 11.5px;
+            padding: 8px 12px;
+            border-radius: 0 4px 4px 0;
+            margin-top: 6px;
+            line-height: 1.9;
+            color: #2c3e50;
+        }
+
+        /* NOTAS */
+        .nota {
+            background: #fefce8;
+            border: 1px solid #f0d98a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            color: #7a6200;
+            margin-top: 10px;
+        }
+        .nota strong { color: #5a4800; }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 28px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 10px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .signature-box {
+            border-top: 1.5px solid #2c3e50;
+            padding-top: 6px;
+            font-size: 11px;
+            color: #555;
+        }
+        .signature-label {
+            font-size: 10px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        @media print {
+            body { padding: 15px 20px; }
+            .no-print { display: none; }
+            a { text-decoration: none; color: inherit; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- BOTÓN IMPRIMIR (solo pantalla) -->
+<div class="no-print" style="text-align:right; margin-bottom:16px;">
+    <button onclick="window.print()" style="
+        background:#2c3e50; color:#fff; border:none; padding:8px 20px;
+        border-radius:4px; font-size:13px; cursor:pointer; font-family:inherit;">
+        🖨️ Guardar / Imprimir como PDF
+    </button>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+    <div>
+        <h1>Checklist — Alta de Nuevo Cliente</h1>
+        <div class="subtitle">PVenta App · Proceso de incorporación</div>
+    </div>
+    <div class="doc-info">
+        Fecha: _____ / _____ / _______<br>
+        Responsable: Rodrigo Panes<br>
+        N° Cliente: ___________
+    </div>
+</div>
+
+<!-- DATOS DEL CLIENTE -->
+<div class="client-card">
+    <h2>📋 Datos del Cliente</h2>
+    <div class="client-grid">
+        <div class="field-row">
+            <span class="field-label">Nombre del negocio</span>
+            <div class="field-value"></div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Nombre contacto</span>
+            <div class="field-value"></div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Email</span>
+            <div class="field-value"></div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Teléfono</span>
+            <div class="field-value"></div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Subdominio asignado</span>
+            <div class="field-value">______________.tudominio.com</div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Tipo de negocio</span>
+            <div class="field-value">☐ ALMACEN_PREVENTA &nbsp;&nbsp; ☐ RESTAURANT</div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Nombre BD</span>
+            <div class="field-value">pventa_</div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Usuario BD</span>
+            <div class="field-value">user_</div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Monto mensual</span>
+            <div class="field-value">$</div>
+        </div>
+        <div class="field-row">
+            <span class="field-label">Fecha primer vencimiento</span>
+            <div class="field-value"></div>
+        </div>
+        <div class="field-row field-full">
+            <span class="field-label">Observaciones</span>
+            <div class="field-value"></div>
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN 1 -->
+<div class="section">
+    <div class="section-title">1 · Hosting — cPanel</div>
+    <ul class="checklist">
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">1</span>
+            <span class="step-text">
+                <strong>Crear subdominio</strong>
+                <span class="step-note">cPanel → Dominios → Subdomains. Apuntar Document Root directo a la carpeta <code>public/</code> del proyecto del cliente.</span>
+            </span>
+            <span class="badge badge-red">Crítico</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">2</span>
+            <span class="step-text">
+                <strong>Crear base de datos y usuario</strong>
+                <span class="step-note">cPanel → MySQL Databases. Nombre sugerido: <code>pventa_cliente</code>. Asignar usuario con todos los privilegios.</span>
+            </span>
+            <span class="badge badge-red">Crítico</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">3</span>
+            <span class="step-text">
+                <strong>Subir archivos del proyecto</strong>
+                <span class="step-note">Excluir: <code>.env</code>, <code>node_modules/</code>. El vendor/ puede subirse o regenerarse con <code>composer install --no-dev</code>.</span>
+            </span>
+            <span class="badge badge-yellow">Importante</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">4</span>
+            <span class="step-text">
+                <strong>Verificar permisos de carpetas</strong>
+                <span class="step-note">Las carpetas <code>storage/</code> y <code>bootstrap/cache/</code> deben tener permisos <strong>775</strong>. Sin esto Laravel no puede escribir logs ni sesiones.</span>
+            </span>
+            <span class="badge badge-red">Crítico</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">5</span>
+            <span class="step-text">
+                <strong>Activar SSL / HTTPS en el subdominio</strong>
+                <span class="step-note">cPanel → SSL/TLS → Let's Encrypt (gratis). Obligatorio para que la cookie de sesión segura funcione.</span>
+            </span>
+            <span class="badge badge-red">Crítico</span>
+        </li>
+    </ul>
+</div>
+
+<!-- SECCIÓN 2 -->
+<div class="section">
+    <div class="section-title">2 · Archivo .env</div>
+    <p style="font-size:11.5px; color:#555; margin-bottom:6px;">Crear el archivo <code>.env</code> en la raíz del proyecto con los siguientes valores:</p>
+    <div class="env-box">
+        <span class="comment"># Aplicación</span><br>
+        <span class="key">APP_NAME</span>=<span class="val">"PVenta - Nombre Cliente"</span><br>
+        <span class="key">APP_ENV</span>=<span class="val">production</span><br>
+        <span class="key">APP_KEY</span>=<span class="val">&lt;generar con: php artisan key:generate&gt;</span><br>
+        <span class="key">APP_DEBUG</span>=<span class="val">false</span><br>
+        <span class="key">APP_URL</span>=<span class="val">https://cliente.tudominio.com</span><br>
+        <br>
+        <span class="comment"># Base de datos</span><br>
+        <span class="key">DB_CONNECTION</span>=<span class="val">mysql</span><br>
+        <span class="key">DB_HOST</span>=<span class="val">localhost</span><br>
+        <span class="key">DB_PORT</span>=<span class="val">3306</span><br>
+        <span class="key">DB_DATABASE</span>=<span class="val">pventa_cliente</span><br>
+        <span class="key">DB_USERNAME</span>=<span class="val">user_cliente</span><br>
+        <span class="key">DB_PASSWORD</span>=<span class="val">clave_segura</span><br>
+        <br>
+        <span class="comment"># Sesión</span><br>
+        <span class="key">SESSION_LIFETIME</span>=<span class="val">120</span><br>
+        <span class="key">SESSION_SECURE_COOKIE</span>=<span class="val">true</span><br>
+    </div>
+    <div class="nota">
+        <strong>⚠ Importante:</strong> <code>APP_DEBUG=false</code> siempre en producción. Con <code>true</code> se exponen rutas, configuración y variables al navegador.
+    </div>
+</div>
+
+<!-- SECCIÓN 3 -->
+<div class="section">
+    <div class="section-title">3 · Comandos artisan (SSH o terminal del hosting)</div>
+    <div class="cmd-box">
+        php artisan key:generate<br>
+        php artisan migrate<br>
+        php artisan db:seed<br>
+        php artisan config:cache<br>
+        php artisan route:cache<br>
+        php artisan view:cache
+    </div>
+    <div class="nota">
+        Si el hosting no tiene SSH, ejecutar las migraciones desde phpMyAdmin importando el SQL generado, o usar un script PHP de un solo uso.
+    </div>
+</div>
+
+<!-- SECCIÓN 4 -->
+<div class="section">
+    <div class="section-title">4 · Configuración inicial en BD (phpMyAdmin)</div>
+    <p style="font-size:11.5px; color:#555; margin-bottom:6px;">Después del seeder, ajustar los valores del cliente en la tabla <code>globales</code>:</p>
+    <div class="sql-box">
+        <span class="cmt">-- Tipo de negocio del cliente</span><br>
+        <span class="kw">UPDATE</span> globales <span class="kw">SET</span> valor_var = <span class="str">'ALMACEN_PREVENTA'</span> <span class="kw">WHERE</span> nom_var = <span class="str">'TIPO_NEGOCIO'</span>;<br>
+        <span class="cmt">-- Opciones: ALMACEN_PREVENTA | RESTAURANT</span><br>
+        <br>
+        <span class="cmt">-- Verificar que el sistema está activo</span><br>
+        <span class="kw">UPDATE</span> globales <span class="kw">SET</span> valor_var = <span class="str">'1'</span> <span class="kw">WHERE</span> nom_var = <span class="str">'SISTEMA_ACTIVO'</span>;<br>
+        <br>
+        <span class="cmt">-- Suspender cliente (cuando no paga)</span><br>
+        <span class="cmt">-- UPDATE globales SET valor_var = '0' WHERE nom_var = 'SISTEMA_ACTIVO';</span>
+    </div>
+</div>
+
+<!-- SECCIÓN 5 -->
+<div class="section">
+    <div class="section-title">5 · Verificación final</div>
+    <ul class="checklist">
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">1</span>
+            <span class="step-text">
+                <strong>Acceder al subdominio en el navegador</strong>
+                <span class="step-note">Debe cargar la pantalla de login sin errores.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">2</span>
+            <span class="step-text">
+                <strong>Crear usuario administrador inicial</strong>
+                <span class="step-note">Ingresar con el usuario del seeder y cambiar la contraseña por defecto.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">3</span>
+            <span class="step-text">
+                <strong>Probar generación de venta / preventa / comanda</strong>
+                <span class="step-note">Confirmar que el flujo principal funciona en producción.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">4</span>
+            <span class="step-text">
+                <strong>Verificar subida de imágenes (logo y fotos de productos)</strong>
+                <span class="step-note">Confirmar que los directorios <code>public/img/logo_empresa</code> y <code>public/img/fotos_prod</code> tienen permisos de escritura.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">5</span>
+            <span class="step-text">
+                <strong>Confirmar que el HTTPS funciona y el candado aparece en el navegador</strong>
+                <span class="step-note">Obligatorio antes de entregar acceso al cliente.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+        <li>
+            <div class="checkbox"></div>
+            <span class="step-num">6</span>
+            <span class="step-text">
+                <strong>Registrar cliente en planilla de control</strong>
+                <span class="step-note">Nombre, subdominio, BD, fecha vencimiento, estado: Activo.</span>
+            </span>
+            <span class="badge badge-green">Verificar</span>
+        </li>
+    </ul>
+</div>
+
+<!-- SECCIÓN 6 -->
+<div class="section">
+    <div class="section-title">6 · Control de cobros — referencia rápida</div>
+    <table class="tabla-clientes">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Subdominio</th>
+                <th>BD</th>
+                <th>Vencimiento</th>
+                <th>Monto</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td class="estado-activo">Activo</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td class="estado-activo">Activo</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td class="estado-suspendido">Suspendido</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="nota" style="margin-top:10px;">
+        <strong>Para suspender un cliente:</strong> phpMyAdmin → BD del cliente → tabla <code>globales</code> → fila <code>SISTEMA_ACTIVO</code> → cambiar <code>valor_var</code> a <code>0</code>.<br>
+        <strong>Para reactivar:</strong> cambiar <code>valor_var</code> a <code>1</code>.
+    </div>
+</div>
+
+<!-- FIRMA -->
+<div class="signature-row">
+    <div class="signature-box">
+        Entregado por
+        <div class="signature-label">Nombre y firma</div>
+    </div>
+    <div class="signature-box">
+        Fecha de activación
+        <div class="signature-label">_____ / _____ / _______</div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <span>PVenta App — Documento interno de operaciones</span>
+    <span>Confidencial · No compartir con clientes</span>
+</div>
+
+</body>
+</html>

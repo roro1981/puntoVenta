@@ -91,6 +91,8 @@
 </div>
 <!-- Fin Modal Usuarios asociados al rol -->
 
+@include('partials.modal_ayuda', ['modulo' => 'roles'])
+
 
         
 

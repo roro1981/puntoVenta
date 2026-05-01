@@ -1033,7 +1033,8 @@ class VentasController extends Controller
             $fechaHasta = $request->input('fecha_hasta');
             
             // Query base
-            $query = Venta::with(['usuario', 'detalles', 'formasPago', 'caja']);
+            $query = Venta::with(['usuario', 'detalles', 'formasPago', 'caja'])
+                ->where('estado', 'completada');
             
             // Si el usuario NO tiene permiso para ver todas las ventas, solo mostrar las propias
             if (!puedeVerTodasVentas()) {
