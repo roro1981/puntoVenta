@@ -235,24 +235,21 @@ $(document).ready(function() {
 
         if (!rows.length) return Promise.resolve(true);
 
-        const promises = rows.map(r => {
-            return verificarStock(r.uuid, r.cantidad)
-                .then(resp => ({ ok: true, resp: resp, row: r }))
-                .catch(xhr => ({ ok: false, xhr: xhr, row: r }));
-        });
-
-        return Promise.all(promises).then(results => {
+        return $.ajax({
+            url: '/ventas/verificar-stock-batch',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                _token: $('#token').val(),
+                items: rows.map(r => ({ uuid: r.uuid, cantidad: r.cantidad }))
+            }
+        }).then(function(batchResp) {
             let hasError = false;
+            const resultados = (batchResp && batchResp.results) ? batchResp.results : {};
 
-            results.forEach(result => {
-                const r = result.row;
-                const resp = result.ok
-                    ? result.resp
-                    : (result.xhr && result.xhr.responseJSON ? result.xhr.responseJSON : null);
-
-                if (resp && resp.status === 'OK') {
-                    return;
-                }
+            rows.forEach(function(r) {
+                const resp = resultados[r.uuid];
+                if (resp && resp.status === 'OK') return;
 
                 hasError = true;
                 cart.forEach(item => {
@@ -272,6 +269,9 @@ $(document).ready(function() {
 
             renderCart();
             return !hasError;
+        }).catch(function() {
+            toastr.error('Error al validar stock antes de procesar la venta');
+            return false;
         });
     }
 

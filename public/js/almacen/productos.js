@@ -6,6 +6,92 @@ $(document).ready(function () {
     $("#precio_venta_editar").on("input", calcularMargen);
     $("#btnImportProductsExcel").on('click', importarProductosExcel);
 
+    // Set global: persiste UUIDs seleccionados entre cambios de página
+    window.uuidsSeleccionados = new Set();
+
+    // Marcar/desmarcar checkbox individual → actualiza el Set
+    $(document).on('change', '.prod-select', function() {
+        var uuid = $(this).data('uuid');
+        if ($(this).prop('checked')) {
+            window.uuidsSeleccionados.add(uuid);
+        } else {
+            window.uuidsSeleccionados.delete(uuid);
+        }
+        actualizarContadorEtiquetas();
+        var totalPagina = $('.prod-select').length;
+        var chkPagina   = $('.prod-select:checked').length;
+        $('#selectAllProductos').prop('checked', totalPagina > 0 && totalPagina === chkPagina);
+    });
+
+    // Seleccionar/deseleccionar todos los de la página visible
+    $(document).on('change', '#selectAllProductos', function() {
+        var checked = $(this).prop('checked');
+        $('.prod-select').each(function() {
+            $(this).prop('checked', checked);
+            var uuid = $(this).data('uuid');
+            if (checked) { window.uuidsSeleccionados.add(uuid); }
+            else          { window.uuidsSeleccionados.delete(uuid); }
+        });
+        actualizarContadorEtiquetas();
+    });
+
+    // Seleccionar TODOS los resultados filtrados (todas las páginas)
+    $(document).on('click', '#btnSeleccionarFiltrados', function() {
+        var tabla = $('#tabla_productos').DataTable();
+        tabla.rows({ search: 'applied' }).data().each(function(row) {
+            window.uuidsSeleccionados.add(row.uuid);
+        });
+        // Marcar visualmente los checkboxes de la página actual
+        $('.prod-select').prop('checked', true);
+        $('#selectAllProductos').prop('checked', true);
+        actualizarContadorEtiquetas();
+    });
+
+    // Limpiar selección completa
+    $(document).on('click', '#btnLimpiarSeleccion', function() {
+        window.uuidsSeleccionados.clear();
+        $('.prod-select').prop('checked', false);
+        $('#selectAllProductos').prop('checked', false);
+        actualizarContadorEtiquetas();
+    });
+
+    // Botón etiquetas masivas
+    $('#btnGenerarEtiquetas').click(function() {
+        var count = window.uuidsSeleccionados.size;
+        if (count === 0) return;
+        $('#infoSeleccionados').text(count + ' producto(s) seleccionado(s).');
+        $('#inputCantidadMasiva').val(1);
+        $('#modalEtiquetasMasivas').modal('show');
+    });
+
+    // Confirmar generación masiva — lee del Set (incluye todas las páginas)
+    $('#btnConfirmarEtiquetasMasivas').click(function() {
+        var form = $('#formEtiquetasMasivas');
+        form.find('input[name="uuids[]"]').remove();
+        window.uuidsSeleccionados.forEach(function(uuid) {
+            $('<input>').attr({ type: 'hidden', name: 'uuids[]', value: uuid }).appendTo(form);
+        });
+        form.find('[name="cantidad"]').val($('#inputCantidadMasiva').val());
+        form.submit();
+        $('#modalEtiquetasMasivas').modal('hide');
+    });
+
+    // Botón barcode individual (por fila)
+    $(document).on('click', '.btn-barcode-individual', function() {
+        var uuid = $(this).data('uuid');
+        $('#etiqueta_individual_uuid').val(uuid);
+        $('#inputCantidadIndividual').val(15);
+        $('#modalEtiquetaIndividual').modal('show');
+    });
+
+    // Confirmar etiqueta individual → abre PDF en nueva pestaña
+    $('#btnConfirmarEtiquetaIndividual').click(function() {
+        var uuid = $('#etiqueta_individual_uuid').val();
+        var cantidad = parseInt($('#inputCantidadIndividual').val()) || 15;
+        window.open('/almacen/productos/' + uuid + '/etiquetas?cantidad=' + cantidad, '_blank');
+        $('#modalEtiquetaIndividual').modal('hide');
+    });
+
     $(".upload").on('click', function () {
         var formData = new FormData();
 
@@ -14,6 +100,23 @@ $(document).ready(function () {
         const foto = isEditMode ? "nom_foto_editar" : "nom_foto";
 
         var files = $('#' + image)[0].files[0];
+
+        // Validación client-side: tipo y tamaño antes de enviar al servidor
+        if (!files) {
+            toastr.warning('Selecciona una imagen antes de subir.');
+            return false;
+        }
+        if (!['image/jpeg', 'image/png'].includes(files.type)) {
+            toastr.error('Formato no permitido. Solo se aceptan imágenes JPG o PNG.');
+            $('#' + image).val(null);
+            return false;
+        }
+        if (files.size > 5 * 1024 * 1024) {
+            toastr.error('La imagen supera el tamaño máximo permitido de 5 MB.');
+            $('#' + image).val(null);
+            return false;
+        }
+
         formData.append('file', files);
         formData.append('_token', $('#token').val());
         $.ajax({
@@ -205,6 +308,14 @@ function cargaProductos() {
             "type": "GET"
         },
         "columns": [
+            {
+                "data": null,
+                "orderable": false,
+                "className": "text-center",
+                "render": function(data, type, row) {
+                    return '<input type="checkbox" class="prod-select" data-uuid="' + row.uuid + '">';
+                }
+            },
             { "data": "codigo" },
             { "data": "descripcion" },
             { "data": "precio_venta" },
@@ -214,12 +325,23 @@ function cargaProductos() {
             { "data": "fec_modificacion" },
             { "data": "actions" }
         ],
-        "order": [[5, "desc"], [3, "asc"]],
+        "order": [[6, "desc"], [4, "asc"]],
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "pageLength": 10,
         "searching": true,
         "language": {
             "url": "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+        },
+        "drawCallback": function() {
+            // Restaurar estado visual de checkboxes desde el Set global
+            $('.prod-select').each(function() {
+                var uuid = $(this).data('uuid');
+                $(this).prop('checked', window.uuidsSeleccionados && window.uuidsSeleccionados.has(uuid));
+            });
+            var totalPagina = $('.prod-select').length;
+            var chkPagina   = $('.prod-select:checked').length;
+            $('#selectAllProductos').prop('checked', totalPagina > 0 && totalPagina === chkPagina);
+            actualizarContadorEtiquetas();
         },
         "dom": 'Bfrtip',
         "buttons": [
@@ -230,7 +352,7 @@ function cargaProductos() {
                 title: 'Listado de productos al ' + fechaFormateada,
                 filename: 'Listado de productos al ' + fechaFormateada,
                 exportOptions: {
-                    columns: ':visible:not(:eq(7),:eq(4))',
+                    columns: ':visible:not(:eq(0),:eq(5),:eq(8))',
                 }
             },
             {
@@ -238,7 +360,7 @@ function cargaProductos() {
                 "text": 'Imprimir',
                 className: 'btn btn-primary',
                 exportOptions: {
-                    columns: ':visible:not(:eq(7),:eq(4))'
+                    columns: ':visible:not(:eq(0),:eq(5),:eq(8))'
                 },
                 title: 'Listado de productos al ' + fechaFormateada,
                 customize: function (win) {
@@ -267,7 +389,7 @@ function cargaProductos() {
                 text: 'Exportar a PDF',
                 className: 'btn btn-danger',
                 exportOptions: {
-                    columns: ':visible:not(:eq(7),:eq(4))'
+                    columns: ':visible:not(:eq(0),:eq(5),:eq(8))'
                 },
                 title: 'Listado de productos al ' + fechaFormateada,
                 filename: 'Listado de productos al ' + fechaFormateada,
@@ -533,4 +655,10 @@ function calcularMargen() {
     margen = Math.round(margen);
 
     $("#" + mar).val(margen);
+}
+
+function actualizarContadorEtiquetas() {
+    var count = window.uuidsSeleccionados ? window.uuidsSeleccionados.size : 0;
+    $('#contadorSeleccionados').text('(' + count + ')');
+    $('#btnGenerarEtiquetas').prop('disabled', count === 0);
 }

@@ -94,7 +94,8 @@
                           <div class="card-body">
                               <div class="form-group">
                                   <label for="image" style="width:150px">Foto receta</label>
-                                  <input type="file" title="Solo formato jpg,png o gif" class="form-control-file" id="image">
+                                   <input type="file" title="Solo formato jpg o png, máximo 5 MB" class="form-control-file" id="image" accept="image/jpeg,image/png">
+                                   <small class="form-text text-muted"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 800&times;800 px &middot; máx. 5 MB</small>
                               </div>
                               <input type="button" class="btn btn-primary upload" value="Subir">
                               <input type="hidden" id="foto_receta" name="foto_receta">

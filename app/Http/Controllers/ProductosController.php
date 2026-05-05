@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Helpers\BarcodeHelper;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -81,8 +83,10 @@ class ProductosController extends Controller
                 'fec_creacion' => $fecCreacion ? $fecCreacion->format('d-m-Y | H:i:s') : '',
                 'fec_creacion_sort' => $fecCreacion ? $fecCreacion->timestamp : 0,
                 'fec_modificacion' => $product->fec_modificacion ? Carbon::parse($product->fec_modificacion)->format('d-m-Y | H:i:s') : '',
+                'uuid'             => $product->uuid,
                 'actions' => '<a href="" class="btn btn-sm btn-primary editar_prod" data-target="#modalEditarProducto" data-uuid="' . $product->uuid . '" data-toggle="modal" title="Editar producto ' . $product->descripcion . '"><i class="fa fa-edit"></i></a>
-                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-prod="' . $product->id . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>'
+                                <a href="" class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-prod="' . $product->id . '" data-nameprod="' . $product->descripcion . '" title="Eliminar producto ' . $product->descripcion . '"><i class="fa fa-trash"></i></a>
+                                <button class="btn btn-sm btn-warning btn-barcode-individual" data-uuid="' . $product->uuid . '" title="Generar etiquetas de código de barra"><i class="fa fa-barcode"></i></button>'
             ];
         });
 
@@ -528,22 +532,45 @@ class ProductosController extends Controller
 
     public function uploadPhotoProduct(Request $request)
     {
-        $fec = date("dmYHis");
-        $nom = "foto_prod_" . $fec;
-
         $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg',
+            'file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
         ]);
 
-        $image = $request->file('file');
-        $extension = $image->getClientOriginalExtension();
-        $filename = $nom . '.' . $extension;
+        $image     = $request->file('file');
+        $extension = strtolower($image->getClientOriginalExtension());
+        $filename  = 'foto_prod_' . date('dmYHis') . '.jpg';
+        $destPath  = public_path('img/fotos_prod/' . $filename);
 
-        if ($image->move(public_path('img/fotos_prod'), $filename)) {
-            return asset('img/fotos_prod/' . $filename);
-        } else {
-            return 0;
+        $src = $extension === 'png'
+            ? imagecreatefrompng($image->getRealPath())
+            : imagecreatefromjpeg($image->getRealPath());
+
+        // Fondo blanco para PNG con transparencia
+        if ($extension === 'png') {
+            $bg = imagecreatetruecolor(imagesx($src), imagesy($src));
+            imagefill($bg, 0, 0, imagecolorallocate($bg, 255, 255, 255));
+            imagecopy($bg, $src, 0, 0, 0, 0, imagesx($src), imagesy($src));
+            imagedestroy($src);
+            $src = $bg;
         }
+
+        // Redimensionar si supera 800 px en alguna dimensión
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+        if ($origW > 800 || $origH > 800) {
+            $ratio   = min(800 / $origW, 800 / $origH);
+            $newW    = (int) round($origW * $ratio);
+            $newH    = (int) round($origH * $ratio);
+            $resized = imagecreatetruecolor($newW, $newH);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+            imagedestroy($src);
+            $src = $resized;
+        }
+
+        $saved = imagejpeg($src, $destPath, 80);
+        imagedestroy($src);
+
+        return $saved ? asset('img/fotos_prod/' . $filename) : 0;
     }
 
     public function indexReceipes()
@@ -562,7 +589,7 @@ class ProductosController extends Controller
 
     public function listReceipes(Request $request)
     {
-        $query = Receta::select('uuid', 'imagen', 'nombre', 'descripcion')->where('estado', 'Activo');
+        $query = Receta::select('uuid', 'codigo', 'imagen', 'nombre', 'descripcion')->where('estado', 'Activo');
         if ($request->has('categoria_id') && $request->categoria_id != 0) {
             $query->where('categoria_id', $request->categoria_id);
         }
@@ -574,7 +601,8 @@ class ProductosController extends Controller
                 'nombre' => $receipe->nombre,
                 'descripcion' => $receipe->descripcion,
                 'actions' => '<button id="editarReceta" class="btn btn-sm btn-primary" data-uuid="' . $receipe->uuid . '" title="Editar receta ' . $receipe->nombre . '"><i class="fa fa-edit"></i></button>
-                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $receipe->uuid . '" data-namerec="' . $receipe->nombre . '" title="Eliminar receta ' . $receipe->nombre . '"><i class="fa fa-trash"></i></a></button>'
+                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $receipe->uuid . '" data-namerec="' . $receipe->nombre . '" title="Eliminar receta ' . $receipe->nombre . '"><i class="fa fa-trash"></i></a></button>
+                    <button class="btn btn-sm btn-warning btn-barcode-receta" data-uuid="' . $receipe->uuid . '" title="Generar etiqueta de código de barras"><i class="fa fa-barcode"></i></button>'
             ];
         });
 
@@ -589,22 +617,45 @@ class ProductosController extends Controller
 
     public function uploadPhotoReceipe(Request $request)
     {
-        $fec = date("dmYHis");
-        $nom = "foto_receta_" . $fec;
-
         $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg',
+            'file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
         ]);
 
-        $image = $request->file('file');
-        $extension = $image->getClientOriginalExtension();
-        $filename = $nom . '.' . $extension;
+        $image     = $request->file('file');
+        $extension = strtolower($image->getClientOriginalExtension());
+        $filename  = 'foto_receta_' . date('dmYHis') . '.jpg';
+        $destPath  = public_path('img/fotos_prod/recetas/' . $filename);
 
-        if ($image->move(public_path('img/fotos_prod/recetas'), $filename)) {
-            return asset('img/fotos_prod/recetas/' . $filename);
-        } else {
-            return 0;
+        $src = $extension === 'png'
+            ? imagecreatefrompng($image->getRealPath())
+            : imagecreatefromjpeg($image->getRealPath());
+
+        // Fondo blanco para PNG con transparencia
+        if ($extension === 'png') {
+            $bg = imagecreatetruecolor(imagesx($src), imagesy($src));
+            imagefill($bg, 0, 0, imagecolorallocate($bg, 255, 255, 255));
+            imagecopy($bg, $src, 0, 0, 0, 0, imagesx($src), imagesy($src));
+            imagedestroy($src);
+            $src = $bg;
         }
+
+        // Redimensionar si supera 800 px en alguna dimensión
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+        if ($origW > 800 || $origH > 800) {
+            $ratio   = min(800 / $origW, 800 / $origH);
+            $newW    = (int) round($origW * $ratio);
+            $newH    = (int) round($origH * $ratio);
+            $resized = imagecreatetruecolor($newW, $newH);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+            imagedestroy($src);
+            $src = $resized;
+        }
+
+        $saved = imagejpeg($src, $destPath, 80);
+        imagedestroy($src);
+
+        return $saved ? asset('img/fotos_prod/recetas/' . $filename) : 0;
     }
     public function searchInsumos(Request $request)
     {
@@ -868,12 +919,14 @@ class ProductosController extends Controller
         $promos = $query->get();
         $promos = $promos->map(function ($promo) {
             return [
-                'codigo' => $promo->codigo,
-                'nombre' => $promo->nombre,
+                'uuid'        => $promo->uuid,
+                'codigo'      => $promo->codigo,
+                'nombre'      => $promo->nombre,
                 'precio_costo' => $promo->precio_costo,
                 'precio_venta' => $promo->precio_venta,
-                'actions' => '<button id="editarPromo" class="btn btn-sm btn-primary" data-uuid="' . $promo->uuid . '" title="Editar promoción ' . $promo->nombre . '"><i class="fa fa-edit"></i></button>
-                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $promo->uuid . '" data-namepromo="' . $promo->nombre . '" title="Eliminar promoción ' . $promo->nombre . '"><i class="fa fa-trash"></i></a></button>'
+                'actions' => '<button id="editarPromo" class="btn btn-sm btn-primary" data-uuid="' . $promo->uuid . '" title="Editar promoci\u00f3n ' . $promo->nombre . '"><i class="fa fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger eliminar" data-toggle="tooltip" data-uuid="' . $promo->uuid . '" data-namepromo="' . $promo->nombre . '" title="Eliminar promoci\u00f3n ' . $promo->nombre . '"><i class="fa fa-trash"></i></a></button>
+                    <button class="btn btn-sm btn-warning btn-barcode-promo" data-uuid="' . $promo->uuid . '" title="Generar etiquetas de c\u00f3digo de barra"><i class="fa fa-barcode"></i></button>'
             ];
         });
 
@@ -1357,5 +1410,170 @@ class ProductosController extends Controller
         $tax2Amount = ($netPrice * $tax2Rate) / 100;
 
         return (int) round($netPrice + $tax1Amount + $tax2Amount);
+    }
+
+    public function generateBarcodePdf(Request $request, $uuid)
+    {
+        $cantidad = max(1, min(100, (int) $request->query('cantidad', 15)));
+        $product  = Producto::where('uuid', $uuid)->where('estado', 'Activo')->firstOrFail();
+
+        $items = [];
+        for ($i = 0; $i < $cantidad; $i++) {
+            $items[] = [
+                'codigo'      => $product->codigo,
+                'descripcion' => $product->descripcion,
+                'barcode_svg' => BarcodeHelper::generateSvg($product->codigo, 1, 30),
+            ];
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_' . $product->codigo . '.pdf');
+    }
+
+    public function generateBarcodesPdf(Request $request)
+    {
+        $request->validate([
+            'uuids'    => ['required', 'array', 'min:1', 'max:200'],
+            'uuids.*'  => ['required', 'string', 'max:36'],
+            'cantidad' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $cantidad = (int) $request->cantidad;
+        $items    = [];
+
+        $products = Producto::whereIn('uuid', $request->uuids)
+            ->where('estado', 'Activo')
+            ->get(['codigo', 'descripcion']);
+
+        foreach ($products as $product) {
+            for ($i = 0; $i < $cantidad; $i++) {
+                $items[] = [
+                    'codigo'      => $product->codigo,
+                    'descripcion' => $product->descripcion,
+                    'barcode_svg' => BarcodeHelper::generateSvg($product->codigo, 1, 30),
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            abort(422, 'No se encontraron productos válidos.');
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_productos.pdf');
+    }
+
+    public function generatePromoBarcodePdf(Request $request, $uuid)
+    {
+        $cantidad = max(1, min(100, (int) $request->query('cantidad', 15)));
+        $promo    = Promocion::where('uuid', $uuid)->where('estado', 'Activo')->firstOrFail();
+
+        $items = [];
+        for ($i = 0; $i < $cantidad; $i++) {
+            $items[] = [
+                'codigo'      => $promo->codigo,
+                'descripcion' => $promo->nombre,
+                'barcode_svg' => BarcodeHelper::generateSvg($promo->codigo, 1, 30),
+            ];
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_' . $promo->codigo . '.pdf');
+    }
+
+    public function generatePromosBarcodesPdf(Request $request)
+    {
+        $request->validate([
+            'uuids'    => ['required', 'array', 'min:1', 'max:200'],
+            'uuids.*'  => ['required', 'string', 'max:36'],
+            'cantidad' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $cantidad = (int) $request->cantidad;
+        $items    = [];
+
+        $promos = Promocion::whereIn('uuid', $request->uuids)
+            ->where('estado', 'Activo')
+            ->get(['codigo', 'nombre']);
+
+        foreach ($promos as $promo) {
+            for ($i = 0; $i < $cantidad; $i++) {
+                $items[] = [
+                    'codigo'      => $promo->codigo,
+                    'descripcion' => $promo->nombre,
+                    'barcode_svg' => BarcodeHelper::generateSvg($promo->codigo, 1, 30),
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            abort(422, 'No se encontraron promociones válidas.');
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_promociones.pdf');
+    }
+
+    public function generateRecetaBarcodePdf(Request $request, $uuid)
+    {
+        $cantidad = max(1, min(100, (int) $request->query('cantidad', 15)));
+        $receta   = Receta::where('uuid', $uuid)->where('estado', 'Activo')->firstOrFail();
+
+        $items = [];
+        for ($i = 0; $i < $cantidad; $i++) {
+            $items[] = [
+                'codigo'      => $receta->codigo,
+                'descripcion' => $receta->nombre,
+                'barcode_svg' => BarcodeHelper::generateSvg($receta->codigo, 1, 30),
+            ];
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_' . $receta->codigo . '.pdf');
+    }
+
+    public function generateRecetasBarcodesPdf(Request $request)
+    {
+        $request->validate([
+            'uuids'    => ['required', 'array', 'min:1', 'max:200'],
+            'uuids.*'  => ['required', 'string', 'max:36'],
+            'cantidad' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $cantidad = (int) $request->cantidad;
+        $items    = [];
+
+        $recetas = Receta::whereIn('uuid', $request->uuids)
+            ->where('estado', 'Activo')
+            ->get(['codigo', 'nombre']);
+
+        foreach ($recetas as $receta) {
+            for ($i = 0; $i < $cantidad; $i++) {
+                $items[] = [
+                    'codigo'      => $receta->codigo,
+                    'descripcion' => $receta->nombre,
+                    'barcode_svg' => BarcodeHelper::generateSvg($receta->codigo, 1, 30),
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            abort(422, 'No se encontraron recetas válidas.');
+        }
+
+        $pdf = Pdf::loadView('almacen.etiquetas_barcode', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('etiquetas_recetas.pdf');
     }
 }

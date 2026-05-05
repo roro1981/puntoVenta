@@ -278,7 +278,9 @@
                             <div class="card">
                                 <div class="card-body" style="float:left">
                                     <div class="form-group">
-                                        <label style="width:150px">Foto Documento</label><input type="file" accept=".gif,.jpg,.jpeg,.png" title="Solo formato jpg,png" class="form-control-file" id="image">
+                                        <label style="width:150px">Foto Documento</label>
+                                        <input type="file" accept="image/jpeg,image/png" title="Solo formato jpg o png, máximo 5 MB" class="form-control-file" id="image">
+                                        <small class="form-text text-muted"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 5 MB (se comprime automáticamente)</small>
                                     </div>
                                     <input type="button" class="btn btn-primary upload" value="Subir">
                                 </div>
@@ -332,7 +334,9 @@
                             <div class="card">
                                 <div class="card-body" style="float:left">
                                     <div class="form-group">
-                                        <label style="width:150px">Foto Documento</label><input type="file" accept=".gif,.jpg,.jpeg,.png" title="Solo formato jpg,png" class="form-control-file" id="image2">
+                                        <label style="width:150px">Foto Documento</label>
+                                        <input type="file" accept="image/jpeg,image/png" title="Solo formato jpg o png, máximo 5 MB" class="form-control-file" id="image2">
+                                        <small class="form-text text-muted"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 5 MB (se comprime automáticamente)</small>
                                     </div>
                                     <input type="button" class="btn btn-primary upload2" value="Subir">
                                 </div>

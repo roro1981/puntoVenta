@@ -19,16 +19,42 @@ class ComprasService
 {
     public function subirFoto(UploadedFile $archivo, string $nombre, string $tipo, string $usuario): string
     {
-        $extension = $archivo->getClientOriginalExtension();
-        $nombreArchivo = $nombre . '.' . $extension;
-        $rutaRelativa = "img/documentos_fotos/facturas/{$nombreArchivo}";
-        $directorio = public_path('img/documentos_fotos/facturas');
+        $extension     = strtolower($archivo->getClientOriginalExtension());
+        $nombreArchivo = $nombre . '.jpg';
+        $rutaRelativa  = "img/documentos_fotos/facturas/{$nombreArchivo}";
+        $directorio    = public_path('img/documentos_fotos/facturas');
 
         if (!file_exists($directorio)) {
             mkdir($directorio, 0755, true);
         }
 
-        $archivo->move($directorio, $nombreArchivo);
+        // Comprimir con GD y guardar siempre como JPEG al 80%
+        $src = $extension === 'png'
+            ? imagecreatefrompng($archivo->getRealPath())
+            : imagecreatefromjpeg($archivo->getRealPath());
+
+        if ($extension === 'png') {
+            $bg = imagecreatetruecolor(imagesx($src), imagesy($src));
+            imagefill($bg, 0, 0, imagecolorallocate($bg, 255, 255, 255));
+            imagecopy($bg, $src, 0, 0, 0, 0, imagesx($src), imagesy($src));
+            imagedestroy($src);
+            $src = $bg;
+        }
+
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+        if ($origW > 1200 || $origH > 1200) {
+            $ratio   = min(1200 / $origW, 1200 / $origH);
+            $newW    = (int) round($origW * $ratio);
+            $newH    = (int) round($origH * $ratio);
+            $resized = imagecreatetruecolor($newW, $newH);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+            imagedestroy($src);
+            $src = $resized;
+        }
+
+        imagejpeg($src, public_path($rutaRelativa), 80);
+        imagedestroy($src);
 
         if ($tipo === 'Factura') {
             DB::table('facturas')

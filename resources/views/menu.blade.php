@@ -25,11 +25,8 @@
 <link href='js/fullcalendar-4.4.2/packages/daygrid/main.css' rel='stylesheet'>
 <link href='js/fullcalendar-4.4.2/packages/timegrid/main.css' rel='stylesheet'>
 <link href='js/fullcalendar-4.4.2/packages/list/main.css' rel='stylesheet'>
-<!-- Shadowbox -->
 <link rel="stylesheet" type="text/css" href="js/sb/shadowbox.css">
-<!-- SweetAlert2 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.10/dist/sweetalert2.min.css">
-<!-- Toastr -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
 <!-- Bootstrap-select -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css" rel="stylesheet">
@@ -51,10 +48,7 @@
 <script src="js/bootstrap.min.js"></script>
 <!-- AdminLTE -->
 <script src="js/app.min.js"></>
-<!-- FullCalendar -->
-
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+<!-- FullCalendar v4.4.2 -->
 <script src='js/fullcalendar-4.4.2/packages/core/main.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/core/locales-all.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/interaction/main.js'></script>
@@ -62,9 +56,6 @@
 <script src='js/fullcalendar-4.4.2/packages/timegrid/main.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/list/main.js'></script>
 <script src='js/fullcalendar-4.4.2/packages/google-calendar/main.js'></script>
-<!-- jsPDF -->
-<script src="js/jsPDF/examples/libs/jspdf.umd.js"></script>
-<script src="js/jsPDF/dist/jspdf.plugin.autotable.js"></script>
 <!-- FileSaver -->
 <script type="text/javascript" src="js/excel_js/table_export/libs/FileSaver/FileSaver.min.js"></script>
 <!-- TableExport -->
@@ -88,8 +79,6 @@
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.flash.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 <!-- Chart.js -->
@@ -102,8 +91,6 @@
 <!-- Stacktable -->
 <script type="text/javascript" charset="utf8" src="js/stacktable.js"></script>
 
-<!-- Scripts de compras (subtotales, subtotales2, etc) -->
-<script src="js/compras/ingresos.js"></script>
 <!-- Custom Scripts -->
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <script type="text/javascript" src="js/js.js?<?php echo date("YmdHis")+1; ?>"></script>

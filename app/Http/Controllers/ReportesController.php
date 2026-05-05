@@ -24,6 +24,7 @@ use App\Exports\InventarioExport;
 use App\Exports\HistorialPrecioExport;
 use App\Models\Globales;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ReportesController extends Controller
@@ -34,6 +35,14 @@ class ReportesController extends Controller
     public function __construct(ReportesService $reportesService)
     {
         $this->reportesService = $reportesService;
+    }
+
+    /** Devuelve TIPO_NEGOCIO en mayúsculas con cache de 5 minutos. */
+    private function tipoNegocio(): string
+    {
+        return Cache::remember('global_TIPO_NEGOCIO', 300, fn () =>
+            strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')))
+        );
     }
 
     public function indexMovimientos()
@@ -94,7 +103,7 @@ class ReportesController extends Controller
 
     public function indexVentasFecha()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.vtas_fecha', compact('tipoNegocio'));
     }
 
@@ -108,7 +117,7 @@ class ReportesController extends Controller
         $desde = Carbon::parse($request->desde)->startOfDay();
         $hasta = Carbon::parse($request->hasta)->endOfDay();
 
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         $tipoCaja    = $tipoNegocio === 'RESTAURANT' ? 'RESTAURANT' : 'ALMACEN';
 
         if ($tipoNegocio === 'RESTAURANT') {
@@ -214,7 +223,7 @@ class ReportesController extends Controller
 
     public function indexFormasPago()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.vtas_forma_pago', compact('tipoNegocio'));
     }
 
@@ -228,7 +237,7 @@ class ReportesController extends Controller
         $desde = Carbon::parse($request->desde)->startOfDay();
         $hasta = Carbon::parse($request->hasta)->endOfDay();
 
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         $tipoCaja    = $tipoNegocio === 'RESTAURANT' ? 'RESTAURANT' : 'ALMACEN';
 
         // --- totales generales (1 fila por venta, sin doble conteo MIXTO) ---
@@ -315,7 +324,7 @@ class ReportesController extends Controller
 
     public function indexVendedor()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.vtas_vendedor', compact('tipoNegocio'));
     }
 
@@ -331,7 +340,7 @@ class ReportesController extends Controller
         $hasta      = Carbon::parse($request->hasta)->endOfDay();
         $vendedorId = $request->input('vendedor_id') ?: null;
 
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         $tipoCaja    = $tipoNegocio === 'RESTAURANT' ? 'RESTAURANT' : 'ALMACEN';
 
         // --- lista de vendedores con ventas en el periodo (para el select) ---
@@ -470,7 +479,7 @@ class ReportesController extends Controller
 
     public function indexGarzon()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.vtas_garzon', compact('tipoNegocio'));
     }
 
@@ -810,7 +819,7 @@ class ReportesController extends Controller
 
     public function indexProductosTop()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.prods_mas_vendidos', compact('tipoNegocio'));
     }
 
@@ -826,7 +835,7 @@ class ReportesController extends Controller
         $hasta       = Carbon::parse($request->hasta)->endOfDay();
         $categoriaId = $request->input('categoria_id') ?: null;
 
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         $diasPeriodo = max(1, (int) $desde->diffInDays($hasta) + 1);
 
         // Período anterior (misma duración, justo antes)
@@ -1244,7 +1253,7 @@ class ReportesController extends Controller
 
     public function indexProductosRentables()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.prods_rentables', compact('tipoNegocio'));
     }
 
@@ -1259,7 +1268,7 @@ class ReportesController extends Controller
         $desde       = Carbon::parse($request->desde)->startOfDay();
         $hasta       = Carbon::parse($request->hasta)->endOfDay();
         $categoriaId = $request->input('categoria_id') ?: null;
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
 
         $diasPeriodo = max(1, (int) $desde->diffInDays($hasta) + 1);
         $prevHasta   = (clone $desde)->subDay()->endOfDay();
@@ -1636,7 +1645,7 @@ class ReportesController extends Controller
 
     public function indexCategoriasVendidas()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.vtas_categoria', compact('tipoNegocio'));
     }
 
@@ -1649,7 +1658,7 @@ class ReportesController extends Controller
 
         $desde       = Carbon::parse($request->desde)->startOfDay();
         $hasta       = Carbon::parse($request->hasta)->endOfDay();
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         $diasPeriodo = max(1, (int) $desde->diffInDays($hasta) + 1);
 
         // Período anterior (igual duración)
@@ -1903,7 +1912,7 @@ class ReportesController extends Controller
 
     public function indexInventario()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.inventario', compact('tipoNegocio'));
     }
 
@@ -1916,7 +1925,7 @@ class ReportesController extends Controller
 
     public function dataInventario()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
 
         // Productos activos, no eliminados
         $query = DB::table('productos as p')
@@ -2093,7 +2102,7 @@ class ReportesController extends Controller
 
     public function indexHistorialPrecio()
     {
-        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $tipoNegocio = $this->tipoNegocio();
         return view('reportes.historial_precio', compact('tipoNegocio'));
     }
 

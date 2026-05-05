@@ -82,10 +82,12 @@
                             <img class="card-img-top" src="{{ $receta->imagen ? $receta->imagen : '/img/fotos_prod/sin_imagen.jpg' }}"
                                  style="max-width:100px; max-height:100px; object-fit:cover;float:right"
                                  alt="Foto de la receta">
-                            <input type="file" 
-                                   title="Solo formato jpg, png o gif" 
-                                   class="form-control-file" 
-                                   id="image">
+                            <input type="file"
+                                   title="Solo formato jpg o png, máximo 5 MB"
+                                   class="form-control-file"
+                                   id="image"
+                                   accept="image/jpeg,image/png">
+                            <small class="form-text text-muted"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 800&times;800 px &middot; máx. 5 MB</small>
                             <input type="button" class="btn btn-primary upload mt-2" value="Subir">
                             <input type="hidden" id="foto_receta" name="foto_receta">
                         </div>

@@ -29,6 +29,8 @@ Route::get('/', function () {
     return view('index');
 })->name('inicio');
 
+Route::middleware(['auth'])->group(function () {
+
 //menu almacen
 Route::get('/almacen/productos', [ProductosController::class, 'index']);
 Route::get('/almacen/productosCarga', [ProductosController::class, 'listProducts']);
@@ -37,6 +39,8 @@ Route::post('/almacen/productos/importar-xlsx', [ProductosController::class, 'im
 Route::get('/almacen/productos/{uuid}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
 Route::put('/almacen/productos/{uuid}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
 Route::delete('/almacen/productos/{prod}/delete', [ProductosController::class, 'deleteProd']);
+Route::get('/almacen/productos/{uuid}/etiquetas', [ProductosController::class, 'generateBarcodePdf'])->name('productos.etiquetas.individual');
+Route::post('/almacen/productos/etiquetas-masivas', [ProductosController::class, 'generateBarcodesPdf'])->name('productos.etiquetas.masivas');
 Route::get('/almacen/categorias', [ProductosController::class, 'indexCat']);
 Route::get('/almacen/traeCategorias', [ProductosController::class, 'showCategories']);
 Route::post('/almacen/createCat', [ProductosController::class, 'CreateCategory']);
@@ -55,6 +59,8 @@ Route::post('/almacen/crearReceta', [ProductosController::class, 'storeReceipe']
 Route::get('/almacen/recetas/{uuid}/edit', [ProductosController::class, 'editReceipe']);
 Route::put('/almacen/recetas/{uuid}/update', [ProductosController::class, 'updateReceipe']);
 Route::put('/almacen/recetas/{uuid}/delete', [ProductosController::class, 'deleteReceipe']);
+Route::get('/almacen/recetas/{uuid}/etiquetas', [ProductosController::class, 'generateRecetaBarcodePdf'])->name('recetas.etiquetas.individual');
+Route::post('/almacen/recetas/etiquetas-masivas', [ProductosController::class, 'generateRecetasBarcodesPdf'])->name('recetas.etiquetas.masivas');
 Route::get('/almacen/promociones_crear', [ProductosController::class, 'indexPromoCreate']);
 Route::get('/almacen/searchProductos', [ProductosController::class, 'searchProductos']);
 Route::get('/almacen/findProducto', [ProductosController::class, 'findProducto']);
@@ -64,6 +70,8 @@ Route::get('/almacen/promociones', [ProductosController::class, 'indexPromos']);
 Route::get('/almacen/promociones/{uuid}/edit', [ProductosController::class, 'editPromos']);
 Route::put('/almacen/promociones/{uuid}/update', [ProductosController::class, 'updatePromo']);
 Route::put('/almacen/promociones/{uuid}/delete', [ProductosController::class, 'deletePromo']);
+Route::get('/almacen/promociones/{uuid}/etiquetas', [ProductosController::class, 'generatePromoBarcodePdf'])->name('promociones.etiquetas.individual');
+Route::post('/almacen/promociones/etiquetas-masivas', [ProductosController::class, 'generatePromosBarcodesPdf'])->name('promociones.etiquetas.masivas');
 Route::get('/almacen/precio_segun_cant', [ProductosController::class, 'indexRange']);
 Route::get('/almacen/productosRangoCarga', [ProductosController::class, 'listProductsRange']);
 Route::post('/almacen/precio_segun_cant/create', [ProductosController::class, 'storeRange']);
@@ -123,9 +131,9 @@ Route::get('/ventas/cerrar_comandas/info-caja', [ComandasController::class, 'obt
 Route::post('/ventas/cerrar_comandas/cerrar-caja', [ComandasController::class, 'cerrarCajaCerrarComandas']);
 Route::post('/ventas/cerrar_comandas/cerrar/{comandaId}', [ComandasController::class, 'cerrarComanda'])->middleware('sistema.activo');
 Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
-Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword']);
+Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword'])->middleware('throttle:5,1');
 Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
-Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja']);
+Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja'])->middleware('throttle:10,1');
 Route::get('/ventas/cierres_caja', [VentasController::class, 'historialCierres']);
 Route::get('/ventas/obtener-cierres', [VentasController::class, 'obtenerCierresDataTable']);
 Route::get('/ventas/detalle-cierre/{id}', [VentasController::class, 'obtenerDetalleCierre']);
@@ -134,13 +142,14 @@ Route::get('/ventas/obtener-tickets', [VentasController::class, 'obtenerTickets'
 Route::get('/ventas/detalle-ticket/{id}', [VentasController::class, 'obtenerDetalleTicket']);
 Route::post('/ventas/anular-ticket/{id}', [VentasController::class, 'anularTicket']);
 Route::get('/ventas/buscarProducto', [VentasController::class, 'searchProduct']);
-Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock']);
+Route::post('/ventas/verificar-stock', [VentasController::class, 'verificarStock'])->middleware('throttle:120,1');
+Route::post('/ventas/verificar-stock-batch', [VentasController::class, 'verificarStockBatch'])->middleware('throttle:60,1');
 Route::post('/ventas/precio-por-cantidad', [VentasController::class, 'obtenerPrecioPorCantidad']);
 Route::post('/ventas/guardar-borrador', [VentasController::class, 'guardarBorrador']);
 Route::delete('/ventas/eliminar-borrador/{uuid_borrador}', [VentasController::class, 'eliminarBorrador']);
 Route::get('/ventas/traer-borradores', [VentasController::class, 'traer_borradores']);
 Route::get('/ventas/borrador/{uuid}/productos', [VentasController::class, 'productosPorUuid']);
-Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta'])->middleware('sistema.activo');
+Route::post('/ventas/procesar-venta', [VentasController::class, 'procesarVenta'])->middleware(['sistema.activo', 'throttle:30,1']);
 Route::get('/ventas/ticket-pdf/{id}', [VentasController::class, 'generarTicketPDF']);
 Route::get('/ventas/cierre-caja-pdf/{id}', [VentasController::class, 'generarTicketCierrePDF']);
 
@@ -235,7 +244,7 @@ Route::put('/restaurant/comandas/actualizar-comensales/{comandaId}', [ComandasCo
 Route::get('/restaurant/comandas/obtener-productos', [ComandasController::class, 'obtenerProductos']);
 Route::post('/restaurant/comandas/verificar-stock-receta', [ComandasController::class, 'verificarStockReceta']);
 Route::get('/restaurant/comandas/obtener-garzones', [ComandasController::class, 'obtenerGarzones']);
-Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda'])->middleware('sistema.activo');
+Route::post('/restaurant/comandas/crear', [ComandasController::class, 'crearComanda'])->middleware(['sistema.activo', 'throttle:20,1']);
 Route::put('/restaurant/comandas/actualizar/{comandaId}', [ComandasController::class, 'actualizarComanda'])->middleware('sistema.activo');
 Route::put('/restaurant/comandas/cambiar-mesa/{comandaId}', [ComandasController::class, 'cambiarMesaComanda']);
 Route::put('/restaurant/comandas/solicitar-cuenta/{comandaId}', [ComandasController::class, 'solicitarCuenta']);
@@ -259,7 +268,10 @@ Route::get('/configuracion/impuestos', [ConfigurationController::class, 'indexIm
 Route::get('/configuracion/impuestos-table', [ConfigurationController::class, 'impuestosTable']);
 Route::put('/configuracion/update-impuesto/{id}', [ConfigurationController::class, 'updateImpuesto']);
 
-Route::post('/login', [UsersController::class, 'login'])->name('login');
-Route::get('/dashboard', [UsersController::class, 'dashboard'])->middleware('auth')->name('dashboard');
-Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventasPendientesDashboard'])->middleware('auth')->name('dashboard.preventas-pendientes');
+Route::get('/dashboard', [UsersController::class, 'dashboard'])->name('dashboard');
+Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventasPendientesDashboard'])->name('dashboard.preventas-pendientes');
+
+}); // End middleware('auth') group
+
+Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:5,1')->name('login');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');

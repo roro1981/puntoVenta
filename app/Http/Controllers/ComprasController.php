@@ -608,9 +608,9 @@ class ComprasController extends Controller
     public function subirFotoDoc(Request $request, ComprasService $comprasService)
     {
         $request->validate([
-            'file' => 'required|image|mimes:jpg,jpeg,png|max:1024',
+            'file'   => 'required|image|mimes:jpg,jpeg,png|max:5120',
             'nombre' => 'required',
-            'tipo' => 'required|in:Factura,Boleta',
+            'tipo'   => 'required|in:Factura,Boleta',
         ]);
 
         try {

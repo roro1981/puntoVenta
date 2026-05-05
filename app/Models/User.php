@@ -50,7 +50,7 @@ class User extends Authenticatable
         ];
 
         if (!empty($userRequest['password_edit'])) {
-            $data['password'] = md5($userRequest['password_edit']);
+            $data['password'] = Hash::make($userRequest['password_edit']);
         }
         $this->update($data);
     }

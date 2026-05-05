@@ -1080,12 +1080,19 @@ $(document).on('click','.detalle_documento2',function(e){
 });
     $(".upload").on('click', function () {
         var files = $('#image')[0].files[0];
-        var fileSize = files.size;
-        var tam_max = 1024; // KB
-        var sizeKB = parseInt(fileSize / 1024);
 
-        if (sizeKB > tam_max) {
-            toastr.error("Imagen muy grande, el tamaño máximo es 1MB");
+        if (!files) {
+            toastr.warning('Selecciona una imagen antes de subir.');
+            return false;
+        }
+        if (!['image/jpeg', 'image/png'].includes(files.type)) {
+            toastr.error('Formato no permitido. Solo se aceptan imágenes JPG o PNG.');
+            $('#image').val(null);
+            return false;
+        }
+        if (files.size > 5 * 1024 * 1024) {
+            toastr.error('La imagen supera el tamaño máximo permitido de 5 MB.');
+            $('#image').val(null);
             return false;
         }
 
@@ -1120,12 +1127,19 @@ $(document).on('click','.detalle_documento2',function(e){
     });
     $(".upload2").on('click', function () {
         var files = $('#image2')[0].files[0];
-        var fileSize = files.size;
-        var tam_max = 1024; // KB
-        var sizeKB = parseInt(fileSize / 1024);
 
-        if (sizeKB > tam_max) {
-            toastr.error("Imagen muy grande, el tamaño máximo es 1MB");
+        if (!files) {
+            toastr.warning('Selecciona una imagen antes de subir.');
+            return false;
+        }
+        if (!['image/jpeg', 'image/png'].includes(files.type)) {
+            toastr.error('Formato no permitido. Solo se aceptan imágenes JPG o PNG.');
+            $('#image2').val(null);
+            return false;
+        }
+        if (files.size > 5 * 1024 * 1024) {
+            toastr.error('La imagen supera el tamaño máximo permitido de 5 MB.');
+            $('#image2').val(null);
             return false;
         }
 

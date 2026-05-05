@@ -7,13 +7,16 @@
             <button class="btn btn-success" data-toggle="modal" id="nuevo_user" data-target="#modalNuevoProducto"><i class='fa fa fa-save'></i>Nuevo Producto</button>
           <button class="btn btn-info" type="button" data-toggle="modal" data-target="#modalCargaMasivaProductos"><i class="fa fa-upload"></i>Carga Masiva Excel</button>
           <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}"><i class="fa fa-download"></i>Descargar Plantilla Excel</a>
+          <button class="btn btn-warning" id="btnGenerarEtiquetas" disabled title="Generar etiquetas de los productos seleccionados"><i class="fa fa-barcode"></i> Etiquetas <span id="contadorSeleccionados">(0)</span></button>
+          <button class="btn btn-default" id="btnSeleccionarFiltrados" title="Selecciona todos los resultados visibles (incluye todas las páginas)"><i class="fa fa-check-square-o"></i> Sel. todos filtrados</button>
+          <button class="btn btn-default" id="btnLimpiarSeleccion" title="Limpia toda la selección actual"><i class="fa fa-square-o"></i> Limpiar selección</button>
             <hr style="height:1px;background-color: brown;width:100%;margin-top: 2pt;" />
         </div>
         
         <table id='tabla_productos' class="display" style="width:100%">
           <thead>
           <tr style="background-color: #2ab9f7;color:white">
-              <th>CODIGO</th><th>PRODUCTO</th><th>PRECIO VENTA</th><th>CATEGORIA</th><th>FOTO</th><th>FECHA CREACION</th><th>ULTIMA MODIFICACIÓN</th><th>ACCIONES</th>
+              <th style="width:30px"><input type="checkbox" id="selectAllProductos" title="Seleccionar/deseleccionar todos"></th><th>CODIGO</th><th>PRODUCTO</th><th>PRECIO VENTA</th><th>CATEGORIA</th><th>FOTO</th><th>FECHA CREACION</th><th>ULTIMA MODIFICACIÓN</th><th>ACCIONES</th>
           </tr>
           </thead>
           <tbody class="datos">
@@ -119,7 +122,8 @@
             <div class="card" style="width: auto;">
                 <div style="display: flex;gap: 20px;">
                   <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" src="/img/fotos_prod/sin_imagen.jpg" width="200" height="100" >
-                  <input type="file" style="margin-top:30px" title="Solo formato jpg,png o gif" class="form-control-file" id="image">
+                  <input type="file" style="margin-top:30px" title="Solo formato jpg o png, máximo 5 MB" class="form-control-file" id="image" accept="image/jpeg,image/png">
+                  <small class="form-text text-muted mt-1"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 800&times;800 px &middot; máx. 5 MB (se comprime automáticamente)</small>
                 </div>
                 <div class="form-group" style="text-align: center;">
                   <input type="button" style="margin-top:10px" class="btn btn-success upload" value="Subir">
@@ -233,7 +237,8 @@
             <div class="card" style="width: auto;">
               <div style="display: flex;gap: 20px;">
                 <img class="card-img-top" style="border:1px solid blue;margin-left: 15px;" id="imagen_editar" src="/img/fotos_prod/sin_imagen.jpg" width="200" height="100">
-                <input type="file" style="margin-top:30px" title="Solo formato jpg,png o gif" class="form-control-file" id="image_editar">
+                <input type="file" style="margin-top:30px" title="Solo formato jpg o png, máximo 5 MB" class="form-control-file" id="image_editar" accept="image/jpeg,image/png">
+                <small class="form-text text-muted mt-1"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 800&times;800 px &middot; máx. 5 MB (se comprime automáticamente)</small>
               </div>
               <div class="form-group" style="text-align: center;">
                 <input type="button" style="margin-top:10px" class="btn btn-success upload" value="Subir">
@@ -300,6 +305,63 @@
         <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}">Descargar Plantilla</a>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
         <button type="button" class="btn btn-success" id="btnImportProductsExcel">Importar Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario oculto para etiquetas masivas (POST → nueva pestaña) -->
+<form id="formEtiquetasMasivas" action="{{ route('productos.etiquetas.masivas') }}" method="POST" target="_blank" style="display:none">
+  @csrf
+  <input type="hidden" name="cantidad" id="etiquetas_masivas_cantidad" value="1">
+</form>
+
+<!-- Modal etiqueta individual -->
+<div class="modal fade" id="modalEtiquetaIndividual" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa fa-barcode"></i> Generar etiquetas</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="etiqueta_individual_uuid">
+        <div class="form-group">
+          <label for="inputCantidadIndividual">Cantidad de etiquetas</label>
+          <input type="number" class="form-control" id="inputCantidadIndividual" value="15" min="1" max="100">
+          <small class="text-muted">Se imprimirán en grilla (3 por fila) en hoja A4.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btnConfirmarEtiquetaIndividual"><i class="fa fa-file-pdf-o"></i> Generar PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal etiquetas masivas -->
+<div class="modal fade" id="modalEtiquetasMasivas" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa fa-barcode"></i> Etiquetas masivas</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="inputCantidadMasiva">Copias por producto</label>
+          <input type="number" class="form-control" id="inputCantidadMasiva" value="1" min="1" max="50">
+          <small class="text-muted" id="infoSeleccionados"></small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btnConfirmarEtiquetasMasivas"><i class="fa fa-file-pdf-o"></i> Generar PDF</button>
       </div>
     </div>
   </div>

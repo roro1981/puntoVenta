@@ -20,7 +20,9 @@ use App\Models\Globales;
 use App\Models\CorporateData;
 use App\Models\RangoPrecio;
 use App\Http\Requests\CierreCajaRequest;
+use App\Services\PrecioService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -33,21 +35,7 @@ class ComandasController extends Controller
 
     private function resolverPrecioUnitarioComanda(Producto $producto, float $cantidad): float
     {
-        if ($cantidad <= 0) {
-            return (float) $producto->precio_venta;
-        }
-
-        $rango = RangoPrecio::where('producto_id', $producto->id)
-            ->where('cantidad_minima', '<=', $cantidad)
-            ->where(function ($query) use ($cantidad) {
-                $query->whereNull('cantidad_maxima')
-                    ->orWhere('cantidad_maxima', 0)
-                    ->orWhere('cantidad_maxima', '>=', $cantidad);
-            })
-            ->orderByDesc('cantidad_minima')
-            ->first();
-
-        return $rango ? (float) $rango->precio_unitario : (float) $producto->precio_venta;
+        return PrecioService::resolver($producto, $cantidad);
     }
 
     private function resolverPrecioUnitarioDesdeItem(array $item, float $cantidad): float
@@ -164,7 +152,7 @@ class ComandasController extends Controller
 
     private function obtenerPorcentajePropinaGlobal(): float
     {
-        $valor = Globales::where('nom_var', 'PORCENTAJE_PROPINA')->value('valor_var');
+        $valor = Cache::remember('global_PORCENTAJE_PROPINA', 300, fn () => Globales::where('nom_var', 'PORCENTAJE_PROPINA')->value('valor_var'));
         $porcentaje = is_null($valor) ? 10 : (float) $valor;
 
         if ($porcentaje < 0) {
@@ -180,7 +168,10 @@ class ComandasController extends Controller
 
     private function calcularTotalesComanda(Comanda $comanda, ?bool $incluyePropina = null, ?float $porcentajePropina = null): array
     {
-        $subtotal = (float) $comanda->detalles()->sum('subtotal');
+        // Si los detalles ya están en memoria usar la colección (evita query extra)
+        $subtotal = $comanda->relationLoaded('detalles')
+            ? (float) $comanda->detalles->sum('subtotal')
+            : (float) $comanda->detalles()->sum('subtotal');
         $impuestos = 0;
 
         $aplicaPropina = is_null($incluyePropina) ? (bool) $comanda->incluye_propina : $incluyePropina;
@@ -229,7 +220,8 @@ class ComandasController extends Controller
         try {
             $porcentajeGlobal = $this->obtenerPorcentajePropinaGlobal();
 
-            $comandas = Comanda::with(['mesa', 'garzon', 'detalles.producto'])
+            $comandas = Comanda::with(['mesa', 'garzon'])
+                ->withSum('detalles', 'cantidad')
                 ->where('estado', 'PENDIENTE DE PAGO')
                 ->orderBy('updated_at', 'asc')
                 ->get()
@@ -245,7 +237,7 @@ class ComandasController extends Controller
                         'mesa_nombre' => optional($comanda->mesa)->nombre,
                         'garzon' => optional($comanda->garzon)->nombre_completo,
                         'comensales' => $comanda->comensales ?? 0,
-                        'cantidad_items' => $comanda->detalles->sum('cantidad'),
+                        'cantidad_items' => (int) ($comanda->detalles_sum_cantidad ?? 0),
                         'subtotal' => (float) $comanda->subtotal,
                         'propina' => (float) $comanda->propina,
                         'total' => (float) $comanda->total,
@@ -280,62 +272,40 @@ class ComandasController extends Controller
                 ], 404);
             }
 
-            $ventas = Venta::where('caja_id', $caja->id)->get();
+            // Obtener totales de esta caja en una sola query GROUP BY (evita N+1)
+            $desgloseVentas = Venta::where('caja_id', $caja->id)
+                ->selectRaw('forma_pago, SUM(total) as monto, COUNT(*) as cantidad')
+                ->groupBy('forma_pago')
+                ->get()
+                ->keyBy('forma_pago');
 
-            $totalEfectivo = 0;
-            $totalTarjetaDebito = 0;
-            $totalTarjetaCredito = 0;
-            $totalTransferencia = 0;
-            $totalCheque = 0;
-            $totalMixto = 0;
+            $totalVentas    = (float) $desgloseVentas->sum('monto');
+            $cantidadVentas = (int)   $desgloseVentas->sum('cantidad');
+            $totalMixto     = (float) ($desgloseVentas->get('MIXTO')?->monto ?? 0);
 
-            foreach ($ventas as $venta) {
-                $monto = $venta->total;
+            // Desglose de ventas directas por forma de pago
+            $totalEfectivo      = (float) ($desgloseVentas->get('EFECTIVO')?->monto      ?? 0);
+            $totalTarjetaDebito  = (float) ($desgloseVentas->get('TARJETA_DEBITO')?->monto  ?? 0);
+            $totalTarjetaCredito = (float) ($desgloseVentas->get('TARJETA_CREDITO')?->monto ?? 0);
+            $totalTransferencia  = (float) ($desgloseVentas->get('TRANSFERENCIA')?->monto   ?? 0);
+            $totalCheque        = (float) ($desgloseVentas->get('CHEQUE')?->monto           ?? 0);
 
-                switch ($venta->forma_pago) {
-                    case 'EFECTIVO':
-                        $totalEfectivo += $monto;
-                        break;
-                    case 'TARJETA_DEBITO':
-                        $totalTarjetaDebito += $monto;
-                        break;
-                    case 'TARJETA_CREDITO':
-                        $totalTarjetaCredito += $monto;
-                        break;
-                    case 'TRANSFERENCIA':
-                        $totalTransferencia += $monto;
-                        break;
-                    case 'CHEQUE':
-                        $totalCheque += $monto;
-                        break;
-                    case 'MIXTO':
-                        $totalMixto += $monto;
-                        $formasPago = FormaPagoVenta::where('venta_id', $venta->id)->get();
-                        foreach ($formasPago as $fp) {
-                            switch ($fp->forma_pago) {
-                                case 'EFECTIVO':
-                                    $totalEfectivo += $fp->monto;
-                                    break;
-                                case 'TARJETA_DEBITO':
-                                    $totalTarjetaDebito += $fp->monto;
-                                    break;
-                                case 'TARJETA_CREDITO':
-                                    $totalTarjetaCredito += $fp->monto;
-                                    break;
-                                case 'TRANSFERENCIA':
-                                    $totalTransferencia += $fp->monto;
-                                    break;
-                                case 'CHEQUE':
-                                    $totalCheque += $fp->monto;
-                                    break;
-                            }
-                        }
-                        break;
-                }
+            // Para ventas MIXTO, sumar el desglose real desde FormaPagoVenta (una sola query con subquery)
+            if ($totalMixto > 0) {
+                $mixtoDesglose = FormaPagoVenta::whereIn(
+                    'venta_id',
+                    Venta::where('caja_id', $caja->id)->where('forma_pago', 'MIXTO')->select('id')
+                )
+                    ->selectRaw('forma_pago, SUM(monto) as monto')
+                    ->groupBy('forma_pago')
+                    ->pluck('monto', 'forma_pago');
+
+                $totalEfectivo      += (float) ($mixtoDesglose->get('EFECTIVO')      ?? 0);
+                $totalTarjetaDebito  += (float) ($mixtoDesglose->get('TARJETA_DEBITO')  ?? 0);
+                $totalTarjetaCredito += (float) ($mixtoDesglose->get('TARJETA_CREDITO') ?? 0);
+                $totalTransferencia  += (float) ($mixtoDesglose->get('TRANSFERENCIA')   ?? 0);
+                $totalCheque        += (float) ($mixtoDesglose->get('CHEQUE')           ?? 0);
             }
-
-            $totalVentas = $ventas->sum('total');
-            $cantidadVentas = $ventas->count();
 
             return response()->json([
                 'status' => 'OK',
@@ -378,8 +348,7 @@ class ComandasController extends Controller
                 ], 404);
             }
 
-            $ventas = Venta::where('caja_id', $caja->id)->get();
-            $totalVentas = $ventas->sum('total');
+            $totalVentas = (float) Venta::where('caja_id', $caja->id)->sum('total');
             $montoEsperado = $caja->monto_inicial + $totalVentas;
             $montoFinalDeclarado = $request->monto_final_declarado;
             $diferencia = $montoFinalDeclarado - $montoEsperado;
@@ -554,6 +523,8 @@ class ComandasController extends Controller
 
             DB::commit();
 
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda cerrada correctamente. Mesa liberada para nuevo uso.',
@@ -573,36 +544,38 @@ class ComandasController extends Controller
     public function obtenerMesas()
     {
         try {
-            $mesas = Mesa::where('activa', true)
-                ->with(['comandaAbierta' => function($query) {
-                    $query->with(['detalles.producto', 'garzon']);
-                }])
-                ->orderBy('orden')
-                ->get()
-                ->map(function($mesa) {
-                    $estadoMesa = 'LIBRE';
-                    if ($mesa->comandaAbierta) {
-                        $estadoMesa = $mesa->comandaAbierta->estado === 'PENDIENTE DE PAGO'
-                            ? 'PENDIENTE DE PAGO'
-                            : 'OCUPADA';
-                    }
+            $mesas = Cache::remember('mesas_data', 8, function () {
+                return Mesa::where('activa', true)
+                    ->with(['comandaAbierta' => function($query) {
+                        $query->with(['detalles', 'garzon']);
+                    }])
+                    ->orderBy('orden')
+                    ->get()
+                    ->map(function($mesa) {
+                        $estadoMesa = 'LIBRE';
+                        if ($mesa->comandaAbierta) {
+                            $estadoMesa = $mesa->comandaAbierta->estado === 'PENDIENTE DE PAGO'
+                                ? 'PENDIENTE DE PAGO'
+                                : 'OCUPADA';
+                        }
 
-                    return [
-                        'id' => $mesa->id,
-                        'nombre' => $mesa->nombre,
-                        'capacidad' => $mesa->capacidad,
-                        'estado' => $estadoMesa,
-                        'comanda' => $mesa->comandaAbierta ? [
-                            'id' => $mesa->comandaAbierta->id,
-                            'numero_comanda' => $mesa->comandaAbierta->numero_comanda,
-                            'total' => number_format($mesa->comandaAbierta->total, 0, ',', '.'),
-                            'cantidad_items' => $mesa->comandaAbierta->detalles->sum('cantidad'),
-                            'comensales' => $mesa->comandaAbierta->comensales ?? 0,
-                            'mesero' => $mesa->comandaAbierta->garzon ? $mesa->comandaAbierta->garzon->nombre . ' ' . $mesa->comandaAbierta->garzon->apellido : 'Sin asignar',
-                            'tiempo' => $mesa->comandaAbierta->updated_at->diffForHumans()
-                        ] : null
-                    ];
-                });
+                        return [
+                            'id' => $mesa->id,
+                            'nombre' => $mesa->nombre,
+                            'capacidad' => $mesa->capacidad,
+                            'estado' => $estadoMesa,
+                            'comanda' => $mesa->comandaAbierta ? [
+                                'id' => $mesa->comandaAbierta->id,
+                                'numero_comanda' => $mesa->comandaAbierta->numero_comanda,
+                                'total' => number_format($mesa->comandaAbierta->total, 0, ',', '.'),
+                                'cantidad_items' => $mesa->comandaAbierta->detalles->sum('cantidad'),
+                                'comensales' => $mesa->comandaAbierta->comensales ?? 0,
+                                'mesero' => $mesa->comandaAbierta->garzon ? $mesa->comandaAbierta->garzon->nombre . ' ' . $mesa->comandaAbierta->garzon->apellido : 'Sin asignar',
+                                'tiempo' => $mesa->comandaAbierta->updated_at->diffForHumans()
+                            ] : null
+                        ];
+                    });
+            });
 
             return response()->json([
                 'success' => true,
@@ -666,6 +639,11 @@ class ComandasController extends Controller
 
             return response()->json([
                 'success' => true,
+                'mesa' => [
+                    'id'        => $mesa->id,
+                    'nombre'    => $mesa->nombre,
+                    'capacidad' => $mesa->capacidad,
+                ],
                 'comanda' => [
                     'id' => $comanda->id,
                     'numero_comanda' => $comanda->numero_comanda,
@@ -694,6 +672,10 @@ class ComandasController extends Controller
 
     public function actualizarComensales(Request $request, $comandaId)
     {
+        $request->validate([
+            'comensales' => 'required|integer|min:0|max:1000',
+        ]);
+
         try {
             $comanda = Comanda::findOrFail($comandaId);
             $comanda->comensales = $request->comensales;
@@ -904,7 +886,7 @@ class ComandasController extends Controller
                 ], 200);
             }
 
-            $stockNegativo = Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var');
+            $stockNegativo = Cache::remember('global_STOCK_NEGATIVO', 300, fn () => Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var'));
             $permitirStockNegativo = ($stockNegativo == '1');
 
             $faltantes = [];
@@ -1009,15 +991,12 @@ class ComandasController extends Controller
                 ], 400);
             }
 
-            // Generar número de comanda
-            $ultimaComanda = Comanda::max('id');
-            $numeroComanda = 'CMD-' . str_pad($ultimaComanda + 1, 6, '0', STR_PAD_LEFT);
-
+            // Generar número de comanda basado en el ID real (evita race condition con max(id))
             $comanda = Comanda::create([
                 'mesa_id' => $request->mesa_id,
                 'user_id' => auth()->id(),
                 'garzon_id' => $request->garzon_id,
-                'numero_comanda' => $numeroComanda,
+                'numero_comanda' => 'TEMP-' . uniqid(),
                 'estado' => 'ABIERTA',
                 'comensales' => $request->comensales ?? 0,
                 'total' => 0,
@@ -1027,6 +1006,10 @@ class ComandasController extends Controller
                 'incluye_propina' => filter_var($request->incluye_propina, FILTER_VALIDATE_BOOLEAN),
                 'fecha_apertura' => now()
             ]);
+
+            // Asignar número definitivo basado en el ID real generado por auto-increment
+            $comanda->numero_comanda = 'CMD-' . str_pad($comanda->id, 6, '0', STR_PAD_LEFT);
+            $comanda->save();
 
             HistorialEstadoComanda::create([
                 'comanda_id' => $comanda->id,
@@ -1040,6 +1023,8 @@ class ComandasController extends Controller
             ]);
 
             DB::commit();
+
+            Cache::forget('mesas_data');
 
             return response()->json([
                 'success' => true,
@@ -1088,6 +1073,8 @@ class ComandasController extends Controller
 
             DB::commit();
             
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda actualizada correctamente',
@@ -1182,6 +1169,8 @@ class ComandasController extends Controller
 
             DB::commit();
 
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda cambiada a ' . $mesaDestino->nombre,
@@ -1237,6 +1226,8 @@ class ComandasController extends Controller
             }
 
             DB::commit();
+
+            Cache::forget('mesas_data');
 
             return response()->json([
                 'success' => true,
@@ -1328,6 +1319,8 @@ class ComandasController extends Controller
 
             DB::commit();
 
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Producto agregado correctamente',
@@ -1368,6 +1361,8 @@ class ComandasController extends Controller
 
             DB::commit();
 
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Cantidad actualizada correctamente'
@@ -1395,6 +1390,8 @@ class ComandasController extends Controller
 
             DB::commit();
 
+            Cache::forget('mesas_data');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Producto eliminado correctamente'
@@ -1410,7 +1407,8 @@ class ComandasController extends Controller
 
     private function recalcularTotales($comandaId)
     {
-        $comanda = Comanda::findOrFail($comandaId);
+        // Pre-cargar detalles para que calcularTotalesComanda use sum en colección (sin query extra)
+        $comanda = Comanda::with('detalles')->findOrFail($comandaId);
         $totales = $this->calcularTotalesComanda($comanda);
 
         $comanda->update([
@@ -1450,7 +1448,7 @@ class ComandasController extends Controller
 
                 if ($productoPromo->tipo === 'P') {
                     $productoPromo->stock -= $cantidadTotal;
-                    $productoPromo->save();
+                    DB::table('productos')->where('id', $productoPromo->id)->decrement('stock', $cantidadTotal);
                 }
 
                 HistorialMovimientos::registrarMovimiento([
@@ -1494,7 +1492,7 @@ class ComandasController extends Controller
 
                     if ($controlaStock) {
                         $productoIngrediente->stock -= $cantidadTotal;
-                        $productoIngrediente->save();
+                        DB::table('productos')->where('id', $productoIngrediente->id)->decrement('stock', $cantidadTotal);
                     }
 
                     HistorialMovimientos::registrarMovimiento([
@@ -1518,7 +1516,7 @@ class ComandasController extends Controller
 
         if ($producto->tipo === 'P') {
             $producto->stock -= $cantidad;
-            $producto->save();
+            DB::table('productos')->where('id', $producto->id)->decrement('stock', $cantidad);
         }
 
         HistorialMovimientos::registrarMovimiento([
@@ -1653,7 +1651,7 @@ class ComandasController extends Controller
             $comanda = Comanda::with(['mesa', 'detalles.producto', 'detalles.receta', 'user', 'garzon'])
                 ->findOrFail($comandaId);
 
-            $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+            $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
             $porcentajePropinaGlobal = $this->obtenerPorcentajePropinaGlobal();
 
             $pdf = Pdf::loadView('restaurant.ticket_comanda', compact('comanda', 'corporateData', 'porcentajePropinaGlobal'));
@@ -1674,7 +1672,7 @@ class ComandasController extends Controller
             $venta = Venta::with(['formasPago', 'usuario'])
                 ->findOrFail($ventaId);
 
-            $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+            $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
             $porcentajePropinaGlobal = $this->obtenerPorcentajePropinaGlobal();
             $esTicketPago = true;
 

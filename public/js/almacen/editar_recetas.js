@@ -187,8 +187,25 @@ $(document).ready(function () {
     });
 
     $(".upload").on('click', function () {
-        var formData = new FormData();
         var files = $('#image')[0].files[0];
+
+        // Validación client-side: tipo y tamaño antes de enviar al servidor
+        if (!files) {
+            toastr.warning('Selecciona una imagen antes de subir.');
+            return false;
+        }
+        if (!['image/jpeg', 'image/png'].includes(files.type)) {
+            toastr.error('Formato no permitido. Solo se aceptan imágenes JPG o PNG.');
+            $('#image').val(null);
+            return false;
+        }
+        if (files.size > 5 * 1024 * 1024) {
+            toastr.error('La imagen supera el tamaño máximo permitido de 5 MB.');
+            $('#image').val(null);
+            return false;
+        }
+
+        var formData = new FormData();
         formData.append('file', files);
         formData.append('_token', $('#token').val());
         $.ajax({

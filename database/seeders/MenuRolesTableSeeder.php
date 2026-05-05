@@ -59,6 +59,7 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 2, 'submenu_id' => 17, 'created_at' => Carbon::now()->toDateTimeString()],
             //cajero
             ['role_id' => 4, 'submenu_id' => 12, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 4, 'submenu_id' => 13, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 4, 'submenu_id' => 15, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 4, 'submenu_id' => 16, 'created_at' => Carbon::now()->toDateTimeString()],
             //Superadministrador

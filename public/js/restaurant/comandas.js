@@ -16,6 +16,7 @@ var posPrecioInFlight = window.posPrecioInFlight instanceof Map ? window.posPrec
 var posSearchTimer = window.posSearchTimer || null;
 var posLayoutMesasActual = window.posLayoutMesasActual || null;
 var posLayoutDragState = window.posLayoutDragState || null;
+var _garzonesCache = null;
 
 window.posProductos = posProductos;
 window.posCarrito = posCarrito;
@@ -60,7 +61,7 @@ function iniciarIntervaloComandas() {
             return;
         }
         cargarMesas();
-    }, 30000);
+    }, 60000);
 }
 
 $(document).ready(function() {
@@ -347,8 +348,7 @@ function cargarMesas() {
                 renderizarMesas(response.mesas);
             }
         },
-        error: function(xhr) {
-            console.error('Error al cargar mesas:', xhr);
+        error: function() {
             Swal.fire('Error', 'No se pudieron cargar las mesas', 'error');
         },
         complete: function() {
@@ -496,8 +496,8 @@ function verComanda(mesaId) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                // Usar el mismo modal POS para ver/editar la comanda
-                abrirModalPOSConComanda(mesaId, response.comanda);
+                // Pasar datos de mesa para evitar segunda llamada AJAX redundante a obtener-mesas
+                abrirModalPOSConComanda(mesaId, response.comanda, response.mesa || null);
             }
         },
         error: function(xhr) {
@@ -510,81 +510,6 @@ function verComanda(mesaId) {
     });
 }
 
-function abrirModalPOSConComanda(mesaId, comanda) {
-    // Obtener datos de la mesa
-    $.ajax({
-        url: '/restaurant/comandas/obtener-mesas',
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                const mesa = response.mesas.find(m => m.id == mesaId);
-                if (mesa) {
-                    posMesaActual = mesa;
-                    posCapacidadOriginal = mesa.capacidad;
-                    
-                    // Configurar modal
-                    $('#pos_mesa_nombre').text(mesa.nombre);
-                    $('#pos_comensales_numero').text(comanda.comensales || mesa.capacidad);
-                    $('#pos_mesa_id').val(mesa.id);
-                    $('#pos_capacidad_original').val(mesa.capacidad);
-                    
-                    // Mostrar hora de apertura de la comanda
-                    $('#pos_hora_inicio').text(comanda.hora_apertura || new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }));
-                    
-                    // Cargar garzon seleccionado
-                    cargarGarzones(comanda.garzon_id);
-                    
-                    // Cargar productos del carrito desde los detalles de la comanda
-                    posCarrito = [];
-                    comanda.detalles.forEach(function(detalle) {
-                        const uuidItem = (detalle.origen === 'RECETA' && detalle.receta_uuid)
-                            ? ('RECETA-' + detalle.receta_uuid)
-                            : (detalle.uuid || null);
-
-                        posCarrito.push({
-                            id: detalle.producto_id,
-                            uuid: uuidItem,
-                            origen: detalle.origen || 'PRODUCTO',
-                            codigo: detalle.codigo || '',
-                            descripcion: detalle.producto,
-                            precio: parseFloat(detalle.precio_unitario),
-                            cantidad: parseInt(detalle.cantidad),
-                            observaciones: detalle.observaciones || ''
-                        });
-                    });
-                    
-                    // Configurar propina
-                    const incluyePropina = comanda.incluye_propina == 1 || comanda.incluye_propina === true;
-                    $('#pos_incluye_propina').prop('checked', incluyePropina);
-                    if (incluyePropina) {
-                        $('#pos_propina_row').show();
-                    } else {
-                        $('#pos_propina_row').hide();
-                    }
-                    
-                    // Renderizar carrito con productos existentes
-                    renderizarCarrito();
-                    
-                    // Limpiar campo de búsqueda
-                    $('#pos_buscar_producto').val('');
-                    
-                    // Mostrar mensaje de búsqueda en productos
-                    $('#pos_products_grid').html(`
-                        <div class="pos-no-results">
-                            <i class="fa fa-search" style="font-size:32px;opacity:0.3;margin-bottom:10px;"></i>
-                            <p>Escribe para buscar más productos</p>
-                        </div>
-                    `);
-                    
-                    // Mostrar modal y enfocar búsqueda
-                    $('#modalTomarPedido').modal('show');
-                    setTimeout(() => $('#pos_buscar_producto').focus(), 300);
-                }
-            }
-        }
-    });
-}
 
 function iniciarComanda(mesaId) {
     Swal.fire({
@@ -603,10 +528,88 @@ function iniciarComanda(mesaId) {
     });
 }
 
-function abrirModalPOSConComanda(mesaId, comanda) {
-    console.log('Comanda recibida:', comanda);
-    
-    // Obtener datos actualizados de la mesa
+function abrirModalPOSConComanda(mesaId, comanda, mesaData) {
+    function _setup(mesa) {
+        posMesaActual = mesa;
+        posCapacidadOriginal = mesa.capacidad;
+        posComandaActual = comanda.id;
+        $('#pos_mesa_nombre').text(mesa.nombre);
+        $('#pos_comensales_numero').text(comanda.comensales || mesa.capacidad);
+        $('#pos_mesa_id').val(mesa.id);
+        $('#pos_capacidad_original').val(mesa.capacidad);
+
+        let fechaHoraApertura;
+        if (comanda.fecha_apertura) {
+            const partes = comanda.fecha_apertura.split(' ');
+            const fecha = partes[0].split('/');
+            const hora = partes[1];
+            const dia = fecha[0].padStart(2, '0');
+            const mes = fecha[1].padStart(2, '0');
+            const anio = fecha[2];
+            fechaHoraApertura = `${dia}-${mes}-${anio} ${hora}`;
+        } else {
+            const ahora = new Date();
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anio = ahora.getFullYear();
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            fechaHoraApertura = `${dia}-${mes}-${anio} ${horas}:${minutos}`;
+        }
+        posFechaApertura = fechaHoraApertura;
+        $('#pos_hora_inicio').text(fechaHoraApertura);
+
+        cargarGarzones(comanda.garzon_id);
+
+        posCarrito = [];
+        if (comanda.detalles && comanda.detalles.length > 0) {
+            comanda.detalles.forEach(function(detalle) {
+                const precio = parseFloat(detalle.precio_unitario);
+                const cantidad = parseInt(detalle.cantidad);
+                const uuidItem = (detalle.origen === 'RECETA' && detalle.receta_uuid)
+                    ? ('RECETA-' + detalle.receta_uuid)
+                    : (detalle.uuid || null);
+                posCarrito.push({
+                    id: detalle.producto_id,
+                    uuid: uuidItem,
+                    origen: detalle.origen || 'PRODUCTO',
+                    codigo: detalle.codigo || '',
+                    descripcion: detalle.producto,
+                    precio: precio,
+                    cantidad: cantidad,
+                    subtotal: precio * cantidad,
+                    observaciones: detalle.observaciones || ''
+                });
+            });
+        }
+
+        const incluyePropina = comanda.incluye_propina == 1 || comanda.incluye_propina === true;
+        $('#pos_incluye_propina').prop('checked', incluyePropina);
+        if (incluyePropina) {
+            $('#pos_propina_row').show();
+        } else {
+            $('#pos_propina_row').hide();
+        }
+
+        renderizarCarrito();
+        $('#pos_buscar_producto').val('');
+        $('#pos_products_grid').html(`
+            <div class="pos-no-results">
+                <i class="fa fa-search" style="font-size:32px;opacity:0.3;margin-bottom:10px;"></i>
+                <p>Escribe para buscar más productos</p>
+            </div>
+        `);
+        $('#modalTomarPedido').modal('show');
+        setTimeout(() => $('#pos_buscar_producto').focus(), 300);
+    }
+
+    // Si se pasó mesaData, úsala directamente (evita AJAX redundante a obtener-mesas)
+    if (mesaData) {
+        _setup(mesaData);
+        return;
+    }
+
+    // Fallback: obtener datos de mesa vía AJAX
     $.ajax({
         url: '/restaurant/comandas/obtener-mesas',
         type: 'GET',
@@ -615,106 +618,11 @@ function abrirModalPOSConComanda(mesaId, comanda) {
             if (response.success) {
                 const mesa = response.mesas.find(m => m.id == mesaId);
                 if (mesa) {
-                    posMesaActual = mesa;
-                    posCapacidadOriginal = mesa.capacidad;
-                    
-                    // IMPORTANTE: Guardar el ID de la comanda existente
-                    posComandaActual = comanda.id;
-                    
-                    // Configurar modal
-                    $('#pos_mesa_nombre').text(mesa.nombre);
-                    $('#pos_comensales_numero').text(comanda.comensales || mesa.capacidad);
-                    $('#pos_mesa_id').val(mesa.id);
-                    $('#pos_capacidad_original').val(mesa.capacidad);
-                    
-                    // Mostrar fecha y hora de apertura en formato dd-mm-yyyy hh:mm
-                    let fechaHoraApertura;
-                    if (comanda.fecha_apertura) {
-                        // fecha_apertura viene en formato 'd/m/Y H:i' del servidor
-                        const partes = comanda.fecha_apertura.split(' ');
-                        const fecha = partes[0].split('/');
-                        const hora = partes[1];
-                        const dia = fecha[0].padStart(2, '0');
-                        const mes = fecha[1].padStart(2, '0');
-                        const anio = fecha[2];
-                        fechaHoraApertura = `${dia}-${mes}-${anio} ${hora}`;
-                    } else {
-                        const ahora = new Date();
-                        const dia = String(ahora.getDate()).padStart(2, '0');
-                        const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-                        const anio = ahora.getFullYear();
-                        const horas = String(ahora.getHours()).padStart(2, '0');
-                        const minutos = String(ahora.getMinutes()).padStart(2, '0');
-                        fechaHoraApertura = `${dia}-${mes}-${anio} ${horas}:${minutos}`;
-                    }
-                    posFechaApertura = fechaHoraApertura; // Guardar la fecha de apertura (no cambiará)
-                    console.log('Fecha/Hora apertura:', fechaHoraApertura);
-                    $('#pos_hora_inicio').text(fechaHoraApertura);
-                    
-                    // Cargar garzones con el garzon seleccionado
-                    console.log('Garzon ID:', comanda.garzon_id);
-                    cargarGarzones(comanda.garzon_id);
-                    
-                    // Cargar productos del carrito desde los detalles de la comanda
-                    posCarrito = [];
-                    if (comanda.detalles && comanda.detalles.length > 0) {
-                        console.log('Detalles de comanda:', comanda.detalles);
-                        comanda.detalles.forEach(function(detalle) {
-                            const precio = parseFloat(detalle.precio_unitario);
-                            const cantidad = parseInt(detalle.cantidad);
-                            const uuidItem = (detalle.origen === 'RECETA' && detalle.receta_uuid)
-                                ? ('RECETA-' + detalle.receta_uuid)
-                                : (detalle.uuid || null);
-                            const item = {
-                                id: detalle.producto_id,
-                                uuid: uuidItem,
-                                origen: detalle.origen || 'PRODUCTO',
-                                codigo: detalle.codigo || '',
-                                descripcion: detalle.producto,
-                                precio: precio,
-                                cantidad: cantidad,
-                                subtotal: precio * cantidad,
-                                observaciones: detalle.observaciones || ''
-                            };
-                            console.log('Item agregado al carrito:', item);
-                            posCarrito.push(item);
-                        });
-                    }
-                    
-                    console.log('Carrito final:', posCarrito);
-                    
-                    // Configurar propina
-                    const incluyePropina = comanda.incluye_propina == 1 || comanda.incluye_propina === true;
-                    console.log('Incluye propina:', incluyePropina);
-                    $('#pos_incluye_propina').prop('checked', incluyePropina);
-                    if (incluyePropina) {
-                        $('#pos_propina_row').show();
-                    } else {
-                        $('#pos_propina_row').hide();
-                    }
-                    
-                    // Renderizar carrito con productos existentes
-                    renderizarCarrito();
-                    
-                    // Limpiar campo de búsqueda
-                    $('#pos_buscar_producto').val('');
-                    
-                    // Mostrar mensaje de búsqueda en productos
-                    $('#pos_products_grid').html(`
-                        <div class="pos-no-results">
-                            <i class="fa fa-search" style="font-size:32px;opacity:0.3;margin-bottom:10px;"></i>
-                            <p>Escribe para buscar más productos</p>
-                        </div>
-                    `);
-                    
-                    // Mostrar modal y enfocar búsqueda
-                    $('#modalTomarPedido').modal('show');
-                    setTimeout(() => $('#pos_buscar_producto').focus(), 300);
+                    _setup(mesa);
                 }
             }
         },
-        error: function(xhr) {
-            console.error('Error al cargar datos de la mesa:', xhr);
+        error: function() {
             Swal.fire('Error', 'No se pudo cargar la información de la mesa', 'error');
         }
     });
@@ -810,32 +718,37 @@ function cargarProductosPOS(busqueda) {
                 renderizarProductos(posProductos);
             }
         },
-        error: function(xhr) {
-            console.error('Error al cargar productos:', xhr);
+        error: function() {
             Swal.fire('Error', 'No se pudieron cargar los productos', 'error');
         }
     });
 }
 
 function cargarGarzones(garzonIdSeleccionado = null) {
+    function _renderGarzones(garzones) {
+        const select = $('#pos_garzon_id');
+        select.empty();
+        select.append('<option value="">Seleccionar...</option>');
+        garzones.forEach(function(garzon) {
+            const selected = garzonIdSeleccionado && garzon.id == garzonIdSeleccionado ? 'selected' : '';
+            select.append(`<option value="${garzon.id}" ${selected}>${garzon.nombre_completo}</option>`);
+        });
+    }
+
+    if (_garzonesCache) {
+        _renderGarzones(_garzonesCache);
+        return;
+    }
+
     $.ajax({
         url: '/restaurant/comandas/obtener-garzones',
         type: 'GET',
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                const select = $('#pos_garzon_id');
-                select.empty();
-                select.append('<option value="">Seleccionar...</option>');
-                
-                response.garzones.forEach(function(garzon) {
-                    const selected = garzonIdSeleccionado && garzon.id == garzonIdSeleccionado ? 'selected' : '';
-                    select.append(`<option value="${garzon.id}" ${selected}>${garzon.nombre_completo}</option>`);
-                });
+                _garzonesCache = response.garzones;
+                _renderGarzones(_garzonesCache);
             }
-        },
-        error: function(xhr) {
-            console.error('Error al cargar garzones:', xhr);
         }
     });
 }
@@ -1506,33 +1419,30 @@ function validarStockCarritoComanda() {
         return Promise.resolve(true);
     }
 
-    const validaciones = itemsValidables.map(function(item) {
-        return verificarStockComanda(item.uuid, item.cantidad)
-            .then(function(resp) {
-                if (resp && resp.status === 'OK') {
-                    return { ok: true };
-                }
-
-                return { ok: false, resp: resp, item: item };
+    return $.ajax({
+        url: '/ventas/verificar-stock-batch',
+        method: 'POST',
+        dataType: 'json',
+        data: {
+            _token: $('#token').val(),
+            items: itemsValidables.map(function(item) {
+                return { uuid: item.uuid, cantidad: item.cantidad };
             })
-            .catch(function() {
-                return { ok: false, item: item, error: true };
-            });
-    });
-
-    return Promise.all(validaciones).then(function(resultados) {
-        const fallo = resultados.find(r => !r.ok);
-
-        if (!fallo) {
-            return true;
         }
+    }).then(function(batchResp) {
+        const resultados = (batchResp && batchResp.results) ? batchResp.results : {};
+        const fallo = itemsValidables.find(function(item) {
+            const resp = resultados[item.uuid];
+            return !resp || resp.status !== 'OK';
+        });
 
-        if (fallo.error) {
-            Swal.fire('Error', 'No se pudo validar stock antes de guardar', 'error');
-            return false;
-        }
+        if (!fallo) return true;
 
-        mostrarErrorStockComanda(fallo.resp, fallo.item ? fallo.item.descripcion : 'Producto');
+        const respFallo = resultados[fallo.uuid] || null;
+        mostrarErrorStockComanda(respFallo, fallo.descripcion || 'Producto');
+        return false;
+    }).catch(function() {
+        Swal.fire('Error', 'No se pudo validar stock antes de guardar', 'error');
         return false;
     });
 }
@@ -1573,8 +1483,7 @@ function guardarProductosComanda(esActualizacion = false) {
                     Swal.fire('Error', response.message || 'Error al sincronizar productos', 'error');
                 }
             },
-            error: function(xhr) {
-                console.error('Error al sincronizar productos:', xhr);
+            error: function() {
                 Swal.fire('Error', 'Error al sincronizar productos', 'error');
             }
         });
@@ -1614,8 +1523,7 @@ function guardarProductosComanda(esActualizacion = false) {
                         });
                     }
                 },
-                error: function(xhr) {
-                    console.error('Error al guardar producto:', xhr);
+                error: function() {
                     Swal.fire('Error', 'Error al guardar algunos productos', 'error');
                 }
             });
@@ -1661,8 +1569,7 @@ function actualizarComensales(comandaId, nuevoValor) {
                 cargarMesas(); // Recargar para actualizar el contador total
             }
         },
-        error: function(xhr) {
-            console.error('Error al actualizar comensales:', xhr);
+        error: function() {
             Swal.fire('Error', 'No se pudo actualizar el número de comensales', 'error');
         }
     });

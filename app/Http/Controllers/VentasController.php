@@ -22,7 +22,9 @@ use App\Http\Requests\AperturaCajaRequest;
 use App\Http\Requests\CierreCajaRequest;
 use App\Models\HistorialEstadoVenta;
 use App\Helpers\BarcodeHelper;
+use App\Services\PrecioService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -41,26 +43,17 @@ class VentasController extends Controller
             return $precioBaseNormalizado;
         }
 
-        $producto = Producto::where('uuid', $uuid)->first();
-        if (!$producto) {
-            return $precioBaseNormalizado;
-        }
+        // Cache 60s por uuid+cantidad (dato casi estático entre requests del mismo carrito)
+        $cacheKey = 'price_range:' . $uuid . ':' . (int) round($cantidad * 1000);
+        $resolved = Cache::remember($cacheKey, 60, function () use ($uuid, $cantidad) {
+            $producto = Producto::where('uuid', $uuid)->first();
+            if (!$producto) {
+                return ['found' => false];
+            }
+            return ['found' => true, 'precio' => PrecioService::resolver($producto, $cantidad)];
+        });
 
-        $rango = RangoPrecio::where('producto_id', $producto->id)
-            ->where('cantidad_minima', '<=', $cantidad)
-            ->where(function ($query) use ($cantidad) {
-                $query->whereNull('cantidad_maxima')
-                    ->orWhere('cantidad_maxima', 0)
-                    ->orWhere('cantidad_maxima', '>=', $cantidad);
-            })
-            ->orderByDesc('cantidad_minima')
-            ->first();
-
-        if ($rango) {
-            return (float) $rango->precio_unitario;
-        }
-
-        return (float) $producto->precio_venta;
+        return $resolved['found'] ? $resolved['precio'] : $precioBaseNormalizado;
     }
 
     public function obtenerPrecioPorCantidad(Request $request)
@@ -181,65 +174,40 @@ class VentasController extends Controller
                 ], 404);
             }
 
-            // Obtener ventas de esta caja
-            $ventas = Venta::where('caja_id', $caja->id)->get();
-            
-            // Calcular totales por forma de pago
-            $totalEfectivo = 0;
-            $totalTarjetaDebito = 0;
-            $totalTarjetaCredito = 0;
-            $totalTransferencia = 0;
-            $totalCheque = 0;
-            $totalMixto = 0;
+            // Obtener totales de esta caja en una sola query GROUP BY (evita N+1)
+            $desgloseVentas = Venta::where('caja_id', $caja->id)
+                ->selectRaw('forma_pago, SUM(total) as monto, COUNT(*) as cantidad')
+                ->groupBy('forma_pago')
+                ->get()
+                ->keyBy('forma_pago');
 
-            foreach ($ventas as $venta) {
-                $monto = $venta->total;
-                
-                switch ($venta->forma_pago) {
-                    case 'EFECTIVO':
-                        $totalEfectivo += $monto;
-                        break;
-                    case 'TARJETA_DEBITO':
-                        $totalTarjetaDebito += $monto;
-                        break;
-                    case 'TARJETA_CREDITO':
-                        $totalTarjetaCredito += $monto;
-                        break;
-                    case 'TRANSFERENCIA':
-                        $totalTransferencia += $monto;
-                        break;
-                    case 'CHEQUE':
-                        $totalCheque += $monto;
-                        break;
-                    case 'MIXTO':
-                        $totalMixto += $monto;
-                        // Para MIXTO, sumar los detalles
-                        $formasPago = FormaPagoVenta::where('venta_id', $venta->id)->get();
-                        foreach ($formasPago as $fp) {
-                            switch ($fp->forma_pago) {
-                                case 'EFECTIVO':
-                                    $totalEfectivo += $fp->monto;
-                                    break;
-                                case 'TARJETA_DEBITO':
-                                    $totalTarjetaDebito += $fp->monto;
-                                    break;
-                                case 'TARJETA_CREDITO':
-                                    $totalTarjetaCredito += $fp->monto;
-                                    break;
-                                case 'TRANSFERENCIA':
-                                    $totalTransferencia += $fp->monto;
-                                    break;
-                                case 'CHEQUE':
-                                    $totalCheque += $fp->monto;
-                                    break;
-                            }
-                        }
-                        break;
-                }
+            $totalVentas    = (float) $desgloseVentas->sum('monto');
+            $cantidadVentas = (int)   $desgloseVentas->sum('cantidad');
+            $totalMixto     = (float) ($desgloseVentas->get('MIXTO')?->monto ?? 0);
+
+            // Desglose de ventas directas por forma de pago
+            $totalEfectivo      = (float) ($desgloseVentas->get('EFECTIVO')?->monto      ?? 0);
+            $totalTarjetaDebito  = (float) ($desgloseVentas->get('TARJETA_DEBITO')?->monto  ?? 0);
+            $totalTarjetaCredito = (float) ($desgloseVentas->get('TARJETA_CREDITO')?->monto ?? 0);
+            $totalTransferencia  = (float) ($desgloseVentas->get('TRANSFERENCIA')?->monto   ?? 0);
+            $totalCheque        = (float) ($desgloseVentas->get('CHEQUE')?->monto           ?? 0);
+
+            // Para ventas MIXTO, sumar el desglose real desde FormaPagoVenta (una sola query con subquery)
+            if ($totalMixto > 0) {
+                $mixtoDesglose = FormaPagoVenta::whereIn(
+                    'venta_id',
+                    Venta::where('caja_id', $caja->id)->where('forma_pago', 'MIXTO')->select('id')
+                )
+                    ->selectRaw('forma_pago, SUM(monto) as monto')
+                    ->groupBy('forma_pago')
+                    ->pluck('monto', 'forma_pago');
+
+                $totalEfectivo      += (float) ($mixtoDesglose->get('EFECTIVO')      ?? 0);
+                $totalTarjetaDebito  += (float) ($mixtoDesglose->get('TARJETA_DEBITO')  ?? 0);
+                $totalTarjetaCredito += (float) ($mixtoDesglose->get('TARJETA_CREDITO') ?? 0);
+                $totalTransferencia  += (float) ($mixtoDesglose->get('TRANSFERENCIA')   ?? 0);
+                $totalCheque        += (float) ($mixtoDesglose->get('CHEQUE')           ?? 0);
             }
-
-            $totalVentas = $ventas->sum('total');
-            $cantidadVentas = $ventas->count();
 
             return response()->json([
                 'status' => 'OK',
@@ -286,8 +254,7 @@ class VentasController extends Controller
             }
 
             // Calcular totales
-            $ventas = Venta::where('caja_id', $caja->id)->get();
-            $totalVentas = $ventas->sum('total');
+            $totalVentas = (float) Venta::where('caja_id', $caja->id)->sum('total');
             $montoEsperado = $caja->monto_inicial + $totalVentas;
             $montoFinalDeclarado = $request->monto_final_declarado;
             $diferencia = $montoFinalDeclarado - $montoEsperado;
@@ -328,12 +295,14 @@ class VentasController extends Controller
                 ->whereNull('fec_eliminacion')
                 ->where('tipo', '<>', 'I')
                 ->where('codigo', $query)
+                ->limit(50)
                 ->get();
 
             $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
                 ->where('estado', 'Activo')
                 ->whereNull('fec_eliminacion')
                 ->where('codigo', $query)
+                ->limit(50)
                 ->get();
         } else {
             $products = Producto::select('uuid', 'codigo', 'descripcion', 'precio_venta', 'imagen')
@@ -343,7 +312,7 @@ class VentasController extends Controller
                 ->where(function($q) use ($query) {
                     $q->where('descripcion', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
-                })->get();
+                })->limit(50)->get();
 
             $promotions = Promocion::select('uuid', 'codigo', 'nombre as descripcion', 'precio_venta')
                 ->where('estado', 'Activo')
@@ -351,7 +320,7 @@ class VentasController extends Controller
                 ->where(function($q) use ($query) {
                     $q->where('nombre', 'like', "%$query%")
                       ->orWhere('codigo', 'like', "%$query%");
-                })->get();
+                })->limit(50)->get();
         }
 
         // Build explicit arrays to guarantee consistent JSON array output
@@ -451,8 +420,8 @@ class VentasController extends Controller
             return response()->json(['status' => 'ERROR', 'message' => 'Parámetros inválidos'], 400);
         }
 
-        // Obtener configuración de stock negativo
-        $stockNegativo = Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var');
+        // Obtener configuración de stock negativo (cacheado 5 minutos)
+        $stockNegativo = Cache::remember('global_STOCK_NEGATIVO', 300, fn () => Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var'));
         $permitirStockNegativo = ($stockNegativo == '1');
 
         // Buscar en productos
@@ -502,18 +471,19 @@ class VentasController extends Controller
                         'requested' => $cantidad,
                         'stock' => $stock
                     ]
-                ], 200);
+                ], 422);
             }
         }    
         // Si no es producto, buscar promocion
         $promocion = Promocion::where('uuid', $uuid)->first();
         if ($promocion) {
-            $detalles = $promocion->detallePromocion()->get();
+            // Eager load producto para evitar N+1 por cada componente de la promoción
+            $detalles = $promocion->detallePromocion()->with('producto')->get();
             $items = [];
             $hasInsufficient = false;
 
             foreach ($detalles as $det) {
-                $prod = Producto::find($det->producto_id);
+                $prod = $det->producto;
                 $requiredPerPromo = (float) $det->cantidad;
                 $requiredTotal = $requiredPerPromo * $cantidad; // cantidad solicitada de la promocion
                 $stock = $prod ? (float) $prod->stock : 0;
@@ -562,7 +532,7 @@ class VentasController extends Controller
                         'nombre' => $promocion->nombre ?? null
                     ],
                     'items' => $items
-                ], 200);
+                ], 422);
             }
 
             return response()->json([
@@ -578,6 +548,167 @@ class VentasController extends Controller
             ]);
         }
 
+    }
+
+    /**
+     * Verifica stock de múltiples items en una sola llamada (batch).
+     * Acepta productos, promociones y recetas (uuid empieza con 'RECETA-').
+     */
+    public function verificarStockBatch(Request $request)
+    {
+        $request->validate([
+            'items'            => 'required|array|min:1|max:50',
+            'items.*.uuid'     => 'required|string',
+            'items.*.cantidad' => 'required|numeric|min:0.01',
+        ]);
+
+        $stockNegativo = Cache::remember(
+            'global_STOCK_NEGATIVO',
+            300,
+            fn () => Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var')
+        );
+        $permitirStockNegativo = ($stockNegativo == '1');
+
+        $items = collect($request->items);
+
+        $recetaItems = $items->filter(fn ($i) => str_starts_with((string) $i['uuid'], 'RECETA-'));
+        $otherItems  = $items->filter(fn ($i) => !str_starts_with((string) $i['uuid'], 'RECETA-'));
+
+        $otherUuids         = $otherItems->pluck('uuid')->unique()->values()->all();
+        $productosPorUuid   = Producto::whereIn('uuid', $otherUuids)->get()->keyBy('uuid');
+        $promocionesPorUuid = Promocion::whereIn('uuid', $otherUuids)->get()->keyBy('uuid');
+
+        $promoIds      = $promocionesPorUuid->pluck('id')->all();
+        $detallesPromo = collect();
+        if (!empty($promoIds)) {
+            $detallesPromo = PromocionDetalle::whereIn('promo_id', $promoIds)
+                ->with('producto')
+                ->get()
+                ->groupBy('promo_id');
+        }
+
+        $recetaUuids    = $recetaItems->map(fn ($i) => substr($i['uuid'], 7))->unique()->values()->all();
+        $recetasPorUuid = collect();
+        if (!empty($recetaUuids)) {
+            $recetasPorUuid = Receta::whereIn('uuid', $recetaUuids)
+                ->with('ingredientes.producto')
+                ->get()
+                ->keyBy('uuid');
+        }
+
+        $results = [];
+
+        foreach ($request->items as $itemData) {
+            $uuid     = (string) $itemData['uuid'];
+            $cantidad = (float)  $itemData['cantidad'];
+
+            // ── RECETA ────────────────────────────────────────────────────────
+            if (str_starts_with($uuid, 'RECETA-')) {
+                $recetaUuid = substr($uuid, 7);
+                $receta     = $recetasPorUuid->get($recetaUuid);
+
+                if (!$receta) {
+                    $results[$uuid] = ['status' => 'ERROR', 'code' => 'RECIPE_NOT_FOUND', 'message' => 'No se encontró la receta'];
+                    continue;
+                }
+
+                $faltantes = [];
+                foreach ($receta->ingredientes as $ingrediente) {
+                    $producto = $ingrediente->producto;
+                    if (!$producto || $permitirStockNegativo) {
+                        continue;
+                    }
+                    $requerido = (float) $ingrediente->cantidad * $cantidad;
+                    if ((float) ($producto->stock ?? 0) < $requerido) {
+                        $faltantes[] = ['descripcion' => $producto->descripcion ?: ($producto->codigo ?: 'Insumo')];
+                    }
+                }
+
+                $results[$uuid] = !empty($faltantes)
+                    ? ['status' => 'ERROR', 'code' => 'RECIPE_INSUFFICIENT_STOCK', 'message' => 'Faltan insumos para preparar la receta', 'items' => collect($faltantes)->unique('descripcion')->values()]
+                    : ['status' => 'OK', 'available' => true, 'tipo' => 'receta'];
+                continue;
+            }
+
+            // ── PRODUCTO ──────────────────────────────────────────────────────
+            $producto = $productosPorUuid->get($uuid);
+            if ($producto) {
+                if ($producto->tipo === 'S') {
+                    $results[$uuid] = ['status' => 'OK', 'available' => true, 'tipo' => 'servicio', 'product' => []];
+                    continue;
+                }
+                if ($producto->tipo === 'P') {
+                    $stock = (float) $producto->stock;
+                    if ($permitirStockNegativo || $stock >= $cantidad) {
+                        $results[$uuid] = ['status' => 'OK', 'available' => true, 'product' => []];
+                    } else {
+                        $results[$uuid] = [
+                            'status' => 'ERROR', 'available' => false, 'code' => 'OUT_OF_STOCK_PRODUCT',
+                            'message' => 'Stock insuficiente para el producto solicitado',
+                            'product' => [
+                                'uuid' => $producto->uuid, 'codigo' => $producto->codigo ?? null,
+                                'descripcion' => $producto->descripcion ?? null,
+                                'requested' => $cantidad, 'stock' => $stock,
+                            ],
+                        ];
+                    }
+                    continue;
+                }
+            }
+
+            // ── PROMOCIÓN ─────────────────────────────────────────────────────
+            $promocion = $promocionesPorUuid->get($uuid);
+            if ($promocion) {
+                $detalles        = $detallesPromo->get($promocion->id, collect());
+                $itemsPromo      = [];
+                $hasInsufficient = false;
+
+                foreach ($detalles as $det) {
+                    $prod             = $det->producto;
+                    $requiredPerPromo = (float) $det->cantidad;
+                    $requiredTotal    = $requiredPerPromo * $cantidad;
+                    $stockProd        = $prod ? (float) $prod->stock : 0;
+
+                    if ($prod && $prod->tipo === 'S') {
+                        $itemsPromo[] = ['uuid' => $prod->uuid, 'codigo' => $prod->codigo, 'descripcion' => $prod->descripcion, 'tipo' => 'S', 'required_total' => $requiredTotal, 'stock' => null, 'sufficient' => true];
+                        continue;
+                    }
+
+                    $ok = $permitirStockNegativo ? true : ($stockProd >= $requiredTotal);
+                    if (!$ok) $hasInsufficient = true;
+
+                    $itemsPromo[] = [
+                        'uuid'           => $prod ? $prod->uuid : null,
+                        'codigo'         => $prod ? $prod->codigo : null,
+                        'descripcion'    => $prod ? $prod->descripcion : ('Producto ID ' . $det->producto_id),
+                        'tipo'           => $prod ? $prod->tipo : null,
+                        'required_total' => $requiredTotal,
+                        'stock'          => $stockProd,
+                        'sufficient'     => $ok,
+                    ];
+                }
+
+                if ($hasInsufficient) {
+                    $results[$uuid] = [
+                        'status' => 'ERROR', 'code' => 'PROMO_INSUFFICIENT_STOCK',
+                        'message' => 'La promoción no tiene stock suficiente',
+                        'promotion' => ['uuid' => $promocion->uuid, 'codigo' => $promocion->codigo ?? null, 'nombre' => $promocion->nombre ?? null],
+                        'items' => $itemsPromo,
+                    ];
+                } else {
+                    $results[$uuid] = [
+                        'status' => 'OK', 'available' => true, 'tipo' => 'promocion',
+                        'promotion' => ['uuid' => $promocion->uuid, 'codigo' => $promocion->codigo ?? null, 'nombre' => $promocion->nombre ?? null],
+                        'items' => $itemsPromo,
+                    ];
+                }
+                continue;
+            }
+
+            $results[$uuid] = ['status' => 'ERROR', 'code' => 'NOT_FOUND', 'message' => 'No se encontró el producto o promoción'];
+        }
+
+        return response()->json(['status' => 'OK', 'results' => $results]);
     }
 
     /**
@@ -609,6 +740,17 @@ class VentasController extends Controller
                 'fecha_venta' => $request->fecha_venta ?? now(),
             ]);
 
+            // Pre-fetch de productos y promociones por UUID para evitar N+1 en el loop
+            $uuidsDetalles = collect($request->detalles)
+                ->filter(fn($d) => !empty($d['producto_uuid']))
+                ->pluck('producto_uuid')
+                ->unique()
+                ->values()
+                ->all();
+
+            $productosPorUuid   = Producto::whereIn('uuid', $uuidsDetalles)->get()->keyBy('uuid');
+            $promocionesPorUuid = Promocion::whereIn('uuid', $uuidsDetalles)->get()->keyBy('uuid');
+
             // Guardar los detalles
             foreach ($request->detalles as $detalle) {
                 $detalleVenta = DetalleVenta::create([
@@ -624,15 +766,15 @@ class VentasController extends Controller
 
                 // Registrar en historial de movimientos (productos, servicios y promociones)
                 if (!empty($detalle['producto_uuid'])) {
-                    // Verificar si es un producto
-                    $producto = Producto::where('uuid', $detalle['producto_uuid'])->first();
+                    // Verificar si es un producto (pre-fetched, sin query adicional)
+                    $producto = $productosPorUuid->get($detalle['producto_uuid']);
                     
                     if ($producto) {
                         // Es un producto directo
                         if ($producto->tipo === 'P') {
-                            // Producto: Descontar stock y registrar con stock
+                            // Producto: Descontar stock (atómico, sin eventos Eloquent)
                             $producto->stock -= $detalle['cantidad'];
-                            $producto->save();
+                            DB::table('productos')->where('id', $producto->id)->decrement('stock', $detalle['cantidad']);
 
                             HistorialMovimientos::registrarMovimiento([
                                 'producto_id' => $producto->id,
@@ -656,8 +798,8 @@ class VentasController extends Controller
                             ]);
                         }
                     } else {
-                        // Verificar si es una promoción (buscada por UUID en tabla promociones)
-                        $promocion = Promocion::where('uuid', $detalle['producto_uuid'])->first();
+                        // Verificar si es una promoción (pre-fetched, sin query adicional)
+                        $promocion = $promocionesPorUuid->get($detalle['producto_uuid']);
                         
                         if ($promocion) {
                             // Actualizar el detalle ya creado: asignar promo_id y limpiar producto_uuid
@@ -676,9 +818,9 @@ class VentasController extends Controller
                                 $cantidadTotal = $detallePromo->cantidad * $detalle['cantidad'];
 
                                 if ($productoPromo->tipo === 'P') {
-                                    // Producto de promoción: Descontar stock
+                                    // Producto de promoción: Descontar stock (atómico)
                                     $productoPromo->stock -= $cantidadTotal;
-                                    $productoPromo->save();
+                                    DB::table('productos')->where('id', $productoPromo->id)->decrement('stock', $cantidadTotal);
 
                                     HistorialMovimientos::registrarMovimiento([
                                         'producto_id' => $productoPromo->id,
@@ -750,56 +892,54 @@ class VentasController extends Controller
      */
     public function generarTicketCierrePDF($cajaId)
     {
-        $caja = Caja::with(['usuario', 'ventas.formasPago'])->findOrFail($cajaId);
-        
-        // Verificar que la caja esté cerrada
+        $caja = Caja::with('usuario')->findOrFail($cajaId);
+
         if ($caja->estado !== 'cerrada') {
             abort(400, 'Solo se pueden generar tickets de cajas cerradas');
         }
-        
-        // Calcular resumen de ventas
-        $cantidadVentas = $caja->ventas->count();
-        $totalVentas = $caja->ventas->sum('total');
-        
-        // Calcular desglose por forma de pago
+
+        // Calcular resumen con una sola query GROUP BY (evita cargar todas las ventas en RAM)
+        $desgloseVentas = Venta::where('caja_id', $caja->id)
+            ->selectRaw('forma_pago, SUM(total) as monto, COUNT(*) as cantidad')
+            ->groupBy('forma_pago')
+            ->get()
+            ->keyBy('forma_pago');
+
+        $cantidadVentas = (int) $desgloseVentas->sum('cantidad');
+        $totalVentas    = (float) $desgloseVentas->sum('monto');
+        $totalMixto     = (float) ($desgloseVentas->get('MIXTO')?->monto ?? 0);
+
         $desglose = [
-            'efectivo' => 0,
-            'tarjeta_debito' => 0,
-            'tarjeta_credito' => 0,
-            'transferencia' => 0,
-            'cheque' => 0,
-            'mixto' => 0,
+            'efectivo'       => (float) ($desgloseVentas->get('EFECTIVO')?->monto       ?? 0),
+            'tarjeta_debito'  => (float) ($desgloseVentas->get('TARJETA_DEBITO')?->monto  ?? 0),
+            'tarjeta_credito' => (float) ($desgloseVentas->get('TARJETA_CREDITO')?->monto ?? 0),
+            'transferencia'   => (float) ($desgloseVentas->get('TRANSFERENCIA')?->monto   ?? 0),
+            'cheque'         => (float) ($desgloseVentas->get('CHEQUE')?->monto          ?? 0),
+            'mixto'          => $totalMixto,
         ];
-        
-        foreach ($caja->ventas as $venta) {
-            if ($venta->forma_pago === 'MIXTO') {
-                // Para ventas mixtas, sumar cada forma de pago individualmente
-                foreach ($venta->formasPago as $formaPago) {
-                    $tipo = strtolower($formaPago->tipo_forma_pago);
-                    if (isset($desglose[$tipo])) {
-                        $desglose[$tipo] += $formaPago->monto;
-                    }
-                }
-                $desglose['mixto'] += $venta->total;
-            } else {
-                // Para ventas simples
-                $tipo = strtolower($venta->forma_pago);
-                if (isset($desglose[$tipo])) {
-                    $desglose[$tipo] += $venta->total;
-                }
-            }
+
+        // Para ventas MIXTO, sumar el desglose real desde FormasPagoVenta
+        if ($totalMixto > 0) {
+            $mixtoDesglose = FormaPagoVenta::whereIn(
+                'venta_id',
+                Venta::where('caja_id', $caja->id)->where('forma_pago', 'MIXTO')->select('id')
+            )
+                ->selectRaw('forma_pago, SUM(monto) as monto')
+                ->groupBy('forma_pago')
+                ->pluck('monto', 'forma_pago');
+
+            $desglose['efectivo']       += (float) ($mixtoDesglose->get('EFECTIVO')       ?? 0);
+            $desglose['tarjeta_debito']  += (float) ($mixtoDesglose->get('TARJETA_DEBITO')  ?? 0);
+            $desglose['tarjeta_credito'] += (float) ($mixtoDesglose->get('TARJETA_CREDITO') ?? 0);
+            $desglose['transferencia']   += (float) ($mixtoDesglose->get('TRANSFERENCIA')   ?? 0);
+            $desglose['cheque']         += (float) ($mixtoDesglose->get('CHEQUE')          ?? 0);
         }
-        
-        // Cargar datos corporativos
-        $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
-        
-        // Cargar la vista del ticket de cierre
+
+        $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
+
         $pdf = Pdf::loadView('ventas.ticket_cierre_caja', compact('caja', 'cantidadVentas', 'totalVentas', 'desglose', 'corporateData'));
-        
-        // Configurar papel de 80mm de ancho (226.77 puntos = 80mm)
         $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
-        
-        // Mostrar el PDF en el navegador
+
         return $pdf->stream('cierre-caja-' . str_pad($caja->id, 4, '0', STR_PAD_LEFT) . '.pdf');
     }
 
@@ -829,8 +969,8 @@ class VentasController extends Controller
             if (!puedeVerTodosCierres()) {
                 $query->where('user_id', $user->id);
             }
-            
-            $cierres = $query->get();
+
+            $cierres = $query->limit(500)->get();
             
             // Formatear datos para DataTable
             $data = $cierres->map(function ($caja) {
@@ -966,7 +1106,7 @@ class VentasController extends Controller
     {
         $venta = Venta::with(['detalles', 'usuario', 'formasPago', 'caja'])->findOrFail($ventaId);
 
-        $tipoNegocio = Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var');
+        $tipoNegocio = Cache::remember('global_TIPO_NEGOCIO', 300, fn () => Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var'));
         $esVentaRestaurant = strtolower(trim((string) $tipoNegocio)) === 'restaurant';
 
         if ($esVentaRestaurant) {
@@ -987,8 +1127,8 @@ class VentasController extends Controller
             }
 
             if ($comanda) {
-                $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
-                $porcentajeGlobal = Globales::where('nom_var', 'PORCENTAJE_PROPINA')->value('valor_var');
+                $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
+                $porcentajeGlobal = Cache::remember('global_PORCENTAJE_PROPINA', 300, fn () => Globales::where('nom_var', 'PORCENTAJE_PROPINA')->value('valor_var'));
                 $porcentajePropinaGlobal = is_null($porcentajeGlobal) ? 10 : (float) $porcentajeGlobal;
                 $porcentajePropinaGlobal = max(0, min(100, $porcentajePropinaGlobal));
                 $esTicketPago = true;
@@ -1001,7 +1141,7 @@ class VentasController extends Controller
         }
         
         // Cargar datos corporativos
-        $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
+        $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
         
         // Cargar la vista del ticket
         $pdf = Pdf::loadView('ventas.ticket', compact('venta', 'corporateData'));
@@ -1033,7 +1173,13 @@ class VentasController extends Controller
             $fechaHasta = $request->input('fecha_hasta');
             
             // Query base
-            $query = Venta::with(['usuario', 'detalles', 'formasPago', 'caja'])
+            $query = Venta::select(['id', 'total', 'fecha_venta', 'forma_pago', 'estado', 'user_id', 'caja_id'])
+                ->with([
+                    'usuario:id,name,name_complete',
+                    'formasPago:venta_id,forma_pago',
+                    'caja:id,tipo_caja',
+                ])
+                ->withCount('detalles as cantidad_productos')
                 ->where('estado', 'completada');
             
             // Si el usuario NO tiene permiso para ver todas las ventas, solo mostrar las propias
@@ -1050,15 +1196,15 @@ class VentasController extends Controller
             if ($fechaHasta) {
                 $query->whereDate('fecha_venta', '<=', $fechaHasta);
             }
-            
-            $ventas = $query->get();
+
+            $ventas = $query->limit(1000)->get();
             
             // Formatear datos para DataTable
             $data = $ventas->map(function ($venta) {
                 $esTicketRestaurant = strtoupper((string) optional($venta->caja)->tipo_caja) === 'RESTAURANT';
 
-                // Contar productos
-                $cantidadProductos = $venta->detalles->count();
+                // Contar productos (pre-calculado con withCount, sin cargar la colección)
+                $cantidadProductos = $venta->cantidad_productos;
                 
                 // Determinar forma de pago
                 $formaPago = $venta->forma_pago;
@@ -1139,20 +1285,29 @@ class VentasController extends Controller
             
             // NO bloquear la vista - permitir ver información incluso si está completamente anulado
             // La validación se hace en el frontend para ocultar botones de acción
-            
+
+            // Pre-fetch productos y recetas para evitar N+1 por cada línea de detalle
+            $todosUuids = $venta->detalles->pluck('producto_uuid')->filter()->unique()->values()->all();
+            $productosPorFetch = Producto::whereIn('uuid', $todosUuids)->get()->keyBy('uuid');
+            $recetaUuidsFetch = collect($todosUuids)
+                ->filter(fn ($u) => str_starts_with((string) $u, 'RECETA-'))
+                ->map(fn ($u) => substr($u, 7))
+                ->values()->all();
+            $recetasPorFetch = !empty($recetaUuidsFetch)
+                ? Receta::whereIn('uuid', $recetaUuidsFetch)->get()->keyBy('uuid')
+                : collect();
+
             // Formatear detalles
-            $detalles = $venta->detalles->map(function($detalle) {
-                // Obtener producto para verificar tipo
-                $producto = Producto::where('uuid', $detalle->producto_uuid)->first();
-                $tipo = $producto->tipo ?? 'simple';
+            $detalles = $venta->detalles->map(function($detalle) use ($productosPorFetch, $recetasPorFetch) {
+                $producto = $productosPorFetch->get($detalle->producto_uuid);
+                $tipo = $producto ? $producto->tipo : 'simple';
 
                 if (!$producto) {
                     $uuidReceta = str_starts_with((string) $detalle->producto_uuid, 'RECETA-')
                         ? substr((string) $detalle->producto_uuid, 7)
                         : (string) $detalle->producto_uuid;
 
-                    $esReceta = Receta::where('uuid', $uuidReceta)->exists();
-                    if ($esReceta) {
+                    if ($recetasPorFetch->has($uuidReceta)) {
                         $tipo = 'RECETA';
                     }
                 }
@@ -1226,15 +1381,6 @@ class VentasController extends Controller
             
             $montoAnulado = 0;
             $productosAnulados = 0;
-            
-            // DEBUG: Log para verificar qué se está recibiendo
-            Log::info('Anulación de ticket', [
-                'venta_id' => $ventaId,
-                'anulacion_completa_calculada' => $anulacionCompleta,
-                'detalles_recibidos' => $detallesAnular,
-                'count_detalles' => count($detallesAnular),
-                'motivo' => $motivo
-            ]);
             
             if ($anulacionCompleta) {
                 // Anular todos los productos no anulados
@@ -1320,57 +1466,35 @@ class VentasController extends Controller
     private function devolverStockDetalle($detalle, $user, $venta, $motivo)
     {
         $cantidad = $detalle->cantidad;
-        $ticketNum = $venta->id; // Número sin ceros a la izquierda
-        
+        $ticketNum = $venta->id;
+
         // Primero verificar si es un producto
         $producto = Producto::where('uuid', $detalle->producto_uuid)->first();
-        
+
         if ($producto) {
-            Log::info('Devolviendo stock de producto', [
-                'producto_id' => $producto->id,
-                'producto_tipo' => $producto->tipo,
-                'receta_id' => $producto->receta_id,
-                'cantidad' => $cantidad,
-                'ticket' => $ticketNum
-            ]);
-            
             // Verificar si es una receta (producto con receta_id)
             if (!empty($producto->receta_id)) {
-                // Es una RECETA: devolver stock de los ingredientes
                 $receta = Receta::with('ingredientes.producto')->find($producto->receta_id);
                 if ($receta) {
-                    Log::info('Procesando receta', [
-                        'receta_id' => $receta->id,
-                        'ingredientes_count' => $receta->ingredientes->count()
-                    ]);
-                    
                     foreach ($receta->ingredientes as $ingrediente) {
                         if ($ingrediente->producto && in_array($ingrediente->producto->tipo, ['P', 'I'], true)) {
                             $cantidadDevolver = $ingrediente->cantidad * $cantidad;
-                            $ingrediente->producto->stock += $cantidadDevolver;
-                            $ingrediente->producto->save();
-                            
-                            // Registrar movimiento de cada ingrediente
+                            $stockNuevo = $ingrediente->producto->stock + $cantidadDevolver;
+                            DB::table('productos')->where('id', $ingrediente->producto->id)->increment('stock', $cantidadDevolver);
                             try {
                                 HistorialMovimientos::registrarMovimiento([
                                     'producto_id' => $ingrediente->producto->id,
                                     'cantidad' => $cantidadDevolver,
-                                    'stock' => $ingrediente->producto->stock,
+                                    'stock' => $stockNuevo,
                                     'tipo_mov' => 'ANULACIÓN',
                                     'fecha' => now(),
                                     'num_doc' => (string) $ticketNum,
                                     'obs' => 'Anulación de venta ticket ' . $ticketNum . ' - Ingrediente de receta: ' . $producto->descripcion . ' - Motivo: ' . $motivo . ' - Usuario: ' . $user->name
                                 ]);
-                                
-                                Log::info('Movimiento registrado para ingrediente', [
-                                    'ingrediente_id' => $ingrediente->producto->id,
-                                    'cantidad' => $cantidadDevolver
-                                ]);
                             } catch (\Exception $e) {
                                 Log::error('Error al registrar movimiento receta', [
                                     'producto_id' => $ingrediente->producto->id,
                                     'error' => $e->getMessage(),
-                                    'trace' => $e->getTraceAsString()
                                 ]);
                             }
                         }
@@ -1378,43 +1502,30 @@ class VentasController extends Controller
                 }
                 return;
             }
-            
+
             // Es un PRODUCTO SIMPLE (tipo P o S, sin receta_id)
             if ($producto->tipo === 'P') {
-                // Solo devolver stock si es tipo P (Producto)
-                $producto->stock += $cantidad;
-                $producto->save();
-                
-                Log::info('Stock devuelto a producto', [
-                    'producto_id' => $producto->id,
-                    'nuevo_stock' => $producto->stock
-                ]);
+                DB::table('productos')->where('id', $producto->id)->increment('stock', $cantidad);
             }
-            
+
             // Registrar movimiento (para P y S)
             try {
                 HistorialMovimientos::registrarMovimiento([
                     'producto_id' => $producto->id,
                     'cantidad' => $cantidad,
-                    'stock' => $producto->tipo === 'P' ? $producto->stock : null,
+                    'stock' => $producto->tipo === 'P' ? ($producto->stock + $cantidad) : null,
                     'tipo_mov' => 'ANULACIÓN',
                     'fecha' => now(),
                     'num_doc' => (string) $ticketNum,
                     'obs' => 'Anulación de venta ticket ' . $ticketNum . ' - Motivo: ' . $motivo . ' - Usuario: ' . $user->name
                 ]);
-                
-                Log::info('Movimiento registrado para producto simple', [
-                    'producto_id' => $producto->id,
-                    'cantidad' => $cantidad
-                ]);
             } catch (\Exception $e) {
                 Log::error('Error al registrar movimiento simple', [
                     'producto_id' => $producto->id,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
                 ]);
             }
-            
+
             return;
         }
 
@@ -1425,23 +1536,16 @@ class VentasController extends Controller
         $receta = Receta::with('ingredientes.producto')->where('uuid', $uuidReceta)->first();
 
         if ($receta) {
-            Log::info('Devolviendo stock de receta por UUID', [
-                'receta_id' => $receta->id,
-                'cantidad' => $cantidad,
-                'ticket' => $ticketNum,
-            ]);
-
             foreach ($receta->ingredientes as $ingrediente) {
                 if ($ingrediente->producto && in_array($ingrediente->producto->tipo, ['P', 'I'], true)) {
                     $cantidadDevolver = $ingrediente->cantidad * $cantidad;
-                    $ingrediente->producto->stock += $cantidadDevolver;
-                    $ingrediente->producto->save();
-
+                    $stockNuevo = $ingrediente->producto->stock + $cantidadDevolver;
+                    DB::table('productos')->where('id', $ingrediente->producto->id)->increment('stock', $cantidadDevolver);
                     try {
                         HistorialMovimientos::registrarMovimiento([
                             'producto_id' => $ingrediente->producto->id,
                             'cantidad' => $cantidadDevolver,
-                            'stock' => $ingrediente->producto->stock,
+                            'stock' => $stockNuevo,
                             'tipo_mov' => 'ANULACIÓN',
                             'fecha' => now(),
                             'num_doc' => (string) $ticketNum,
@@ -1451,7 +1555,6 @@ class VentasController extends Controller
                         Log::error('Error al registrar movimiento receta por UUID', [
                             'producto_id' => $ingrediente->producto->id,
                             'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString(),
                         ]);
                     }
                 }
@@ -1459,60 +1562,42 @@ class VentasController extends Controller
 
             return;
         }
-        
+
         // Si no es producto, verificar si es una PROMOCIÓN
         $promocion = Promocion::where('uuid', $detalle->producto_uuid)->first();
-        
+
         if ($promocion) {
-            Log::info('Devolviendo stock de promoción', [
-                'promocion_id' => $promocion->id,
-                'cantidad' => $cantidad,
-                'ticket' => $ticketNum
-            ]);
-            
             $detallesPromocion = PromocionDetalle::where('promo_id', $promocion->id)
                 ->with('producto')
                 ->get();
-            
-            Log::info('Productos en promoción', [
-                'count' => $detallesPromocion->count()
-            ]);
-            
+
             foreach ($detallesPromocion as $detalleProm) {
                 if ($detalleProm->producto && $detalleProm->producto->tipo === 'P') {
                     $cantidadDevolver = $detalleProm->cantidad * $cantidad;
-                    $detalleProm->producto->stock += $cantidadDevolver;
-                    $detalleProm->producto->save();
-                    
-                    // Registrar movimiento de cada producto de la promoción
+                    $stockNuevo = $detalleProm->producto->stock + $cantidadDevolver;
+                    DB::table('productos')->where('id', $detalleProm->producto->id)->increment('stock', $cantidadDevolver);
                     try {
                         HistorialMovimientos::registrarMovimiento([
                             'producto_id' => $detalleProm->producto->id,
                             'cantidad' => $cantidadDevolver,
-                            'stock' => $detalleProm->producto->stock,
+                            'stock' => $stockNuevo,
                             'tipo_mov' => 'ANULACIÓN',
                             'fecha' => now(),
                             'num_doc' => (string) $ticketNum,
                             'obs' => 'Anulación de venta ticket ' . $ticketNum . ' - Producto de promoción: ' . $promocion->nombre . ' - Motivo: ' . $motivo . ' - Usuario: ' . $user->name
                         ]);
-                        
-                        Log::info('Movimiento registrado para producto de promoción', [
-                            'producto_id' => $detalleProm->producto->id,
-                            'cantidad' => $cantidadDevolver
-                        ]);
                     } catch (\Exception $e) {
                         Log::error('Error al registrar movimiento promoción', [
                             'producto_id' => $detalleProm->producto->id,
                             'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
                         ]);
                     }
                 }
             }
-            
+
             return;
         }
-        
+
         // Si llegamos aquí, no se encontró ni producto ni promoción
         Log::warning('UUID no encontrado en productos ni promociones', [
             'producto_uuid' => $detalle->producto_uuid,
@@ -1830,7 +1915,7 @@ class VentasController extends Controller
      */
     private function descontarStockYRegistrarMovimientoDesdeDetalle(Venta $venta, DetalleVenta $detalle): void
     {
-        $stockNegativo = Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var');
+        $stockNegativo = Cache::remember('global_STOCK_NEGATIVO', 300, fn () => Globales::where('nom_var', 'STOCK_NEGATIVO')->value('valor_var'));
         $permitirStockNegativo = ($stockNegativo == '1');
 
         if (!empty($detalle->promo_id)) {
@@ -1949,7 +2034,7 @@ class VentasController extends Controller
             abort(400, 'El ticket solicitado no es una preventa.');
         }
 
-        $corporateData  = CorporateData::pluck('description_item', 'item')->toArray();
+        $corporateData  = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
         $numeroPreventa = str_pad($venta->id, 6, '0', STR_PAD_LEFT);
         $barcodeSvg     = BarcodeHelper::generateSvg($numeroPreventa, 2, 55);
 
