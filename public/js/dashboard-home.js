@@ -464,4 +464,139 @@ $(function () {
         });
     });
 
+    // ── CONTROL INTERNO — filtros de período ──────────────────────────────────
+
+    function ciFormatCLP(n) {
+        return '$' + Math.round(Number(n)).toLocaleString('es-CL');
+    }
+
+    function ciFormatNum(n, dec) {
+        return Number(n).toLocaleString('es-CL', {
+            minimumFractionDigits: dec || 0,
+            maximumFractionDigits: dec || 0
+        });
+    }
+
+    function ciCalcularRango(rango) {
+        var hoy = new Date();
+        function isoFmt(d) { return d.toISOString().split('T')[0]; }
+        var desde, hasta = isoFmt(hoy);
+        if (rango === 'semana') {
+            var lunes = new Date(hoy);
+            lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+            desde = isoFmt(lunes);
+        } else if (rango === 'mes') {
+            desde = isoFmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+        } else if (rango === 'trimestre') {
+            desde = isoFmt(new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1));
+        } else if (rango === 'semestre') {
+            desde = isoFmt(new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1));
+        } else if (rango === 'anio') {
+            desde = isoFmt(new Date(hoy.getFullYear(), 0, 1));
+        }
+        return { desde: desde, hasta: hasta };
+    }
+
+    function ciRenderData(data) {
+        var anu    = data.anulaciones;
+        var mermas = data.mermas;
+
+        // KPIs
+        var hoyVal = anu.cantidadHoy || 0;
+        $('#ci-kpi-anu-hoy').text(hoyVal).css('color', hoyVal > 0 ? '#c0392b' : '#27ae60');
+        $('#ci-kpi-anu-total').text(anu.totalMes || 0);
+        $('#ci-kpi-anu-monto').text(ciFormatCLP(anu.montoMes || 0));
+        $('#ci-kpi-merma-costo').text(ciFormatCLP(mermas.costoMes || 0));
+        $('#ci-kpi-merma-note').text((mermas.cantidadMes || 0) + ' registros de merma.');
+
+        // Tabla anulaciones
+        if (anu.porUsuario && anu.porUsuario.length > 0) {
+            var html = '<table class="home-modal-table"><thead><tr>'
+                + '<th style="text-align:left;">Usuario</th>'
+                + '<th style="text-align:center;">Cantidad</th>'
+                + '<th style="text-align:right;">Monto anulado</th>'
+                + '</tr></thead><tbody>';
+            anu.porUsuario.forEach(function (row) {
+                var badgeStyle = row.cantidad >= 5
+                    ? 'background:#ffe0e0;color:#c0392b'
+                    : 'background:#fff8e1;color:#856404';
+                html += '<tr>'
+                    + '<td style="text-align:left;">' + row.usuario + '</td>'
+                    + '<td style="text-align:center;"><span style="display:inline-block;' + badgeStyle + ';padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">' + row.cantidad + '</span></td>'
+                    + '<td style="text-align:right;color:#c0392b;font-weight:600;">' + ciFormatCLP(row.montoTotal) + '</td>'
+                    + '</tr>';
+            });
+            html += '</tbody><tfoot><tr style="background:#fff0f0;">'
+                + '<td style="text-align:left;"><strong>Total</strong></td>'
+                + '<td style="text-align:center;"><strong>' + (anu.totalMes || 0) + '</strong></td>'
+                + '<td style="text-align:right;color:#c0392b;"><strong>' + ciFormatCLP(anu.montoMes || 0) + '</strong></td>'
+                + '</tr></tfoot></table>';
+            $('#ci-container-anulaciones').html('<div class="table-responsive">' + html + '</div>');
+        } else {
+            $('#ci-container-anulaciones').html('<div class="home-empty" style="color:#27ae60;"><i class="fa fa-check-circle"></i> Sin anulaciones en este período.</div>');
+        }
+
+        // Tabla mermas
+        if (mermas.porProducto && mermas.porProducto.length > 0) {
+            var html2 = '<table class="home-modal-table"><thead><tr>'
+                + '<th style="text-align:left;">Producto</th>'
+                + '<th style="text-align:left;">Categoría</th>'
+                + '<th style="text-align:right;">Cant.</th>'
+                + '<th style="text-align:right;">Costo</th>'
+                + '</tr></thead><tbody>';
+            mermas.porProducto.forEach(function (row) {
+                html2 += '<tr>'
+                    + '<td style="text-align:left;">' + row.producto + '</td>'
+                    + '<td style="text-align:left;font-size:11px;color:#6b7280;">' + row.categoria + '</td>'
+                    + '<td style="text-align:right;">' + ciFormatNum(row.cantidadTotal, 1) + '</td>'
+                    + '<td style="text-align:right;color:#8e44ad;font-weight:600;">' + ciFormatCLP(row.costoTotal) + '</td>'
+                    + '</tr>';
+            });
+            html2 += '</tbody><tfoot><tr style="background:#f5eeff;">'
+                + '<td colspan="3" style="text-align:left;"><strong>Costo total mermas</strong></td>'
+                + '<td style="text-align:right;color:#8e44ad;"><strong>' + ciFormatCLP(mermas.costoMes || 0) + '</strong></td>'
+                + '</tr></tfoot></table>';
+            $('#ci-container-mermas').html('<div class="table-responsive">' + html2 + '</div>');
+        } else {
+            $('#ci-container-mermas').html('<div class="home-empty" style="color:#27ae60;"><i class="fa fa-check-circle"></i> Sin mermas en este período.</div>');
+        }
+    }
+
+    function cargarControlInterno(desde, hasta) {
+        $('#ci-container-anulaciones').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
+        $('#ci-container-mermas').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
+        $.ajax({
+            url: '/dashboard/control-interno',
+            type: 'GET',
+            data: { desde: desde, hasta: hasta },
+            success: function (data) {
+                ciRenderData(data);
+            },
+            error: function () {
+                toastr.error('Error al cargar datos de Control Interno');
+                $('#ci-container-anulaciones').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
+                $('#ci-container-mermas').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
+            }
+        });
+    }
+
+    var ciLabels = {
+        semana: 'Esta semana', mes: 'Este mes',
+        trimestre: 'Este trimestre', semestre: 'Este semestre', anio: 'Este año'
+    };
+
+    $(document).on('click', '.ci-periodo-btn', function () {
+        var rango = $(this).data('rango');
+        $('.ci-periodo-btn').removeClass('btn-primary active').addClass('btn-default');
+        $(this).removeClass('btn-default').addClass('btn-primary active');
+        $('#ci-periodo-label').text(ciLabels[rango] || rango);
+        var f = ciCalcularRango(rango);
+        cargarControlInterno(f.desde, f.hasta);
+    });
+
+    // Disparar "Esta semana" por defecto al cargar el dashboard
+    if ($('.ci-periodo-btn').length) {
+        $('.ci-periodo-btn[data-rango="semana"]').trigger('click');
+    }
+
 });

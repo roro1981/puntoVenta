@@ -213,6 +213,7 @@ Route::get('/users/{uuid}/show', [UsersController::class, 'getUser']);
 Route::put('/users/{uuid}/edit', [UsersController::class, 'update']);
 Route::delete('/users/{uuid}/delete', [UsersController::class, 'delete']);
 Route::get('/users/menus', [UsersController::class, 'getUserMenus'])->middleware('auth')->name('user.menus');
+Route::get('/dashboard/control-interno', [UsersController::class, 'controlInternoData'])->middleware('auth');
 Route::get('/usuarios/roles', [UsersController::class, 'indexRoles']);
 Route::get('/roles', [UsersController::class, 'rolesTable']);
 Route::get('roles/{id}/ver', [UsersController::class, 'ver'])->name('roles.ver');

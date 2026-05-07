@@ -426,9 +426,20 @@
 .home-dias-alerta  { background: #fff3cd; color: #956a00; }
 .home-dias-ok      { background: #e6f4ea; color: #1a6b3c; }
 
+/* ─── Grid Control Interno: 4 cols auto-fill en desktop ─── */
+.home-grid-ci {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* =========================================================
+   RESPONSIVE — Tablets y Móviles
+   ========================================================= */
+
+/* ── Laptop / tablet grande (< 1200px) ───────────────────── */
 @media (max-width: 1199px) {
-  .home-grid-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .home-grid-cards,
+  .home-grid-ci {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .home-panels,
@@ -438,26 +449,214 @@
   }
 }
 
-@media (max-width: 767px) {
-  .home-hero {
-    flex-direction: column;
-    padding: 16px;
+/* ── Tablet (< 992px) ────────────────────────────────────── */
+@media (max-width: 991px) {
+  .home-grid-cards,
+  .home-grid-ci {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-grid-cards {
-    grid-template-columns: 1fr;
+  .home-hero {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+
+  .home-status-card {
+    min-width: 0;
+  }
+
+  .home-kpi-value {
+    font-size: 20px;
+  }
+
+  .home-panel h4 {
+    font-size: 15px;
+  }
+
+  .home-section {
+    padding: 16px 14px 10px;
+  }
+}
+
+/* ── Móvil (< 768px) ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .home-dashboard {
+    padding: 4px 0 4px;
+  }
+
+  /* Hero */
+  .home-hero {
+    flex-direction: column;
+    padding: 14px;
+    gap: 12px;
   }
 
   .home-hero h3 {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .home-hero p {
+    font-size: 13px;
+  }
+
+  .home-hero-brand {
+    gap: 10px;
+  }
+
+  .home-hero-logo {
+    width: 48px;
+    height: 48px;
   }
 
   .home-status-card {
     min-width: 0;
     max-width: none;
+    border-radius: 12px;
   }
 
+  .home-status-title {
+    font-size: 18px;
+  }
+
+  /* Tarjetas KPI */
+  .home-grid-cards,
+  .home-grid-ci {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home-kpi {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .home-kpi-value {
+    font-size: 19px;
+    margin-top: 6px;
+  }
+
+  .home-kpi-label {
+    font-size: 11px;
+  }
+
+  .home-kpi-note {
+    font-size: 11px;
+  }
+
+  .home-kpi-actions .btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  /* Secciones */
+  .home-section {
+    padding: 14px 12px 8px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+  }
+
+  .home-section-title {
+    font-size: 14px;
+  }
+
+  .home-section-header {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Panels y grids */
+  .home-panels,
+  .home-subgrid,
+  .home-subgrid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .home-panel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .home-panel h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  /* Gráficos */
+  .home-chart-wrap {
+    min-height: 200px;
+  }
+
+  /* Forma de pago: evitar overflow en nombre + montos */
+  .home-payment-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 13px;
+  }
+
+  /* Tablas */
+  .home-modal-table {
+    font-size: 12px;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .home-modal-table th,
+  .home-modal-table td {
+    padding: 8px 8px;
+    white-space: nowrap;
+  }
+
+  /* Cajas */
   .home-cashbox-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Botones período Control Interno */
+  .ci-periodo-btn {
+    margin-bottom: 5px;
+  }
+}
+
+/* ── Móvil pequeño (< 480px) ─────────────────────────────── */
+@media (max-width: 479px) {
+  .home-kpi-value {
+    font-size: 17px;
+  }
+
+  .home-hero h3 {
+    font-size: 17px;
+  }
+
+  .home-section-title {
+    font-size: 13px;
+  }
+
+  .home-section-badge {
+    font-size: 10px;
+    padding: 3px 10px;
+  }
+
+  .home-panel h4 {
+    font-size: 13px;
+  }
+}
+
+/* ── Móvil muy pequeño / iPhone SE (< 360px) ─────────────── */
+@media (max-width: 359px) {
+  .home-grid-cards,
+  .home-grid-ci {
+    grid-template-columns: 1fr;
+  }
+
+  .home-hero-brand {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-hero-logo {
+    width: 40px;
+    height: 40px;
   }
 }

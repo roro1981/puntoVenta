@@ -554,6 +554,69 @@
                             </div>
                           </div>
 
+                          {{-- ══════════════════════════════════════════════════════════
+                               SECCIÓN CONTROL INTERNO: ANULACIONES Y MERMAS
+                          ══════════════════════════════════════════════════════════ --}}
+                          <div class="home-section">
+                            <div class="home-section-header">
+                              <span class="home-section-badge" style="background:#fff0f0;color:#c0392b;border:1px solid #f5c6cb;">Control Interno</span>
+                              <span class="home-section-title">Anulaciones y Mermas — <span id="ci-periodo-label">cargando...</span></span>
+                            </div>
+
+                            {{-- Botones de período --}}
+                            <div style="margin-bottom:14px;">
+                              <button class="btn btn-default btn-xs ci-periodo-btn" data-rango="semana">Esta semana</button>
+                              <button class="btn btn-default btn-xs ci-periodo-btn" data-rango="mes">Este mes</button>
+                              <button class="btn btn-default btn-xs ci-periodo-btn" data-rango="trimestre">Este trimestre</button>
+                              <button class="btn btn-default btn-xs ci-periodo-btn" data-rango="semestre">Este semestre</button>
+                              <button class="btn btn-default btn-xs ci-periodo-btn" data-rango="anio">Este año</button>
+                            </div>
+
+                            <div class="home-section-sub">Resumen</div>
+                            <div class="home-grid-cards home-grid-ci">
+                              <div class="home-kpi">
+                                <div class="home-kpi-label">Anulaciones hoy</div>
+                                <div class="home-kpi-value" id="ci-kpi-anu-hoy" style="color:#27ae60;">—</div>
+                                <div class="home-kpi-note">Ítems anulados en el día.</div>
+                              </div>
+                              <div class="home-kpi">
+                                <div class="home-kpi-label">Anulaciones período</div>
+                                <div class="home-kpi-value" id="ci-kpi-anu-total" style="color:#e67e22;">—</div>
+                                <div class="home-kpi-note">ítems anulados.</div>
+                              </div>
+                              <div class="home-kpi">
+                                <div class="home-kpi-label">Monto anulado</div>
+                                <div class="home-kpi-value" id="ci-kpi-anu-monto" style="color:#c0392b;">—</div>
+                                <div class="home-kpi-note">Valor de ventas anuladas.</div>
+                              </div>
+                              <div class="home-kpi">
+                                <div class="home-kpi-label">Costo mermas</div>
+                                <div class="home-kpi-value" id="ci-kpi-merma-costo" style="color:#8e44ad;">—</div>
+                                <div class="home-kpi-note" id="ci-kpi-merma-note">registros de merma.</div>
+                              </div>
+                            </div>
+
+                            <div class="home-panels" style="margin-top:18px;">
+
+                              {{-- Anulaciones por usuario --}}
+                              <div class="home-panel">
+                                <h4><i class="fa fa-ban" style="color:#c0392b;margin-right:6px;"></i>Anulaciones por usuario</h4>
+                                <div id="ci-container-anulaciones">
+                                  <div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>
+                                </div>
+                              </div>
+
+                              {{-- Mermas por producto --}}
+                              <div class="home-panel">
+                                <h4><i class="fa fa-exclamation-triangle" style="color:#8e44ad;margin-right:6px;"></i>Mermas por producto</h4>
+                                <div id="ci-container-mermas">
+                                  <div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>
+                                </div>
+                              </div>
+
+                            </div>
+                          </div>
+
                         </div>{{-- /home-dashboard gerencial --}}
 
                         @elseif($tipoDashboard === 'administrador')

@@ -685,6 +685,64 @@ class UsersController extends Controller
                 ];
             })->all();
 
+        // ── Anulaciones del mes por usuario ────────────────────────────────────
+        $anulacionesMes = DB::table('detalles_ventas as dv')
+            ->join('users as u', 'u.id', '=', 'dv.user_anulacion_id')
+            ->whereNotNull('dv.user_anulacion_id')
+            ->whereNotNull('dv.fecha_anulacion')
+            ->whereBetween('dv.fecha_anulacion', [$inicioMes, Carbon::now()])
+            ->selectRaw('
+                u.name as usuario,
+                COUNT(*) as cantidad,
+                SUM(dv.subtotal_linea) as monto_total
+            ')
+            ->groupBy('u.name')
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->get()
+            ->map(fn ($r) => [
+                'usuario'    => $r->usuario,
+                'cantidad'   => (int) $r->cantidad,
+                'montoTotal' => (float) $r->monto_total,
+            ])->all();
+
+        $totalAnulacionesMes = array_sum(array_column($anulacionesMes, 'cantidad'));
+        $montoAnulacionesMes = array_sum(array_column($anulacionesMes, 'montoTotal'));
+
+        // Anulaciones de hoy (para alerta rápida)
+        $anulacionesHoy = (int) DB::table('detalles_ventas')
+            ->whereNotNull('user_anulacion_id')
+            ->whereDate('fecha_anulacion', $hoy)
+            ->count();
+
+        // ── Mermas del mes (historial_movimientos tipo MERMA) ──────────────────
+        $mermasMes = DB::table('historial_movimientos as hm')
+            ->join('productos as p', 'p.id', '=', 'hm.producto_id')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->whereRaw("UPPER(hm.tipo_mov) LIKE '%MERMA%'")
+            ->whereBetween('hm.fecha', [$inicioMes, Carbon::now()])
+            ->selectRaw('
+                COALESCE(c.descripcion_categoria, "Sin categoria") as categoria,
+                p.descripcion as producto,
+                SUM(ABS(hm.cantidad)) as cantidad_total,
+                SUM(ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0)) as costo_total
+            ')
+            ->groupBy('p.id', 'p.descripcion', 'c.descripcion_categoria')
+            ->orderByDesc(DB::raw('SUM(ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0))'))
+            ->limit(15)
+            ->get()
+            ->map(fn ($r) => [
+                'producto'      => $r->producto,
+                'categoria'     => $r->categoria,
+                'cantidadTotal' => (float) $r->cantidad_total,
+                'costoTotal'    => (float) $r->costo_total,
+            ])->all();
+
+        $costoMermasMes    = array_sum(array_column($mermasMes, 'costoTotal'));
+        $cantidadMermasMes = (int) DB::table('historial_movimientos')
+            ->whereRaw("UPPER(tipo_mov) LIKE '%MERMA%'")
+            ->whereBetween('fecha', [$inicioMes, Carbon::now()])
+            ->count();
+
         $insights = [];
         $insights[] = $ticketsHoy > 0
             ? ($tipoNegocio === 'RESTAURANT'
@@ -755,6 +813,17 @@ class UsersController extends Controller
             'sobrestock' => $sobrestock,
             'productosNuevos' => $productosNuevos,
             'productosEstancados' => $estancadosRaw,
+            'anulaciones' => [
+                'porUsuario'    => $anulacionesMes,
+                'totalMes'      => $totalAnulacionesMes,
+                'montoMes'      => $montoAnulacionesMes,
+                'cantidadHoy'   => $anulacionesHoy,
+            ],
+            'mermas' => [
+                'porProducto'   => $mermasMes,
+                'costoMes'      => $costoMermasMes,
+                'cantidadMes'   => $cantidadMermasMes,
+            ],
             'details' => [
                 'stockAlerts' => $alertaStockProductos,
                 'outOfStockByCategory' => $sinStockPorCategoria,
@@ -832,6 +901,87 @@ class UsersController extends Controller
             'score' => $score,
         ];
     }
+
+    /**
+     * Devuelve anulaciones y mermas filtradas por rango de fechas.
+     * GET /dashboard/control-interno?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+     */
+    public function controlInternoData(Request $request)
+    {
+        $desde = $request->query('desde')
+            ? Carbon::parse($request->query('desde'))->startOfDay()
+            : Carbon::now()->startOfWeek();
+        $hasta = $request->query('hasta')
+            ? Carbon::parse($request->query('hasta'))->endOfDay()
+            : Carbon::now()->endOfDay();
+
+        // Anulaciones por usuario en el rango
+        $anulacionesPorUsuario = DB::table('detalles_ventas as dv')
+            ->join('users as u', 'u.id', '=', 'dv.user_anulacion_id')
+            ->whereNotNull('dv.user_anulacion_id')
+            ->whereNotNull('dv.fecha_anulacion')
+            ->whereBetween('dv.fecha_anulacion', [$desde, $hasta])
+            ->selectRaw('u.name as usuario, COUNT(*) as cantidad, SUM(dv.subtotal_linea) as monto_total')
+            ->groupBy('u.name')
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->get()
+            ->map(fn ($r) => [
+                'usuario'    => $r->usuario,
+                'cantidad'   => (int) $r->cantidad,
+                'montoTotal' => (float) $r->monto_total,
+            ])->all();
+
+        $totalAnulaciones = array_sum(array_column($anulacionesPorUsuario, 'cantidad'));
+        $montoAnulaciones = array_sum(array_column($anulacionesPorUsuario, 'montoTotal'));
+        $anulacionesHoy   = (int) DB::table('detalles_ventas')
+            ->whereNotNull('user_anulacion_id')
+            ->whereDate('fecha_anulacion', Carbon::today())
+            ->count();
+
+        // Mermas en el rango
+        $mermasPorProducto = DB::table('historial_movimientos as hm')
+            ->join('productos as p', 'p.id', '=', 'hm.producto_id')
+            ->leftJoin('categorias as c', 'c.id', '=', 'p.categoria_id')
+            ->whereRaw("UPPER(hm.tipo_mov) LIKE '%MERMA%'")
+            ->whereBetween('hm.fecha', [$desde, $hasta])
+            ->selectRaw('
+                COALESCE(c.descripcion_categoria, "Sin categoria") as categoria,
+                p.descripcion as producto,
+                SUM(ABS(hm.cantidad)) as cantidad_total,
+                SUM(ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0)) as costo_total
+            ')
+            ->groupBy('p.id', 'p.descripcion', 'c.descripcion_categoria')
+            ->orderByDesc(DB::raw('SUM(ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0))'))
+            ->limit(15)
+            ->get()
+            ->map(fn ($r) => [
+                'producto'      => $r->producto,
+                'categoria'     => $r->categoria,
+                'cantidadTotal' => (float) $r->cantidad_total,
+                'costoTotal'    => (float) $r->costo_total,
+            ])->all();
+
+        $costoMermas    = array_sum(array_column($mermasPorProducto, 'costoTotal'));
+        $cantidadMermas = (int) DB::table('historial_movimientos')
+            ->whereRaw("UPPER(tipo_mov) LIKE '%MERMA%'")
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->count();
+
+        return response()->json([
+            'anulaciones' => [
+                'porUsuario'  => $anulacionesPorUsuario,
+                'totalMes'    => $totalAnulaciones,
+                'montoMes'    => $montoAnulaciones,
+                'cantidadHoy' => $anulacionesHoy,
+            ],
+            'mermas' => [
+                'porProducto' => $mermasPorProducto,
+                'costoMes'    => $costoMermas,
+                'cantidadMes' => $cantidadMermas,
+            ],
+        ]);
+    }
+
     public function getUserMenus()
     {
         $user = Auth::user();
