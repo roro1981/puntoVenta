@@ -13,6 +13,7 @@ use App\Models\HistorialMovimientos;
 use App\Models\PromocionDetalle;
 use App\Models\CorporateData;
 use App\Models\Caja;
+use App\Models\RetiroCaja;
 use App\Models\Comanda;
 use App\Models\Globales;
 use App\Models\RangoPrecio;
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class VentasController extends Controller
 {
@@ -218,7 +220,17 @@ class VentasController extends Controller
                     'observaciones_apertura' => $caja->observaciones,
                     'total_ventas' => $totalVentas,
                     'cantidad_ventas' => $cantidadVentas,
-                    'monto_esperado' => $caja->monto_inicial + $totalVentas,
+                    'retiros' => RetiroCaja::where('caja_id', $caja->id)
+                        ->orderBy('created_at')
+                        ->get(['id', 'monto', 'motivo', 'created_at'])
+                        ->map(fn ($r) => [
+                            'id'         => $r->id,
+                            'monto'      => (float) $r->monto,
+                            'motivo'     => $r->motivo,
+                            'created_at' => $r->created_at->format('d/m/Y H:i'),
+                        ])->values()->toArray(),
+                    'total_retiros' => (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto'),
+                    'monto_esperado' => $caja->monto_inicial + $totalVentas - (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto'),
                     'desglose' => [
                         'efectivo' => $totalEfectivo,
                         'tarjeta_debito' => $totalTarjetaDebito,
@@ -255,7 +267,8 @@ class VentasController extends Controller
 
             // Calcular totales
             $totalVentas = (float) Venta::where('caja_id', $caja->id)->sum('total');
-            $montoEsperado = $caja->monto_inicial + $totalVentas;
+            $totalRetiros = (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto');
+            $montoEsperado = $caja->monto_inicial + $totalVentas - $totalRetiros;
             $montoFinalDeclarado = $request->monto_final_declarado;
             $diferencia = $montoFinalDeclarado - $montoEsperado;
 
@@ -280,6 +293,50 @@ class VentasController extends Controller
             return response()->json([
                 'status' => 'ERROR',
                 'message' => 'Error al cerrar caja: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Registrar un retiro de efectivo en la caja activa
+     */
+    public function registrarRetiroCaja(Request $request)
+    {
+        $request->validate([
+            'monto'     => 'required|numeric|min:1',
+            'motivo'    => 'required|string|min:3|max:255',
+            'tipo_caja' => 'required|string|in:ALMACEN,RESTAURANT',
+        ]);
+
+        try {
+            $tipoCaja = strtoupper($request->tipo_caja);
+            $caja = Caja::cajaAbiertaUsuario(Auth::id(), $tipoCaja);
+
+            if (!$caja) {
+                return response()->json([
+                    'status'  => 'ERROR',
+                    'message' => 'No tienes una caja abierta',
+                ], 404);
+            }
+
+            RetiroCaja::create([
+                'caja_id'    => $caja->id,
+                'monto'      => $request->monto,
+                'motivo'     => trim($request->motivo),
+                'creado_por' => Auth::id(),
+            ]);
+
+            $totalRetiros = (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto');
+
+            return response()->json([
+                'status'        => 'OK',
+                'message'       => 'Retiro registrado correctamente',
+                'total_retiros' => $totalRetiros,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'ERROR',
+                'message' => 'Error al registrar retiro: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -937,7 +994,12 @@ class VentasController extends Controller
 
         $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
 
-        $pdf = Pdf::loadView('ventas.ticket_cierre_caja', compact('caja', 'cantidadVentas', 'totalVentas', 'desglose', 'corporateData'));
+        $retiros = RetiroCaja::where('caja_id', $caja->id)
+            ->orderBy('created_at')
+            ->get(['monto', 'motivo', 'created_at']);
+        $totalRetiros = (float) $retiros->sum('monto');
+
+        $pdf = Pdf::loadView('ventas.ticket_cierre_caja', compact('caja', 'cantidadVentas', 'totalVentas', 'desglose', 'corporateData', 'retiros', 'totalRetiros'));
         $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
 
         return $pdf->stream('cierre-caja-' . str_pad($caja->id, 4, '0', STR_PAD_LEFT) . '.pdf');
@@ -949,6 +1011,204 @@ class VentasController extends Controller
     public function historialCierres()
     {
         return view('ventas.historial_cierres');
+    }
+
+    /**
+     * Consolida múltiples cierres de caja y devuelve JSON con resumen
+     */
+    public function consolidarCajas(Request $request)
+    {
+        try {
+            $ids = $request->input('ids', []);
+
+            if (!is_array($ids) || count($ids) < 2) {
+                return response()->json(['error' => 'Selecciona al menos 2 cierres para consolidar.'], 422);
+            }
+
+            $ids = array_map('intval', $ids);
+
+            $user = Auth::user();
+            $puedeVerTodos = puedeVerTodosCierres();
+
+            $query = Caja::with('usuario')->where('estado', 'cerrada')->whereIn('id', $ids);
+            if (!$puedeVerTodos) {
+                $query->where('user_id', $user->id);
+            }
+
+            $cajas = $query->orderBy('fecha_apertura')->get();
+
+            if ($cajas->count() < 2) {
+                return response()->json(['error' => 'No se encontraron suficientes cierres con los IDs proporcionados.'], 404);
+            }
+
+            // Calcular desglose consolidado con una sola query
+            $desgloseVentas = Venta::whereIn('caja_id', $cajas->pluck('id'))
+                ->selectRaw('forma_pago, SUM(total) as monto, COUNT(*) as cantidad')
+                ->groupBy('forma_pago')
+                ->get()
+                ->keyBy('forma_pago');
+
+            $cantidadVentas = (int) $desgloseVentas->sum('cantidad');
+            $totalVentas    = (float) $desgloseVentas->sum('monto');
+            $totalMixto     = (float) ($desgloseVentas->get('MIXTO')?->monto ?? 0);
+
+            $desglose = [
+                'efectivo'        => (float) ($desgloseVentas->get('EFECTIVO')?->monto        ?? 0),
+                'tarjeta_debito'  => (float) ($desgloseVentas->get('TARJETA_DEBITO')?->monto  ?? 0),
+                'tarjeta_credito' => (float) ($desgloseVentas->get('TARJETA_CREDITO')?->monto ?? 0),
+                'transferencia'   => (float) ($desgloseVentas->get('TRANSFERENCIA')?->monto   ?? 0),
+                'cheque'          => (float) ($desgloseVentas->get('CHEQUE')?->monto          ?? 0),
+                'mixto'           => $totalMixto,
+            ];
+
+            if ($totalMixto > 0) {
+                $mixtoDesglose = FormaPagoVenta::whereIn(
+                    'venta_id',
+                    Venta::whereIn('caja_id', $cajas->pluck('id'))->where('forma_pago', 'MIXTO')->select('id')
+                )
+                    ->selectRaw('forma_pago, SUM(monto) as monto')
+                    ->groupBy('forma_pago')
+                    ->pluck('monto', 'forma_pago');
+
+                $desglose['efectivo']        += (float) ($mixtoDesglose->get('EFECTIVO')        ?? 0);
+                $desglose['tarjeta_debito']  += (float) ($mixtoDesglose->get('TARJETA_DEBITO')  ?? 0);
+                $desglose['tarjeta_credito'] += (float) ($mixtoDesglose->get('TARJETA_CREDITO') ?? 0);
+                $desglose['transferencia']   += (float) ($mixtoDesglose->get('TRANSFERENCIA')   ?? 0);
+                $desglose['cheque']          += (float) ($mixtoDesglose->get('CHEQUE')          ?? 0);
+            }
+
+            $montoInicalTotal    = (float) $cajas->sum('monto_inicial');
+            $montoDeclaradoTotal = (float) $cajas->sum('monto_final_declarado');
+
+            // Retiros consolidados de todas las cajas
+            $retirosTodos = RetiroCaja::whereIn('caja_id', $cajas->pluck('id'))
+                ->orderBy('created_at')
+                ->get(['caja_id', 'monto', 'motivo', 'created_at']);
+            $totalRetirosConsolidado = (float) $retirosTodos->sum('monto');
+
+            $diferenciaTotal     = $montoDeclaradoTotal - ($montoInicalTotal + $totalVentas - $totalRetirosConsolidado);
+
+            $detalleCajas = $cajas->map(fn ($c) => [
+                'id'              => str_pad($c->id, 4, '0', STR_PAD_LEFT),
+                'usuario'         => $c->usuario->name ?? 'N/A',
+                'fecha_apertura'  => $c->fecha_apertura->format('d/m/Y H:i'),
+                'fecha_cierre'    => $c->fecha_cierre->format('d/m/Y H:i'),
+                'monto_inicial'   => (float) $c->monto_inicial,
+                'monto_ventas'    => (float) $c->monto_ventas,
+                'monto_declarado' => (float) $c->monto_final_declarado,
+                'diferencia'      => (float) $c->diferencia,
+            ]);
+
+            return response()->json([
+                'cajas'             => $detalleCajas,
+                'ids'               => $cajas->pluck('id'),
+                'fecha_desde'       => $cajas->first()->fecha_apertura->format('d/m/Y H:i'),
+                'fecha_hasta'       => $cajas->last()->fecha_cierre->format('d/m/Y H:i'),
+                'cantidad_ventas'   => $cantidadVentas,
+                'total_ventas'      => $totalVentas,
+                'monto_inicial'     => $montoInicalTotal,
+                'total_retiros'     => $totalRetirosConsolidado,
+                'monto_esperado'    => $montoInicalTotal + $totalVentas - $totalRetirosConsolidado,
+                'monto_declarado'   => $montoDeclaradoTotal,
+                'diferencia'        => $diferenciaTotal,
+                'desglose'          => $desglose,
+                'retiros'           => $retirosTodos->map(fn($r) => [
+                    'caja_id'    => $r->caja_id,
+                    'motivo'     => $r->motivo,
+                    'monto'      => (float) $r->monto,
+                    'created_at' => \Carbon\Carbon::parse($r->created_at)->format('d/m/Y H:i'),
+                ]),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al consolidar: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Genera ticket PDF consolidado de múltiples cierres
+     */
+    public function imprimirConsolidado(Request $request)
+    {
+        $ids = array_filter(array_map('intval', explode(',', (string) $request->query('ids', ''))));
+
+        abort_if(count($ids) < 2, 400, 'Se requieren al menos 2 IDs.');
+
+        $user = Auth::user();
+        $puedeVerTodos = puedeVerTodosCierres();
+
+        $query = Caja::with('usuario')->where('estado', 'cerrada')->whereIn('id', $ids);
+        if (!$puedeVerTodos) {
+            $query->where('user_id', $user->id);
+        }
+
+        $cajas = $query->orderBy('fecha_apertura')->get();
+        abort_if($cajas->count() < 2, 404, 'No se encontraron cierres.');
+
+        $desgloseVentas = Venta::whereIn('caja_id', $cajas->pluck('id'))
+            ->selectRaw('forma_pago, SUM(total) as monto, COUNT(*) as cantidad')
+            ->groupBy('forma_pago')
+            ->get()
+            ->keyBy('forma_pago');
+
+        $cantidadVentas = (int) $desgloseVentas->sum('cantidad');
+        $totalVentas    = (float) $desgloseVentas->sum('monto');
+        $totalMixto     = (float) ($desgloseVentas->get('MIXTO')?->monto ?? 0);
+
+        $desglose = [
+            'efectivo'        => (float) ($desgloseVentas->get('EFECTIVO')?->monto        ?? 0),
+            'tarjeta_debito'  => (float) ($desgloseVentas->get('TARJETA_DEBITO')?->monto  ?? 0),
+            'tarjeta_credito' => (float) ($desgloseVentas->get('TARJETA_CREDITO')?->monto ?? 0),
+            'transferencia'   => (float) ($desgloseVentas->get('TRANSFERENCIA')?->monto   ?? 0),
+            'cheque'          => (float) ($desgloseVentas->get('CHEQUE')?->monto          ?? 0),
+            'mixto'           => $totalMixto,
+        ];
+
+        if ($totalMixto > 0) {
+            $mixtoDesglose = FormaPagoVenta::whereIn(
+                'venta_id',
+                Venta::whereIn('caja_id', $cajas->pluck('id'))->where('forma_pago', 'MIXTO')->select('id')
+            )
+                ->selectRaw('forma_pago, SUM(monto) as monto')
+                ->groupBy('forma_pago')
+                ->pluck('monto', 'forma_pago');
+
+            $desglose['efectivo']        += (float) ($mixtoDesglose->get('EFECTIVO')        ?? 0);
+            $desglose['tarjeta_debito']  += (float) ($mixtoDesglose->get('TARJETA_DEBITO')  ?? 0);
+            $desglose['tarjeta_credito'] += (float) ($mixtoDesglose->get('TARJETA_CREDITO') ?? 0);
+            $desglose['transferencia']   += (float) ($mixtoDesglose->get('TRANSFERENCIA')   ?? 0);
+            $desglose['cheque']          += (float) ($mixtoDesglose->get('CHEQUE')          ?? 0);
+        }
+
+        $montoInicialTotal   = (float) $cajas->sum('monto_inicial');
+        $montoDeclaradoTotal = (float) $cajas->sum('monto_final_declarado');
+
+        $retiros      = RetiroCaja::whereIn('caja_id', $cajas->pluck('id'))->orderBy('created_at')->get();
+        $totalRetiros = (float) $retiros->sum('monto');
+        $diferenciaTotal     = $montoDeclaradoTotal - ($montoInicialTotal + $totalVentas - $totalRetiros);
+
+        $corporateData = Cache::remember('corporate_data', 3600, fn () => CorporateData::pluck('description_item', 'item')->toArray());
+
+        $pdf = Pdf::loadView('ventas.ticket_consolidado', compact(
+            'cajas', 'cantidadVentas', 'totalVentas', 'desglose',
+            'montoInicialTotal', 'montoDeclaradoTotal', 'diferenciaTotal', 'corporateData',
+            'retiros', 'totalRetiros'
+        ));
+        $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+
+        return $pdf->stream('consolidado-cajas.pdf');
+    }
+
+    /**
+     * Exporta a Excel un consolidado de múltiples cierres
+     */
+    public function exportarConsolidado(Request $request)
+    {
+        $ids = array_filter(array_map('intval', explode(',', (string) $request->query('ids', ''))));
+        abort_if(count($ids) < 2, 400, 'Se requieren al menos 2 IDs.');
+
+        $fileName = 'Consolidado_Cajas_' . now()->format('d-m-Y') . '.xlsx';
+        return Excel::download(new \App\Exports\ConsolidadoCajaExport($ids), $fileName);
     }
 
     /**
@@ -1047,6 +1307,12 @@ class VentasController extends Controller
             $cantidadVentas = $caja->ventas->count();
             $totalVentas = $caja->ventas->sum('total');
             
+            // Retiros de caja
+            $retiros = RetiroCaja::where('caja_id', $caja->id)
+                ->orderBy('created_at')
+                ->get(['monto', 'motivo', 'created_at']);
+            $totalRetiros = (float) $retiros->sum('monto');
+
             // Desglose por forma de pago
             $desglose = [
                 'efectivo' => 0,
@@ -1083,13 +1349,19 @@ class VentasController extends Controller
                     'duracion' => $caja->fecha_apertura->diffForHumans($caja->fecha_cierre, true),
                     'monto_inicial' => $caja->monto_inicial,
                     'monto_ventas' => $totalVentas,
-                    'monto_esperado' => $caja->monto_inicial + $totalVentas,
+                    'total_retiros' => $totalRetiros,
+                    'monto_esperado' => $caja->monto_inicial + $totalVentas - $totalRetiros,
                     'monto_declarado' => $caja->monto_final_declarado,
                     'diferencia' => $caja->diferencia,
                     'observaciones' => $caja->observaciones,
                     'cantidad_ventas' => $cantidadVentas
                 ],
-                'desglose' => $desglose
+                'desglose' => $desglose,
+                'retiros' => $retiros->map(fn($r) => [
+                    'motivo'     => $r->motivo,
+                    'monto'      => (float) $r->monto,
+                    'created_at' => \Carbon\Carbon::parse($r->created_at)->format('d/m/Y H:i'),
+                ]),
             ]);
             
         } catch (\Exception $e) {

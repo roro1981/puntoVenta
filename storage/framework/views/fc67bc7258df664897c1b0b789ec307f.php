@@ -1,10 +1,6 @@
-{{--
-    Partial: modal_ayuda
-    Uso: @include('partials.modal_ayuda', ['modulo' => 'ventas'])
-    Módulos disponibles: ventas | preventa | cierre_preventa | comandas
---}}
 
-@php
+
+<?php
     $ayuda = [
         'ventas' => [
             'titulo' => 'Generar Venta',
@@ -554,10 +550,10 @@
     ];
 
     $datos = $ayuda[$modulo] ?? null;
-@endphp
+?>
 
-@if($datos)
-{{-- Botón flotante ? --}}
+<?php if($datos): ?>
+
 <button type="button"
     id="btnAyudaModulo"
     data-toggle="modal"
@@ -571,7 +567,7 @@
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        background: {{ $datos['color'] }};
+        background: <?php echo e($datos['color']); ?>;
         color: #fff;
         border: none;
         font-size: 20px;
@@ -588,16 +584,17 @@
     onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.25)'"
 >?</button>
 
-{{-- Modal de ayuda --}}
+
 <div class="modal fade" id="modalAyudaModulo" tabindex="-1" role="dialog" aria-labelledby="tituloModalAyuda" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document" style="max-width: 680px;">
         <div class="modal-content" style="border-radius:12px; overflow:hidden; border:none;">
 
-            {{-- Header --}}
-            <div class="modal-header" style="background:{{ $datos['color'] }}; padding:18px 22px; border:none;">
+            
+            <div class="modal-header" style="background:<?php echo e($datos['color']); ?>; padding:18px 22px; border:none;">
                 <h4 class="modal-title" id="tituloModalAyuda" style="color:#fff; font-weight:700; font-size:18px; margin:0; display:flex; align-items:center; gap:10px;">
-                    <i class="fa {{ $datos['icono'] }}"></i>
-                    Ayuda — {{ $datos['titulo'] }}
+                    <i class="fa <?php echo e($datos['icono']); ?>"></i>
+                    Ayuda — <?php echo e($datos['titulo']); ?>
+
                 </h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"
                     style="color:#fff; opacity:0.85; font-size:22px; margin:0;">
@@ -607,58 +604,60 @@
 
             <div class="modal-body" style="padding:0; background:#f8fafc;">
 
-                {{-- Pasos --}}
+                
                 <div style="padding:20px 22px 10px;">
                     <p style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; font-weight:600; margin-bottom:14px;">
                         ¿Cómo funciona?
                     </p>
 
-                    @foreach($datos['pasos'] as $i => $paso)
+                    <?php $__currentLoopData = $datos['pasos']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $paso): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <div style="display:flex; gap:14px; margin-bottom:14px; align-items:flex-start;">
                         <div style="
                             min-width:36px; height:36px;
                             border-radius:50%;
-                            background:{{ $datos['color'] }}1a;
-                            color:{{ $datos['color'] }};
+                            background:<?php echo e($datos['color']); ?>1a;
+                            color:<?php echo e($datos['color']); ?>;
                             display:flex; align-items:center; justify-content:center;
                             font-size:15px;
                             flex-shrink:0;
                         ">
-                            <i class="fa {{ $paso['icono'] }}"></i>
+                            <i class="fa <?php echo e($paso['icono']); ?>"></i>
                         </div>
                         <div>
                             <div style="font-weight:700; font-size:13.5px; color:#1e293b; margin-bottom:3px;">
-                                {{ $i + 1 }}. {{ $paso['titulo'] }}
+                                <?php echo e($i + 1); ?>. <?php echo e($paso['titulo']); ?>
+
                             </div>
                             <div style="font-size:12.5px; color:#475569; line-height:1.6;">
-                                {!! $paso['desc'] !!}
+                                <?php echo $paso['desc']; ?>
+
                             </div>
                         </div>
                     </div>
-                    @if(!$loop->last)
+                    <?php if(!$loop->last): ?>
                     <div style="border-left:2px dashed #e2e8f0; height:8px; margin-left:17px; margin-bottom:14px;"></div>
-                    @endif
-                    @endforeach
+                    <?php endif; ?>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
 
-                {{-- Tips --}}
+                
                 <div style="background:#fff; border-top:1px solid #e2e8f0; padding:16px 22px 20px;">
                     <p style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; font-weight:600; margin-bottom:12px;">
                         <i class="fa fa-lightbulb-o" style="color:#f59e0b;"></i> Tips útiles
                     </p>
                     <ul style="margin:0; padding-left:0; list-style:none;">
-                        @foreach($datos['tips'] as $tip)
+                        <?php $__currentLoopData = $datos['tips']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tip): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <li style="display:flex; gap:8px; font-size:12.5px; color:#475569; margin-bottom:8px; align-items:flex-start; line-height:1.55;">
                             <span style="color:#f59e0b; font-size:11px; margin-top:3px; flex-shrink:0;">●</span>
-                            <span>{!! $tip !!}</span>
+                            <span><?php echo $tip; ?></span>
                         </li>
-                        @endforeach
-                        @if($modulo === 'config_datos_glob' && strtoupper(trim((string) \App\Models\Globales::where('nom_var','TIPO_NEGOCIO')->value('valor_var'))) === 'RESTAURANT')
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php if($modulo === 'config_datos_glob' && strtoupper(trim((string) \App\Models\Globales::where('nom_var','TIPO_NEGOCIO')->value('valor_var'))) === 'RESTAURANT'): ?>
                         <li style="display:flex; gap:8px; font-size:12.5px; color:#475569; margin-bottom:8px; align-items:flex-start; line-height:1.55;">
                             <span style="color:#f59e0b; font-size:11px; margin-top:3px; flex-shrink:0;">●</span>
                             <span><strong>PORCENTAJE_PROPINA</strong>: define el % de propina por defecto que se sugiere al cerrar una comanda o venta de restaurant.</span>
                         </li>
-                        @endif
+                        <?php endif; ?>
                     </ul>
                 </div>
 
@@ -683,4 +682,5 @@
     if (modal) { modal.setAttribute('data-ayuda-flotante','1'); document.body.appendChild(modal); }
 })();
 </script>
-@endif
+<?php endif; ?>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/partials/modal_ayuda.blade.php ENDPATH**/ ?>

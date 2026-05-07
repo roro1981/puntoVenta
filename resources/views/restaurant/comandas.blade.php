@@ -88,6 +88,17 @@
                 </div>
             </div>
 
+            <!-- Tabs de navegación: solo visibles en móvil/tablet (display controlado por CSS) -->
+            <div class="pos-mobile-tabs">
+                <button type="button" class="pos-tab-btn active" id="pos-tab-productos">
+                    <i class="fa fa-th-large"></i> Productos
+                </button>
+                <button type="button" class="pos-tab-btn" id="pos-tab-pedido">
+                    <i class="fa fa-shopping-cart"></i> Pedido
+                    <span class="pos-tab-order-badge" id="pos-tab-order-badge"></span>
+                </button>
+            </div>
+
             <div class="pos-body">
                 <!-- Panel izquierdo: Productos -->
                 <div class="pos-products-panel">
@@ -113,6 +124,13 @@
                     </div>
 
                     <div class="pos-order-footer">
+                        <div class="pos-obs-comanda-wrap">
+                            <label class="pos-obs-comanda-label"><i class="fa fa-sticky-note-o"></i> Nota del pedido</label>
+                            <input type="text" id="pos_obs_comanda" class="pos-obs-comanda-input"
+                                placeholder="Ej: alérgico a mariscos, silla para bebé..."
+                                maxlength="300">
+                        </div>
+
                         <div class="pos-propina-section">
                             <label class="pos-propina-checkbox">
                                 <input type="checkbox" id="pos_incluye_propina">
@@ -136,11 +154,17 @@
                         </div>
 
                         <div class="pos-action-buttons">
-                            <button type="button" class="pos-btn pos-btn-save" id="btn_guardar_pedido">
-                                <i class="fa fa-save"></i> Guardar
+                            <button type="button" class="pos-btn pos-btn-save" id="btn_guardar_pedido"
+                                title="Guardar pedido">
+                                <i class="fa fa-floppy-o"></i>
                             </button>
-                            <button type="button" class="pos-btn pos-btn-print" id="btn_imprimir_comanda" disabled>
-                                <i class="fa fa-print"></i> Imprimir
+                            <button type="button" class="pos-btn pos-btn-print" id="btn_imprimir_comanda" disabled
+                                title="Imprimir comanda">
+                                <i class="fa fa-print"></i>
+                            </button>
+                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
+                                title="Enviar ticket a cocina">
+                                <i class="fa fa-bell"></i>
                             </button>
                         </div>
                     </div>
@@ -203,6 +227,22 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalTicketCocina" tabindex="-1" aria-labelledby="tituloTicketCocina" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 400px;">
+        <div class="modal-content">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
+                <h4 class="modal-title" id="tituloTicketCocina"><i class="fa fa-cutlery"></i> Ticket Cocina</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <iframe id="ticketFrameCocina" style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalPlanoMesas" tabindex="-1" role="dialog" aria-labelledby="tituloPlanoMesas" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document" style="width: 92vw; max-width: 1200px; margin: 1rem auto;">
         <div class="modal-content">
@@ -227,6 +267,67 @@
 
 <script>
     window.posPropinaPorcentaje = @json((float)($porcentajePropina ?? 10));
+</script>
+
+<script>
+(function () {
+    // Expuesta globalmente para que comandas.js pueda llamarla directamente
+    window.actualizarTabBadge = function () {
+        var items = document.querySelectorAll('#pos_order_items .pos-order-item');
+        var badge = document.getElementById('pos-tab-order-badge');
+        if (!badge) return;
+        var total = 0;
+        items.forEach(function (item) {
+            var qty = item.querySelector('.pos-qty-number');
+            total += qty ? (parseInt(qty.textContent) || 1) : 1;
+        });
+        if (total > 0) {
+            badge.textContent = total;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    };
+
+    // Observar cambios en el panel de orden (nuevos items, cambios de cantidad)
+    $(function () {
+        var orderItems = document.getElementById('pos_order_items');
+        if (orderItems && window.MutationObserver) {
+            new MutationObserver(function () {
+                // setTimeout asegura que el DOM ya terminó de actualizarse
+                setTimeout(window.actualizarTabBadge, 50);
+            }).observe(orderItems, { childList: true, subtree: true, characterData: true });
+        }
+    });
+
+    // Control de tabs (solo activo en móvil)
+    document.addEventListener('click', function (e) {
+        var btnProductos = e.target.closest('#pos-tab-productos');
+        var btnPedido    = e.target.closest('#pos-tab-pedido');
+        var posBody      = document.querySelector('#modalTomarPedido .pos-body');
+        if (!posBody) return;
+
+        if (btnProductos) {
+            posBody.classList.remove('show-order');
+            document.getElementById('pos-tab-productos').classList.add('active');
+            document.getElementById('pos-tab-pedido').classList.remove('active');
+        }
+        if (btnPedido) {
+            posBody.classList.add('show-order');
+            document.getElementById('pos-tab-pedido').classList.add('active');
+            document.getElementById('pos-tab-productos').classList.remove('active');
+        }
+    });
+
+    // Resetear al tab de productos cada vez que se abre el modal POS
+    $('#modalTomarPedido').on('show.bs.modal', function () {
+        var posBody = $(this).find('.pos-body');
+        posBody.removeClass('show-order');
+        $('#pos-tab-productos').addClass('active');
+        $('#pos-tab-pedido').removeClass('active');
+        window.actualizarTabBadge();
+    });
+}());
 </script>
 
 @include('partials.modal_ayuda', ['modulo' => 'comandas'])

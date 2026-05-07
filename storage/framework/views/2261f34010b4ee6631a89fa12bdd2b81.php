@@ -1,6 +1,6 @@
 <script type="text/javascript" src="js/ventas/cierre_preventa.js"></script>
 <link rel="stylesheet" type="text/css" href="css/ventas/generar_ventas.css">
-<input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+<input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
 
 <style>
   :root {
@@ -594,7 +594,7 @@
 </div>
 
 <script>
-  const cajaAbierta = @json($cajaAbierta);
+  const cajaAbierta = <?php echo json_encode($cajaAbierta, 15, 512) ?>;
 </script>
 
 <!-- Modal Preventas Pendientes -->
@@ -638,4 +638,5 @@
   </div>
 </div>
 
-@include('partials.modal_ayuda', ['modulo' => 'cierre_preventa'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'cierre_preventa'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/ventas/cierre_preventa.blade.php ENDPATH**/ ?>

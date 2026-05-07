@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="css/ventas/historial_cierres.css" />
 <script type="text/javascript" src="js/ventas/historial_cierres.js"></script>
-<input type="hidden" id="token" value="{{ csrf_token() }}">
+<input type="hidden" id="token" value="<?php echo e(csrf_token()); ?>">
 
 <div class='row'>
     <div class='col-xs-12'>
@@ -97,7 +97,7 @@
     </div>
 </div>
 
-@include('partials.modal_ayuda', ['modulo' => 'cierres_caja'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'cierres_caja'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
 
 <!-- Modal Consolidar Cajas -->
 <div class="modal fade" id="modalConsolidar" tabindex="-1" role="dialog" data-backdrop="false">
@@ -134,3 +134,4 @@
     </div>
 </div>
 
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/ventas/historial_cierres.blade.php ENDPATH**/ ?>

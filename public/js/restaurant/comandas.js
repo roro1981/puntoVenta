@@ -417,8 +417,13 @@ function renderizarMesas(mesas) {
                     </span>
                 </div>
                 <div class="mesa-acciones-comanda">
-                    <button type="button" class="btn-imprimir-preventa" data-comanda-id="${mesa.comanda.id}">
-                        <i class="fa fa-print"></i> Imprimir preventa
+                    <button type="button" class="btn-imprimir-preventa" data-comanda-id="${mesa.comanda.id}"
+                        title="Imprimir preventa">
+                        <i class="fa fa-print"></i> Preventa
+                    </button>
+                    <button type="button" class="btn-cocina-mesa" data-comanda-id="${mesa.comanda.id}"
+                        title="Enviar ticket a cocina">
+                        <i class="fa fa-bell"></i> Cocina
                     </button>
                 </div>
             `;
@@ -449,7 +454,7 @@ function renderizarMesas(mesas) {
     // Eventos para las mesas
     $('.mesa-card-comanda').on('click', function(e) {
         // Evitar abrir modal si se hizo clic en botones de comensales
-        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa').length > 0) {
+        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa, .btn-cocina-mesa').length > 0) {
             return;
         }
         
@@ -486,6 +491,12 @@ function renderizarMesas(mesas) {
         e.stopPropagation();
         const comandaId = $(this).data('comanda-id');
         abrirTicketComanda(comandaId);
+    });
+
+    $('.btn-cocina-mesa').on('click', function(e) {
+        e.stopPropagation();
+        const comandaId = $(this).data('comanda-id');
+        abrirTicketCocina(comandaId);
     });
 }
 
@@ -591,6 +602,8 @@ function abrirModalPOSConComanda(mesaId, comanda, mesaData) {
             $('#pos_propina_row').hide();
         }
 
+        $('#pos_obs_comanda').val(comanda.observaciones || '');
+
         renderizarCarrito();
         $('#pos_buscar_producto').val('');
         $('#pos_products_grid').html(`
@@ -667,6 +680,7 @@ function abrirModalPOS(mesaId) {
                     posCarrito = [];
                     $('#pos_incluye_propina').prop('checked', false);
                     $('#pos_propina_row').hide();
+                    $('#pos_obs_comanda').val('');
                     renderizarCarrito();
                     
                     // Limpiar campo de búsqueda
@@ -852,13 +866,28 @@ function renderizarCarrito() {
     
     let html = '';
     posCarrito.forEach(function(item, index) {
+        const obsRaw = item.observaciones || '';
+        const obsEsc = obsRaw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const hasObs = obsRaw.length > 0;
+        const obsDisplay = hasObs ? `<div class="pos-item-obs-display"><i class="fa fa-comment"></i> ${obsEsc}</div>` : '';
         html += `
             <div class="pos-order-item" data-index="${index}">
                 <div class="pos-item-header">
                     <div class="pos-item-name">${item.descripcion}</div>
-                    <button class="pos-item-remove" data-index="${index}">
-                        <i class="fa fa-times"></i>
-                    </button>
+                    <div class="pos-item-header-btns">
+                        <button class="pos-item-nota-btn${hasObs ? ' has-obs' : ''}" data-index="${index}" title="${hasObs ? 'Editar nota' : 'Agregar nota al plato'}">
+                            <i class="fa fa-${hasObs ? 'comment' : 'comment-o'}"></i>
+                        </button>
+                        <button class="pos-item-remove" data-index="${index}">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                ${obsDisplay}
+                <div class="pos-item-obs-wrap" style="display:none;">
+                    <input type="text" class="pos-item-obs-input" data-index="${index}"
+                        placeholder="Ej: a tres cuartos, sin cebolla..."
+                        value="${obsEsc}" maxlength="200">
                 </div>
                 <div class="pos-item-body">
                     <div class="pos-item-quantity">
@@ -902,6 +931,7 @@ function actualizarTotales() {
     const hayProductos = posCarrito.length > 0;
     $('#btn_guardar_pedido').prop('disabled', !hayProductos);
     $('#btn_imprimir_comanda').prop('disabled', !hayProductos);
+    $('#btn_ticket_cocina').prop('disabled', !hayProductos);
 }
 
 function formatearPrecio(valor) {
@@ -1153,6 +1183,7 @@ $('#btn_guardar_pedido').on('click', function() {
                 garzon_id: garzonId,
                 comensales: comensales,
                 incluye_propina: incluyePropina ? 1 : 0,
+                observaciones: $('#pos_obs_comanda').val().trim(),
                 _token: $('#token').val()
             },
             dataType: 'json',
@@ -1181,6 +1212,7 @@ $('#btn_guardar_pedido').on('click', function() {
                 garzon_id: garzonId,
                 comensales: comensales,
                 incluye_propina: incluyePropina ? 1 : 0,
+                observaciones: $('#pos_obs_comanda').val().trim(),
                 _token: $('#token').val()
             },
             dataType: 'json',
@@ -1347,6 +1379,33 @@ $(document)
         const index = $(this).data('index');
         if (typeof index === 'undefined') return;
         posCarrito.splice(index, 1);
+        renderizarCarrito();
+    })
+    .off('click' + POS_EVENT_NS, '.pos-item-nota-btn')
+    .on('click' + POS_EVENT_NS, '.pos-item-nota-btn', function(e) {
+        e.stopPropagation();
+        const index = $(this).data('index');
+        const $item = $(this).closest('.pos-order-item');
+        const $wrap = $item.find('.pos-item-obs-wrap');
+        const $input = $wrap.find('.pos-item-obs-input');
+        if ($wrap.is(':visible')) {
+            $wrap.hide();
+        } else {
+            $wrap.show();
+            $input.focus();
+        }
+    })
+    .off('keydown' + POS_EVENT_NS, '.pos-item-obs-input')
+    .on('keydown' + POS_EVENT_NS, '.pos-item-obs-input', function(e) {
+        if (e.key === 'Enter') {
+            $(this).blur();
+        }
+    })
+    .off('blur' + POS_EVENT_NS, '.pos-item-obs-input')
+    .on('blur' + POS_EVENT_NS, '.pos-item-obs-input', function() {
+        const index = parseInt($(this).data('index'));
+        if (isNaN(index) || !posCarrito[index]) return;
+        posCarrito[index].observaciones = $(this).val().trim();
         renderizarCarrito();
     });
 
@@ -1540,6 +1599,30 @@ $('#btn_imprimir_comanda').on('click', function() {
 
     abrirTicketComanda(posComandaActual);
 });
+
+// Ticket cocina
+$('#btn_ticket_cocina').on('click', function() {
+    if (!posComandaActual) {
+        Swal.fire('Atención', 'Debe guardar el pedido primero', 'warning');
+        return;
+    }
+
+    abrirTicketCocina(posComandaActual);
+});
+
+function abrirTicketCocina(comandaId) {
+    if (!comandaId) {
+        Swal.fire('Atención', 'No se encontró la comanda para imprimir', 'warning');
+        return;
+    }
+
+    $('#modalTicketCocina').off('hidden.bs.modal.ticketCocina').on('hidden.bs.modal.ticketCocina', function() {
+        $('#ticketFrameCocina').attr('src', 'about:blank');
+    });
+
+    $('#ticketFrameCocina').attr('src', '/restaurant/comandas/ticket-cocina/' + comandaId);
+    $('#modalTicketCocina').modal('show');
+}
 
 function abrirTicketComanda(comandaId) {
     if (!comandaId) {

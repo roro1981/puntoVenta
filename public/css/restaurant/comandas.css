@@ -182,7 +182,8 @@
 .mesa-acciones-comanda {
     margin-top: 8px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 6px;
 }
 
 .btn-imprimir-preventa {
@@ -198,6 +199,22 @@
 
 .btn-imprimir-preventa:hover {
     background: #17a2b8;
+    color: #fff;
+}
+
+.btn-cocina-mesa {
+    border: 1px solid #e67e22;
+    background: #fff;
+    color: #e67e22;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-cocina-mesa:hover {
+    background: #e67e22;
     color: #fff;
 }
 
@@ -814,10 +831,42 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+    position: relative;
 }
 
 .pos-btn i {
-    font-size: 14px;
+    font-size: 20px;
+}
+
+/* Tooltip nativo mejorado con CSS */
+.pos-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.78);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 9999;
+    letter-spacing: 0.2px;
+}
+
+.pos-btn[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(0,0,0,0.78);
+    pointer-events: none;
+    z-index: 9999;
 }
 
 .pos-btn-save {
@@ -840,6 +889,109 @@
 .pos-btn-print:hover {
     background: #2980b9;
     box-shadow: 0 3px 8px rgba(52,152,219,0.3);
+}
+
+/* Nota general del pedido */
+.pos-obs-comanda-wrap {
+    margin-bottom: 10px;
+}
+
+.pos-obs-comanda-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7f8c8d;
+    margin-bottom: 4px;
+}
+
+.pos-obs-comanda-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #2c3e50;
+    background: #fffef5;
+    transition: border-color 0.2s;
+}
+
+.pos-obs-comanda-input:focus {
+    outline: none;
+    border-color: #e67e22;
+    box-shadow: 0 0 0 2px rgba(230,126,34,0.15);
+}
+
+/* Nota por ítem */
+.pos-item-header-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.pos-item-nota-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: #aaa;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.15s;
+}
+
+.pos-item-nota-btn:hover,
+.pos-item-nota-btn.has-obs {
+    border-color: #e67e22;
+    color: #e67e22;
+    background: #fff8f2;
+}
+
+.pos-item-obs-display {
+    font-size: 11px;
+    color: #e67e22;
+    font-style: italic;
+    padding: 2px 0 4px 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pos-item-obs-wrap {
+    padding: 4px 0;
+}
+
+.pos-item-obs-input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px dashed #e67e22;
+    border-radius: 5px;
+    font-size: 12px;
+    background: #fffef5;
+    color: #2c3e50;
+    font-style: italic;
+}
+
+.pos-item-obs-input:focus {
+    outline: none;
+    border-style: solid;
+    box-shadow: 0 0 0 2px rgba(230,126,34,0.15);
+}
+
+.pos-btn-cocina {
+    background: #e67e22;
+    color: white;
+    box-shadow: 0 2px 4px rgba(230,126,34,0.2);
+}
+
+.pos-btn-cocina:hover {
+    background: #ca6f1e;
+    box-shadow: 0 3px 8px rgba(230,126,34,0.3);
 }
 
 .pos-btn:disabled {
@@ -982,4 +1134,366 @@
     color: #333;
     min-width: 30px;
     text-align: center;
+}
+
+/* ================================================================
+   RESPONSIVE — TABLET Y MÓVIL
+   Solo afecta pantallas ≤ 1024px. El diseño de escritorio NO cambia.
+   ================================================================ */
+
+/* Las tabs de móvil están siempre ocultas en escritorio */
+.pos-mobile-tabs {
+    display: none;
+}
+
+/* --- Tablet grande (≤ 1024px): 3 columnas de mesas --- */
+@media (max-width: 1024px) {
+    #mesas-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* --- Tablet (≤ 991px) --- */
+@media (max-width: 991px) {
+    .mesas-container-wrapper {
+        max-height: calc(100vh - 210px);
+    }
+
+    .pos-header-row {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .pos-mesa-info {
+        max-width: calc(100% - 52px);
+    }
+
+    .pos-controles-grupo {
+        flex-wrap: wrap;
+        max-width: none;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .pos-select-garzon {
+        min-width: 110px;
+    }
+
+    /* Modal POS fullscreen en tablet (Bootstrap 3 no lo hace solo) */
+    #modalTomarPedido {
+        padding-right: 0 !important;
+    }
+
+    #modalTomarPedido .modal-dialog.modal-fullscreen {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        margin: 0;
+    }
+
+    #modalTomarPedido .modal-content {
+        height: 100%;
+        border: none;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* pos-body ocupa el espacio restante con flex */
+    #modalTomarPedido .pos-body {
+        flex: 1 1 0;
+        min-height: 0;
+        height: auto;
+    }
+}
+
+/* --- Móvil (≤ 767px) --- */
+@media (max-width: 767px) {
+
+    /* Header principal: apilar verticalmente */
+    .box-header .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px;
+    }
+
+    .box-header .contador-comensales {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+    .box-header .d-flex > div:last-child {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+    }
+
+    #btn_ver_plano_mesas,
+    #btn_abrir_cambio_mesa,
+    #refrescar_mesas {
+        font-size: 12px;
+        padding: 5px 9px;
+    }
+
+    /* Grid de mesas: 2 columnas */
+    #mesas-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .mesas-container-wrapper {
+        max-height: calc(100vh - 235px);
+    }
+
+    /* Tarjetas de mesa más compactas */
+    .mesa-card-comanda {
+        min-height: 115px;
+        padding: 8px;
+    }
+
+    .mesa-header-comanda h3 {
+        font-size: 13px;
+    }
+
+    .mesa-consumo-total {
+        font-size: 16px;
+    }
+
+    .mesa-info p {
+        font-size: 11px;
+    }
+
+    /* POS Modal: Header */
+    .pos-header-row {
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .pos-mesa-info {
+        flex: 1 1 auto;
+        max-width: calc(100% - 48px);
+    }
+
+    .pos-mesa-info h2 {
+        font-size: 15px;
+    }
+
+    .pos-hora-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+
+    .pos-controles-grupo {
+        width: 100%;
+        max-width: 100%;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .pos-garzon-control {
+        flex: 1 1 auto;
+    }
+
+    .pos-comensales-control {
+        flex: 0 0 auto;
+    }
+
+    .pos-select-garzon {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* Tab bar: visible en móvil */
+    .pos-mobile-tabs {
+        display: flex;
+        background: #fff;
+        border-bottom: 2px solid #e0e0e0;
+        position: relative;
+        z-index: 10;
+        flex-shrink: 0;
+    }
+
+    .pos-tab-btn {
+        flex: 1;
+        padding: 11px 8px;
+        border: none;
+        background: #f8f9fa;
+        font-size: 13px;
+        font-weight: 600;
+        color: #666;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: background 0.2s, color 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .pos-tab-btn.active {
+        background: #fff;
+        color: #1e3c72;
+        border-bottom-color: #1e3c72;
+    }
+
+    .pos-tab-order-badge {
+        background: #dc3545;
+        color: white;
+        border-radius: 10px;
+        padding: 1px 7px;
+        font-size: 11px;
+        min-width: 18px;
+        text-align: center;
+        display: none;
+    }
+
+    /* POS Body: un panel a la vez */
+    .pos-body {
+        flex: 1 1 0;
+        min-height: 0;
+        height: auto;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .pos-products-panel {
+        flex: 0 0 100%;
+        width: 100%;
+        border-right: none;
+        height: 100%;
+    }
+
+    .pos-order-panel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        flex: 0 0 100%;
+        display: none;
+    }
+
+    .pos-body.show-order .pos-products-panel {
+        display: none;
+    }
+
+    .pos-body.show-order .pos-order-panel {
+        display: flex;
+    }
+
+    /* Lista de items: ocupa todo el espacio disponible */
+    .pos-order-items {
+        flex: 1 1 0;
+        min-height: 0;
+        padding: 6px 8px;
+    }
+
+    /* Compactar footer del pedido al máximo para dar más espacio al listado */
+    .pos-order-footer {
+        padding: 4px 10px;
+    }
+
+    .pos-obs-comanda-wrap {
+        margin-bottom: 4px;
+    }
+
+    .pos-obs-comanda-label {
+        display: none;
+    }
+
+    .pos-obs-comanda-input {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+
+    .pos-propina-section {
+        padding: 3px 8px;
+        margin-bottom: 3px;
+    }
+
+    .pos-propina-checkbox span {
+        font-size: 12px;
+    }
+
+    .pos-total-section {
+        padding: 4px 8px;
+        margin-bottom: 4px;
+    }
+
+    .pos-total-row {
+        margin-bottom: 1px;
+    }
+
+    .pos-total-row.total-final {
+        padding-top: 4px;
+        margin-top: 3px;
+    }
+
+    .pos-total-label {
+        font-size: 11px;
+    }
+
+    .pos-total-value {
+        font-size: 12px;
+    }
+
+    .pos-total-label.total-final-label {
+        font-size: 13px;
+    }
+
+    .pos-total-value.total-final-value {
+        font-size: 15px;
+    }
+
+    /* Botones de footer del pedido */
+    .pos-action-buttons {
+        gap: 6px;
+    }
+
+    .pos-btn {
+        padding: 7px 6px;
+        font-size: 12px;
+    }
+
+    /* Grid de productos más amplio */
+    .pos-products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 8px;
+    }
+
+    .pos-product-card {
+        height: 100px;
+        padding: 8px;
+    }
+
+    .pos-product-name {
+        font-size: 12px;
+    }
+
+    .pos-product-price {
+        font-size: 13px;
+    }
+
+    /* Touch: tamaño mínimo de botones táctiles */
+    .pos-qty-btn,
+    .pos-btn-comensales,
+    .pos-item-remove {
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    .pos-qty-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
 }

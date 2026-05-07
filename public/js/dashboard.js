@@ -1,4 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
+    // Deshabilitar caché en peticiones AJAX GET para que los módulos
+    // siempre carguen datos frescos del servidor (evita que cajaAbierta
+    // quede desactualizado al navegar de vuelta a un módulo)
+    $.ajaxSetup({ cache: false });
+
     function updateClock() {
         const now = new Date();
         const hours = now.getHours().toString().padStart(2, '0');

@@ -233,7 +233,7 @@
 <body>
     <!-- Encabezado con logo y datos empresa -->
     <div class="header">
-        @php
+        <?php
             $logoSrc = null;
             if (isset($corporateData['logo_enterprise']) && $corporateData['logo_enterprise'] && $corporateData['logo_enterprise'] !== '/img/fotos_prod/sin_imagen.jpg') {
                 $logoPath = realpath(public_path(ltrim($corporateData['logo_enterprise'], '/')));
@@ -242,52 +242,53 @@
                     $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
                 }
             }
-        @endphp
-        @if($logoSrc)
-            <img src="{{ $logoSrc }}" alt="Logo" class="logo">
-        @endif
+        ?>
+        <?php if($logoSrc): ?>
+            <img src="<?php echo e($logoSrc); ?>" alt="Logo" class="logo">
+        <?php endif; ?>
 
-        <div style="font-weight:bold;font-size:13px;margin:4px 0 2px;">{{ $corporateData['name_enterprise'] ?? '' }}</div>
+        <div style="font-weight:bold;font-size:13px;margin:4px 0 2px;"><?php echo e($corporateData['name_enterprise'] ?? ''); ?></div>
 
-        @if(isset($corporateData['fantasy_name_enterprise']) && $corporateData['fantasy_name_enterprise'])
-        <div style="font-size:10px;font-weight:bold;">{{ $corporateData['fantasy_name_enterprise'] }}</div>
-        @endif
+        <?php if(isset($corporateData['fantasy_name_enterprise']) && $corporateData['fantasy_name_enterprise']): ?>
+        <div style="font-size:10px;font-weight:bold;"><?php echo e($corporateData['fantasy_name_enterprise']); ?></div>
+        <?php endif; ?>
 
-        @if(isset($corporateData['address_enterprise']) && $corporateData['address_enterprise'])
-        <div style="font-size:9px;">{{ $corporateData['address_enterprise'] }}</div>
-        @endif
+        <?php if(isset($corporateData['address_enterprise']) && $corporateData['address_enterprise']): ?>
+        <div style="font-size:9px;"><?php echo e($corporateData['address_enterprise']); ?></div>
+        <?php endif; ?>
 
-        @if(isset($corporateData['comuna_enterprise']) && $corporateData['comuna_enterprise'])
-        <div style="font-size:9px;">{{ $corporateData['comuna_enterprise'] }}</div>
-        @endif
+        <?php if(isset($corporateData['comuna_enterprise']) && $corporateData['comuna_enterprise']): ?>
+        <div style="font-size:9px;"><?php echo e($corporateData['comuna_enterprise']); ?></div>
+        <?php endif; ?>
 
-        @if(isset($corporateData['phone_enterprise']) && $corporateData['phone_enterprise'])
-        <div style="font-size:9px;">Tel: {{ $corporateData['phone_enterprise'] }}</div>
-        @endif
+        <?php if(isset($corporateData['phone_enterprise']) && $corporateData['phone_enterprise']): ?>
+        <div style="font-size:9px;">Tel: <?php echo e($corporateData['phone_enterprise']); ?></div>
+        <?php endif; ?>
     </div>
 
     <!-- Título -->
     <div class="title-box">
-        CIERRE DE CAJA N° {{ sprintf('%04d', $caja->id) }}
+        CIERRE DE CAJA N° <?php echo e(sprintf('%04d', $caja->id)); ?>
+
     </div>
 
     <!-- Información de Caja -->
     <div class="info-section">
         <div class="info-row">
             <span class="info-label">USUARIO:</span>
-            <span>{{ $caja->usuario->name ?? 'N/A' }}</span>
+            <span><?php echo e($caja->usuario->name ?? 'N/A'); ?></span>
         </div>
         <div class="info-row">
             <span class="info-label">APERTURA:</span>
-            <span>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y H:i:s') : 'N/A' }}</span>
+            <span><?php echo e($caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y H:i:s') : 'N/A'); ?></span>
         </div>
         <div class="info-row">
             <span class="info-label">CIERRE:</span>
-            <span>{{ $caja->fecha_cierre ? $caja->fecha_cierre->format('d/m/Y H:i:s') : 'N/A' }}</span>
+            <span><?php echo e($caja->fecha_cierre ? $caja->fecha_cierre->format('d/m/Y H:i:s') : 'N/A'); ?></span>
         </div>
         <div class="info-row">
             <span class="info-label">DURACION:</span>
-            <span>{{ ($caja->fecha_apertura && $caja->fecha_cierre) ? $caja->fecha_apertura->diffInHours($caja->fecha_cierre) . ' hrs ' . ($caja->fecha_apertura->diffInMinutes($caja->fecha_cierre) % 60) . ' min' : 'N/A' }}</span>
+            <span><?php echo e(($caja->fecha_apertura && $caja->fecha_cierre) ? $caja->fecha_apertura->diffInHours($caja->fecha_cierre) . ' hrs ' . ($caja->fecha_apertura->diffInMinutes($caja->fecha_cierre) % 60) . ' min' : 'N/A'); ?></span>
         </div>
     </div>
 
@@ -298,11 +299,11 @@
     
     <div class="info-row">
         <span>CANTIDAD DE VENTAS:</span>
-        <span class="info-label">{{ $cantidadVentas }}</span>
+        <span class="info-label"><?php echo e($cantidadVentas); ?></span>
     </div>
     <div class="info-row">
         <span>TOTAL VENTAS:</span>
-        <span class="info-label">${{ number_format($totalVentas, 0, ',', '.') }}</span>
+        <span class="info-label">$<?php echo e(number_format($totalVentas, 0, ',', '.')); ?></span>
     </div>
 
     <div class="separator"></div>
@@ -310,51 +311,51 @@
     <!-- Desglose por Forma de Pago -->
     <div class="section-title">DESGLOSE POR FORMA DE PAGO</div>
     
-    @if($desglose['efectivo'] > 0)
+    <?php if($desglose['efectivo'] > 0): ?>
     <div class="info-row">
         <span>EFECTIVO</span>
-        <span>${{ number_format($desglose['efectivo'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['efectivo'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
     
-    @if($desglose['tarjeta_debito'] > 0)
+    <?php if($desglose['tarjeta_debito'] > 0): ?>
     <div class="info-row">
         <span>TARJETA DEBITO</span>
-        <span>${{ number_format($desglose['tarjeta_debito'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['tarjeta_debito'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
     
-    @if($desglose['tarjeta_credito'] > 0)
+    <?php if($desglose['tarjeta_credito'] > 0): ?>
     <div class="info-row">
         <span>TARJETA CREDITO</span>
-        <span>${{ number_format($desglose['tarjeta_credito'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['tarjeta_credito'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
     
-    @if($desglose['transferencia'] > 0)
+    <?php if($desglose['transferencia'] > 0): ?>
     <div class="info-row">
         <span>TRANSFERENCIA</span>
-        <span>${{ number_format($desglose['transferencia'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['transferencia'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
     
-    @if($desglose['cheque'] > 0)
+    <?php if($desglose['cheque'] > 0): ?>
     <div class="info-row">
         <span>CHEQUE</span>
-        <span>${{ number_format($desglose['cheque'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['cheque'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
     
-    @if($desglose['mixto'] > 0)
+    <?php if($desglose['mixto'] > 0): ?>
     <div class="info-row">
         <span>MIXTO</span>
-        <span>${{ number_format($desglose['mixto'], 0, ',', '.') }}</span>
+        <span>$<?php echo e(number_format($desglose['mixto'], 0, ',', '.')); ?></span>
     </div>
-    @endif
+    <?php endif; ?>
 
     <div class="separator"></div>
 
-    @if(isset($retiros) && $retiros->count() > 0)
+    <?php if(isset($retiros) && $retiros->count() > 0): ?>
     <!-- Retiros de Caja -->
     <div class="section-title">RETIROS DE CAJA</div>
 
@@ -367,59 +368,59 @@
             </tr>
         </thead>
         <tbody>
-        @foreach($retiros as $retiro)
+        <?php $__currentLoopData = $retiros; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $retiro): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
             <tr>
-                <td style="padding:2px 0;overflow:hidden;word-break:break-word;max-width:30mm;">{{ strtoupper($retiro->motivo) }}</td>
-                <td style="text-align:center;padding:2px 2px;white-space:nowrap;">{{ \Carbon\Carbon::parse($retiro->created_at)->format('d/m/Y H:i') }}</td>
-                <td style="text-align:right;padding:2px 0;white-space:nowrap;">-${{ number_format($retiro->monto, 0, ',', '.') }}</td>
+                <td style="padding:2px 0;overflow:hidden;word-break:break-word;max-width:30mm;"><?php echo e(strtoupper($retiro->motivo)); ?></td>
+                <td style="text-align:center;padding:2px 2px;white-space:nowrap;"><?php echo e(\Carbon\Carbon::parse($retiro->created_at)->format('d/m/Y H:i')); ?></td>
+                <td style="text-align:right;padding:2px 0;white-space:nowrap;">-$<?php echo e(number_format($retiro->monto, 0, ',', '.')); ?></td>
             </tr>
-        @endforeach
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
         <tfoot>
             <tr style="border-top:1px solid #000;">
                 <td colspan="2" style="padding:2px 0;"><strong>TOTAL RETIROS:</strong></td>
-                <td style="text-align:right;padding:2px 0;"><strong>-${{ number_format($totalRetiros ?? 0, 0, ',', '.') }}</strong></td>
+                <td style="text-align:right;padding:2px 0;"><strong>-$<?php echo e(number_format($totalRetiros ?? 0, 0, ',', '.')); ?></strong></td>
             </tr>
         </tfoot>
     </table>
 
     <div class="separator"></div>
-    @endif
+    <?php endif; ?>
 
     <!-- Totales de Cierre -->
     <div class="totals-section">
         <div class="total-row">
             <span class="total-label">MONTO INICIAL:</span>
-            <span>${{ number_format($caja->monto_inicial, 0, ',', '.') }}</span>
+            <span>$<?php echo e(number_format($caja->monto_inicial, 0, ',', '.')); ?></span>
         </div>
 
         <div class="total-row">
             <span class="total-label">TOTAL VENTAS:</span>
-            <span>${{ number_format($totalVentas, 0, ',', '.') }}</span>
+            <span>$<?php echo e(number_format($totalVentas, 0, ',', '.')); ?></span>
         </div>
 
-        @if(isset($totalRetiros) && $totalRetiros > 0)
+        <?php if(isset($totalRetiros) && $totalRetiros > 0): ?>
         <div class="total-row" style="color:#c0392b;">
             <span class="total-label">TOTAL RETIROS:</span>
-            <span>-${{ number_format($totalRetiros, 0, ',', '.') }}</span>
+            <span>-$<?php echo e(number_format($totalRetiros, 0, ',', '.')); ?></span>
         </div>
-        @endif
+        <?php endif; ?>
 
         <div class="total-esperado">
             <div class="total-row">
                 <span class="total-label">MONTO ESPERADO:</span>
-                <span class="total-label">${{ number_format($caja->monto_inicial + $totalVentas - ($totalRetiros ?? 0), 0, ',', '.') }}</span>
+                <span class="total-label">$<?php echo e(number_format($caja->monto_inicial + $totalVentas - ($totalRetiros ?? 0), 0, ',', '.')); ?></span>
             </div>
         </div>
         
         <div class="total-declarado">
             <div class="total-row">
                 <span class="total-label">MONTO DECLARADO:</span>
-                <span class="total-label">${{ number_format($caja->monto_final_declarado, 0, ',', '.') }}</span>
+                <span class="total-label">$<?php echo e(number_format($caja->monto_final_declarado, 0, ',', '.')); ?></span>
             </div>
         </div>
         
-        @php
+        <?php
             $diferencia = $caja->diferencia;
             $claseDiv = 'exacta';
             $textoDif = 'CUADRE EXACTO';
@@ -431,25 +432,27 @@
                 $claseDiv = 'negativa';
                 $textoDif = 'FALTANTE: $' . number_format(abs($diferencia), 0, ',', '.');
             }
-        @endphp
+        ?>
         
-        <div class="diferencia {{ $claseDiv }}">
-            {{ $textoDif }}
+        <div class="diferencia <?php echo e($claseDiv); ?>">
+            <?php echo e($textoDif); ?>
+
         </div>
     </div>
 
-    @if($caja->observaciones)
+    <?php if($caja->observaciones): ?>
     <div class="observaciones">
         <strong>OBSERVACIONES:</strong><br>
-        {{ $caja->observaciones }}
+        <?php echo e($caja->observaciones); ?>
+
     </div>
-    @endif
+    <?php endif; ?>
 
     <!-- Firma -->
     <div class="firma-section">
         <div class="firma-line"></div>
         <div>FIRMA DEL CAJERO</div>
-        <div style="margin-top: 5px;">{{ $caja->usuario->name ?? '' }}</div>
+        <div style="margin-top: 5px;"><?php echo e($caja->usuario->name ?? ''); ?></div>
     </div>
 
     <!-- Advertencia -->
@@ -459,10 +462,11 @@
 
     <!-- Pie de página -->
     <div class="footer">
-        @if(isset($corporateData['name_enterprise']) && $corporateData['name_enterprise'])
-        <p>{{ $corporateData['name_enterprise'] }}</p>
-        @endif
-        <p>{{ now()->format('d/m/Y H:i:s') }}</p>
+        <?php if(isset($corporateData['name_enterprise']) && $corporateData['name_enterprise']): ?>
+        <p><?php echo e($corporateData['name_enterprise']); ?></p>
+        <?php endif; ?>
+        <p><?php echo e(now()->format('d/m/Y H:i:s')); ?></p>
     </div>
 </body>
 </html>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/ventas/ticket_cierre_caja.blade.php ENDPATH**/ ?>

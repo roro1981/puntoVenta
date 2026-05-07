@@ -248,15 +248,20 @@ function cargarDetalleCajaCerrarComandas() {
                             </tbody>
                         </table>
 
+                        ${caja.retiros && caja.retiros.length > 0 ? `
+                        <table class="table table-bordered table-sm mt-2">
+                            <thead class="thead-warning"><tr><th>Hora</th><th>Motivo</th><th class="text-right">Monto</th></tr></thead>
+                            <tbody>
+                                ${caja.retiros.map(r => `<tr><td>${r.created_at}</td><td>${r.motivo}</td><td class="text-right text-danger">-${formatoMoneda(r.monto)}</td></tr>`).join('')}
+                                <tr class="table-danger"><td colspan="2"><strong>TOTAL RETIROS</strong></td><td class="text-right"><strong>-${formatoMoneda(caja.total_retiros)}</strong></td></tr>
+                            </tbody>
+                        </table>` : ''}
                         <div class="alert alert-success mt-3" style="margin-bottom:0;">
-                            <div class="d-flex justify-content-between align-items-center" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-                                <div>
-                                    <h5 style="margin-top:0;"><strong>Monto Esperado en Caja:</strong> ${formatoMoneda(caja.monto_esperado)}</h5>
-                                    <small>Monto Inicial (${formatoMoneda(caja.monto_inicial)}) + Total Ventas (${formatoMoneda(caja.total_ventas)})</small>
-                                </div>
-                                <button class="btn btn-danger btn-lg" id="btnAbrirCierreCajaCerrarComandas">
-                                    <i class="fa fa-power-off"></i> Cerrar Caja
-                                </button>
+                            <h5 style="margin-top:0;"><strong>Monto Esperado en Caja:</strong> ${formatoMoneda(caja.monto_esperado)}</h5>
+                            <small>Monto Inicial (${formatoMoneda(caja.monto_inicial)}) + Ventas (${formatoMoneda(caja.total_ventas)})${caja.total_retiros > 0 ? ` − Retiros (${formatoMoneda(caja.total_retiros)})` : ''}</small>
+                            <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:8px;">
+                                <button class="btn btn-warning" id="btnAbrirRetiroCaja"><i class="fa fa-minus-circle"></i> Registrar Retiro</button>
+                                <button class="btn btn-danger" id="btnAbrirCierreCajaCerrarComandas"><i class="fa fa-power-off"></i> Cerrar Caja</button>
                             </div>
                         </div>
                     </div>
@@ -270,6 +275,58 @@ function cargarDetalleCajaCerrarComandas() {
         }
     });
 }
+
+// Abrir modal de retiro de caja
+$(document).on('click', '#btnAbrirRetiroCaja', function() {
+    $('#retiroMonto').val('');
+    $('#retiroMotivo').val('');
+    $('#modalRetiroCaja').modal('show');
+});
+
+// Confirmar retiro de caja
+$('#btnConfirmarRetiroCaja').on('click', function() {
+    const monto = parseFloat($('#retiroMonto').val());
+    const motivo = $('#retiroMotivo').val().trim();
+    const tipoCaja = $('#retiroCajaTipoCaja').val() || 'RESTAURANT';
+
+    if (!monto || monto < 1) {
+        toastr.error('Ingrese un monto válido (mínimo $1)');
+        return;
+    }
+    if (!motivo || motivo.length < 3) {
+        toastr.error('Ingrese un motivo (mínimo 3 caracteres)');
+        return;
+    }
+
+    $('#btnConfirmarRetiroCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Registrando...');
+
+    $.ajax({
+        url: '/ventas/retiro-caja',
+        method: 'POST',
+        data: {
+            _token: $('meta[name="csrf-token"]').attr('content') || $('#token').val(),
+            monto: monto,
+            motivo: motivo,
+            tipo_caja: tipoCaja
+        },
+        success: function(response) {
+            if (response.status === 'OK') {
+                $('#modalRetiroCaja').modal('hide');
+                toastr.success('Retiro registrado correctamente');
+                cargarDetalleCajaCerrarComandas();
+            } else {
+                toastr.error(response.message || 'Error al registrar retiro');
+            }
+        },
+        error: function(xhr) {
+            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al registrar retiro';
+            toastr.error(msg);
+        },
+        complete: function() {
+            $('#btnConfirmarRetiroCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Registrar Retiro');
+        }
+    });
+});
 
 $(document).on('click', '#btnAbrirCierreCajaCerrarComandas', function () {
     $.ajax({

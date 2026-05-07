@@ -207,13 +207,59 @@
                     <span aria-hidden="true">×</span>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
                 <div id="detalleCajaCerrarComandasContent">
                     <div class="text-center">
                         <i class="fa fa-spinner fa-spin fa-3x"></i>
                         <p>Cargando información...</p>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fa fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Retiro de Caja (RESTAURANT) -->
+<div class="modal fade" id="modalRetiroCaja" tabindex="-1" aria-labelledby="tituloRetiroCajaRest" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h4 class="modal-title" id="tituloRetiroCajaRest">
+                    <i class="fa fa-minus-circle"></i> Retiro de Caja
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fa fa-exclamation-triangle"></i> El retiro quedará registrado y se descontará del monto esperado al cierre.
+                </div>
+                <input type="hidden" id="retiroCajaTipoCaja" value="RESTAURANT">
+                <div class="form-group">
+                    <label for="retiroMonto"><strong>Monto a retirar *</strong></label>
+                    <div class="input-group">
+                        <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                        <input type="number" class="form-control form-control-lg" id="retiroMonto"
+                               placeholder="Ingrese el monto" min="1" step="1" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="retiroMotivo"><strong>Motivo *</strong></label>
+                    <input type="text" class="form-control" id="retiroMotivo"
+                           placeholder="Ej: Pago proveedor, gastos operacionales..." maxlength="255" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btnConfirmarRetiroCaja">
+                    <i class="fa fa-check"></i> Registrar Retiro
+                </button>
             </div>
         </div>
     </div>

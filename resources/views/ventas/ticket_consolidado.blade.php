@@ -2,14 +2,14 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Cierre de Caja</title>
+    <title>Consolidado de Cajas</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Courier New', monospace;
             font-size: 11px;
@@ -19,12 +19,12 @@
             padding: 1mm 2mm 2mm 2mm;
             max-width: 72mm;
         }
-        
+
         .header {
             text-align: center;
             margin-bottom: 4px;
         }
-        
+
         .logo {
             max-width: 68mm;
             max-height: 30mm;
@@ -32,7 +32,7 @@
             display: block;
             height: auto;
         }
-        
+
         .title-box {
             text-align: center;
             font-weight: bold;
@@ -43,15 +43,26 @@
             border-bottom: 2px solid #000;
             letter-spacing: 1px;
         }
-        
-        .info-section {
-            margin: 8px 0;
+
+        .subtitle {
+            text-align: center;
             font-size: 10px;
-            padding: 4px 0;
-            border: 1px solid #ddd;
-            padding: 4px;
+            margin-bottom: 6px;
         }
-        
+
+        .separator {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin: 8px 0 4px 0;
+            text-align: center;
+            text-decoration: underline;
+        }
+
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -60,54 +71,44 @@
             padding: 0 1mm;
             box-sizing: border-box;
         }
-        
-        .separator {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-        }
-        
-        .section-title {
-            font-weight: bold;
-            font-size: 11px;
-            margin: 8px 0 4px 0;
-            text-align: center;
-            text-decoration: underline;
-        }
-        
+
         table {
             width: 100%;
             margin: 5px 0;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 9px;
             table-layout: fixed;
         }
-        
+
         table td, table th {
-            padding: 2px 0;
+            font-weight: bold;
+        }
+
+        table.cajas-table td, table.cajas-table th {
+            padding: 2px 1px;
             vertical-align: top;
             overflow: hidden;
             word-wrap: break-word;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        table.cajas-table th {
             font-weight: bold;
-        }
-        
-        table td:first-child {
             text-align: left;
-            width: 50%;
-            padding-right: 4px;
         }
-        
-        table td:last-child {
+
+        table.cajas-table td:last-child,
+        table.cajas-table th:last-child {
             text-align: right;
-            width: 50%;
         }
-        
+
         .totals-section {
             margin-top: 8px;
             border-top: 2px solid #000;
             padding-top: 6px;
             padding: 8px 2px;
         }
-        
+
         .total-row {
             display: flex;
             justify-content: space-between;
@@ -117,11 +118,7 @@
             padding: 0 1mm;
             box-sizing: border-box;
         }
-        
-        .total-label {
-            font-weight: bold;
-        }
-        
+
         .total-esperado {
             font-size: 12px;
             font-weight: bold;
@@ -131,12 +128,12 @@
             box-sizing: border-box;
             width: 98%;
         }
-        
+
         .total-esperado .total-row {
             margin: 0;
             border: none;
         }
-        
+
         .total-declarado {
             font-size: 12px;
             font-weight: bold;
@@ -146,50 +143,38 @@
             box-sizing: border-box;
             width: 98%;
         }
-        
+
         .total-declarado .total-row {
             margin: 0;
             border: none;
         }
-        
+
         .diferencia {
             font-size: 13px;
             font-weight: bold;
             padding: 8px 4px;
             margin: 8px auto;
             text-align: center;
-            border-left: none;
-            border-right: none;
             border-top: 2px solid #000;
             border-bottom: 2px solid #000;
             width: 98%;
         }
-        
+
         .diferencia.positiva {
             border-top-style: double;
             border-bottom-style: double;
         }
-        
+
         .diferencia.negativa {
             border-top-style: double;
             border-bottom-style: double;
         }
-        
+
         .diferencia.exacta {
             border-top-style: solid;
             border-bottom-style: solid;
         }
-        
-        .observaciones {
-            margin: 8px auto;
-            padding: 6px 4px;
-            border: 1px solid #000;
-            font-size: 11px;
-            word-wrap: break-word;
-            width: 98%;
-            font-weight: bold;
-        }
-        
+
         .footer {
             text-align: center;
             margin: 12px auto 0;
@@ -199,25 +184,11 @@
             width: 98%;
             font-weight: bold;
         }
-        
+
         .footer p {
             margin: 3px 0;
         }
-        
-        .firma-section {
-            margin: 12px auto 0;
-            text-align: center;
-            font-size: 10px;
-            width: 98%;
-            font-weight: bold;
-        }
-        
-        .firma-line {
-            border-top: 1px solid #000;
-            width: 60%;
-            margin: 20px auto 5px;
-        }
-        
+
         .warning-text {
             margin: 10px auto 0;
             padding: 5px;
@@ -268,83 +239,94 @@
 
     <!-- Título -->
     <div class="title-box">
-        CIERRE DE CAJA N° {{ sprintf('%04d', $caja->id) }}
+        CONSOLIDADO DE CAJAS
     </div>
-
-    <!-- Información de Caja -->
-    <div class="info-section">
-        <div class="info-row">
-            <span class="info-label">USUARIO:</span>
-            <span>{{ $caja->usuario->name ?? 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">APERTURA:</span>
-            <span>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y H:i:s') : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">CIERRE:</span>
-            <span>{{ $caja->fecha_cierre ? $caja->fecha_cierre->format('d/m/Y H:i:s') : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">DURACION:</span>
-            <span>{{ ($caja->fecha_apertura && $caja->fecha_cierre) ? $caja->fecha_apertura->diffInHours($caja->fecha_cierre) . ' hrs ' . ($caja->fecha_apertura->diffInMinutes($caja->fecha_cierre) % 60) . ' min' : 'N/A' }}</span>
-        </div>
+    <div class="subtitle">
+        {{ $cajas->first()->fecha_apertura->format('d/m/Y H:i') }} — {{ $cajas->last()->fecha_cierre->format('d/m/Y H:i') }}
     </div>
 
     <div class="separator"></div>
 
+    <!-- Detalle por caja -->
+    <div class="section-title">CIERRES INCLUIDOS</div>
+
+    <table class="cajas-table">
+        <thead>
+            <tr>
+                <th style="width:18%">Nº</th>
+                <th style="width:35%">Usuario</th>
+                <th style="width:47%">Ventas</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($cajas as $caja)
+            <tr>
+                <td>{{ sprintf('%04d', $caja->id) }}</td>
+                <td>{{ Str::limit($caja->usuario->name ?? 'N/A', 10) }}</td>
+                <td>${{ number_format($caja->monto_ventas, 0, ',', '.') }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="separator"></div>
+
     <!-- Resumen de Ventas -->
-    <div class="section-title">RESUMEN DE VENTAS</div>
-    
+    <div class="section-title">RESUMEN CONSOLIDADO</div>
+
+    <div class="info-row">
+        <span>TURNOS INCLUIDOS:</span>
+        <span>{{ $cajas->count() }}</span>
+    </div>
     <div class="info-row">
         <span>CANTIDAD DE VENTAS:</span>
-        <span class="info-label">{{ $cantidadVentas }}</span>
+        <span>{{ $cantidadVentas }}</span>
     </div>
     <div class="info-row">
         <span>TOTAL VENTAS:</span>
-        <span class="info-label">${{ number_format($totalVentas, 0, ',', '.') }}</span>
+        <span>${{ number_format($totalVentas, 0, ',', '.') }}</span>
     </div>
 
     <div class="separator"></div>
 
     <!-- Desglose por Forma de Pago -->
     <div class="section-title">DESGLOSE POR FORMA DE PAGO</div>
-    
+
     @if($desglose['efectivo'] > 0)
     <div class="info-row">
         <span>EFECTIVO</span>
         <span>${{ number_format($desglose['efectivo'], 0, ',', '.') }}</span>
     </div>
     @endif
-    
+
     @if($desglose['tarjeta_debito'] > 0)
     <div class="info-row">
         <span>TARJETA DEBITO</span>
         <span>${{ number_format($desglose['tarjeta_debito'], 0, ',', '.') }}</span>
     </div>
     @endif
-    
+
     @if($desglose['tarjeta_credito'] > 0)
     <div class="info-row">
         <span>TARJETA CREDITO</span>
         <span>${{ number_format($desglose['tarjeta_credito'], 0, ',', '.') }}</span>
     </div>
     @endif
-    
+
     @if($desglose['transferencia'] > 0)
     <div class="info-row">
         <span>TRANSFERENCIA</span>
         <span>${{ number_format($desglose['transferencia'], 0, ',', '.') }}</span>
     </div>
     @endif
-    
+
     @if($desglose['cheque'] > 0)
     <div class="info-row">
         <span>CHEQUE</span>
         <span>${{ number_format($desglose['cheque'], 0, ',', '.') }}</span>
     </div>
     @endif
-    
+
     @if($desglose['mixto'] > 0)
     <div class="info-row">
         <span>MIXTO</span>
@@ -355,7 +337,7 @@
     <div class="separator"></div>
 
     @if(isset($retiros) && $retiros->count() > 0)
-    <!-- Retiros de Caja -->
+    <!-- Retiros de Caja Consolidados -->
     <div class="section-title">RETIROS DE CAJA</div>
 
     <table style="width:100%;font-size:9px;border-collapse:collapse;margin:2px 0;">
@@ -378,7 +360,7 @@
         <tfoot>
             <tr style="border-top:1px solid #000;">
                 <td colspan="2" style="padding:2px 0;"><strong>TOTAL RETIROS:</strong></td>
-                <td style="text-align:right;padding:2px 0;"><strong>-${{ number_format($totalRetiros ?? 0, 0, ',', '.') }}</strong></td>
+                <td style="text-align:right;padding:2px 0;"><strong>-${{ number_format($totalRetiros, 0, ',', '.') }}</strong></td>
             </tr>
         </tfoot>
     </table>
@@ -386,70 +368,54 @@
     <div class="separator"></div>
     @endif
 
-    <!-- Totales de Cierre -->
+    <!-- Totales Consolidados -->
     <div class="totals-section">
         <div class="total-row">
-            <span class="total-label">MONTO INICIAL:</span>
-            <span>${{ number_format($caja->monto_inicial, 0, ',', '.') }}</span>
+            <span>MONTO INICIAL TOTAL:</span>
+            <span>${{ number_format($montoInicialTotal, 0, ',', '.') }}</span>
         </div>
 
         <div class="total-row">
-            <span class="total-label">TOTAL VENTAS:</span>
+            <span>TOTAL VENTAS:</span>
             <span>${{ number_format($totalVentas, 0, ',', '.') }}</span>
         </div>
 
         @if(isset($totalRetiros) && $totalRetiros > 0)
         <div class="total-row" style="color:#c0392b;">
-            <span class="total-label">TOTAL RETIROS:</span>
+            <span>TOTAL RETIROS:</span>
             <span>-${{ number_format($totalRetiros, 0, ',', '.') }}</span>
         </div>
         @endif
 
         <div class="total-esperado">
             <div class="total-row">
-                <span class="total-label">MONTO ESPERADO:</span>
-                <span class="total-label">${{ number_format($caja->monto_inicial + $totalVentas - ($totalRetiros ?? 0), 0, ',', '.') }}</span>
+                <span>MONTO ESPERADO:</span>
+                <span>${{ number_format($montoInicialTotal + $totalVentas - ($totalRetiros ?? 0), 0, ',', '.') }}</span>
             </div>
         </div>
-        
+
         <div class="total-declarado">
             <div class="total-row">
-                <span class="total-label">MONTO DECLARADO:</span>
-                <span class="total-label">${{ number_format($caja->monto_final_declarado, 0, ',', '.') }}</span>
+                <span>MONTO DECLARADO:</span>
+                <span>${{ number_format($montoDeclaradoTotal, 0, ',', '.') }}</span>
             </div>
         </div>
-        
+
         @php
-            $diferencia = $caja->diferencia;
             $claseDiv = 'exacta';
             $textoDif = 'CUADRE EXACTO';
-            
-            if ($diferencia > 0) {
+            if ($diferenciaTotal > 0) {
                 $claseDiv = 'positiva';
-                $textoDif = 'SOBRANTE: $' . number_format($diferencia, 0, ',', '.');
-            } elseif ($diferencia < 0) {
+                $textoDif = 'SOBRANTE: $' . number_format($diferenciaTotal, 0, ',', '.');
+            } elseif ($diferenciaTotal < 0) {
                 $claseDiv = 'negativa';
-                $textoDif = 'FALTANTE: $' . number_format(abs($diferencia), 0, ',', '.');
+                $textoDif = 'FALTANTE: $' . number_format(abs($diferenciaTotal), 0, ',', '.');
             }
         @endphp
-        
+
         <div class="diferencia {{ $claseDiv }}">
             {{ $textoDif }}
         </div>
-    </div>
-
-    @if($caja->observaciones)
-    <div class="observaciones">
-        <strong>OBSERVACIONES:</strong><br>
-        {{ $caja->observaciones }}
-    </div>
-    @endif
-
-    <!-- Firma -->
-    <div class="firma-section">
-        <div class="firma-line"></div>
-        <div>FIRMA DEL CAJERO</div>
-        <div style="margin-top: 5px;">{{ $caja->usuario->name ?? '' }}</div>
     </div>
 
     <!-- Advertencia -->
@@ -462,7 +428,7 @@
         @if(isset($corporateData['name_enterprise']) && $corporateData['name_enterprise'])
         <p>{{ $corporateData['name_enterprise'] }}</p>
         @endif
-        <p>{{ now()->format('d/m/Y H:i:s') }}</p>
+        <p>Impreso: {{ now()->format('d/m/Y H:i:s') }}</p>
     </div>
 </body>
 </html>

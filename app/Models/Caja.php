@@ -60,6 +60,14 @@ class Caja extends Model
     }
 
     /**
+     * Relación con los retiros de efectivo de este turno
+     */
+    public function retiros()
+    {
+        return $this->hasMany(RetiroCaja::class, 'caja_id')->orderBy('created_at');
+    }
+
+    /**
      * Scope para obtener cajas abiertas
      */
     public function scopeAbiertas($query)

@@ -248,15 +248,14 @@ $(document).ready(function () {
             },
             success: function (response) {
                 if (response.status === 'OK') {
-                    toastr.success(response.message);
+                    const mensajeVenta = response.numero_venta
+                        ? (response.message || 'Venta registrada') + ' — N° ' + response.numero_venta
+                        : (response.message || 'Venta registrada');
+                    toastr.success(mensajeVenta);
 
                     if (response.venta_id) {
                         $('#ticketFrame').attr('src', '/ventas/ticket-pdf/' + response.venta_id);
                         $('#modalTicket').modal('show');
-                    }
-
-                    if (response.numero_venta) {
-                        toastr.info('Venta N: ' + response.numero_venta, 'Venta registrada', { timeOut: 5000 });
                     }
 
                     limpiarVista();
@@ -356,8 +355,21 @@ $(document).ready(function () {
                             '<tr class="table-success"><td><strong>TOTAL</strong></td><td class="text-right"><strong>' + formatCurrency(caja.total_ventas) + '</strong></td></tr>' +
                         '</tbody>' +
                     '</table>' +
-                    '<div class="alert alert-success"><strong>Monto Esperado:</strong> ' + formatCurrency(caja.monto_esperado) + '</div>' +
-                    '<button class="btn btn-danger btn-block" id="btnAbrirCierreCaja"><i class="fa fa-power-off"></i> Cerrar Caja</button>';
+                    (caja.retiros && caja.retiros.length > 0
+                        ? '<table class="table table-bordered table-sm mt-2">' +
+                              '<thead class="thead-warning"><tr><th>Hora</th><th>Motivo</th><th class="text-right">Monto</th></tr></thead>' +
+                              '<tbody>' +
+                              caja.retiros.map(function(r) {
+                                  return '<tr><td>' + r.created_at + '</td><td>' + r.motivo + '</td><td class="text-right text-danger">-' + formatCurrency(r.monto) + '</td></tr>';
+                              }).join('') +
+                              '<tr class="table-danger"><td colspan="2"><strong>TOTAL RETIROS</strong></td><td class="text-right"><strong>-' + formatCurrency(caja.total_retiros) + '</strong></td></tr>' +
+                              '</tbody></table>'
+                        : '') +
+                    '<div class="alert alert-success"><strong>Monto Esperado:</strong> ' + formatCurrency(caja.monto_esperado) + (caja.total_retiros > 0 ? ' <small class="text-muted">(incluye − Retiros ' + formatCurrency(caja.total_retiros) + ')</small>' : '') + '</div>' +
+                    '<div class="d-flex" style="gap:8px;">' +
+                        '<button class="btn btn-warning flex-fill" id="btnAbrirRetiroCaja"><i class="fa fa-minus-circle"></i> Registrar Retiro</button>' +
+                        '<button class="btn btn-danger flex-fill" id="btnAbrirCierreCaja"><i class="fa fa-power-off"></i> Cerrar Caja</button>' +
+                    '</div>';
 
                 $('#caja-content').html(html);
             },
@@ -366,6 +378,58 @@ $(document).ready(function () {
             }
         });
     }
+
+    // Abrir modal de retiro de caja
+    $(document).on('click', '#btnAbrirRetiroCaja', function() {
+        $('#retiroMonto').val('');
+        $('#retiroMotivo').val('');
+        $('#modalRetiroCaja').modal('show');
+    });
+
+    // Confirmar retiro de caja
+    $('#btnConfirmarRetiroCaja').on('click', function() {
+        const monto = parseFloat($('#retiroMonto').val());
+        const motivo = $('#retiroMotivo').val().trim();
+        const tipoCaja = $('#retiroCajaTipoCaja').val() || 'ALMACEN';
+
+        if (!monto || monto < 1) {
+            toastr.error('Ingrese un monto válido (mínimo $1)');
+            return;
+        }
+        if (!motivo || motivo.length < 3) {
+            toastr.error('Ingrese un motivo (mínimo 3 caracteres)');
+            return;
+        }
+
+        $('#btnConfirmarRetiroCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Registrando...');
+
+        $.ajax({
+            url: '/ventas/retiro-caja',
+            method: 'POST',
+            data: {
+                _token: $('#token').val(),
+                monto: monto,
+                motivo: motivo,
+                tipo_caja: tipoCaja
+            },
+            success: function(response) {
+                if (response.status === 'OK') {
+                    $('#modalRetiroCaja').modal('hide');
+                    toastr.success('Retiro registrado correctamente');
+                    cargarInfoCaja();
+                } else {
+                    toastr.error(response.message || 'Error al registrar retiro');
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al registrar retiro';
+                toastr.error(msg);
+            },
+            complete: function() {
+                $('#btnConfirmarRetiroCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Registrar Retiro');
+            }
+        });
+    });
 
     $(document).on('click', '#btnAbrirCierreCaja', function () {
         $.ajax({
@@ -510,4 +574,134 @@ $(document).ready(function () {
     });
 
     limpiarVista();
+
+    // === PREVENTAS PENDIENTES ===
+
+    $('#btnVerPendientes').on('click', function () {
+        $('#pendientesLoading').show();
+        $('#pendientesEmpty').hide();
+        $('#pendientesTableWrap').hide();
+        $('#tablaPreventasPendientes tbody').html('');
+
+        $('#modalPreventasPendientes').modal('show');
+
+        $.ajax({
+            url: '/ventas/preventas-pendientes',
+            method: 'GET',
+            success: function (response) {
+                $('#pendientesLoading').hide();
+
+                if (response.status !== 'OK' || !response.preventas || response.preventas.length === 0) {
+                    $('#pendientesEmpty').show();
+                    return;
+                }
+
+                const rows = response.preventas.map(function (p) {
+                    return '<tr data-id="' + p.venta_id + '">' +
+                        '<td><strong>' + p.numero_preventa + '</strong></td>' +
+                        '<td>' + (p.fecha_preventa || '-') + '</td>' +
+                        '<td class="text-right">' + formatCurrency(p.total) + '</td>' +
+                        '<td class="text-center">' +
+                            '<button class="btn btn-sm btn-outline-info btn-ver-productos mr-1" data-numero="' + p.numero_preventa + '" title="Ver Productos">' +
+                                '<i class="fa fa-eye"></i> Productos' +
+                            '</button>' +
+                            '<button class="btn btn-sm btn-primary btn-cargar-preventa" data-numero="' + p.numero_preventa + '">' +
+                                '<i class="fa fa-arrow-right"></i> Cargar' +
+                            '</button>' +
+                        '</td>' +
+                    '</tr>';
+                }).join('');
+
+                $('#tablaPreventasPendientes tbody').html(rows);
+                $('#pendientesTableWrap').show();
+            },
+            error: function () {
+                $('#pendientesLoading').hide();
+                $('#pendientesEmpty').text('Error al cargar las preventas pendientes.').show();
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-cargar-preventa', function () {
+        const numero = $(this).data('numero');
+        $('#modalPreventasPendientes').modal('hide');
+        $('#preventa-code').val(numero);
+        buscarPreventa();
+    });
+
+    $(document).on('click', '.btn-ver-productos', function () {
+        const $btn = $(this);
+        const numero = $btn.data('numero');
+        const $row = $btn.closest('tr');
+        const detalleRowId = 'detalle-prev-' + numero;
+        const $detalleExistente = $('#' + detalleRowId);
+
+        if ($detalleExistente.length) {
+            $detalleExistente.toggle();
+            $btn.toggleClass('active');
+            return;
+        }
+
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: '/ventas/preventa/buscar',
+            method: 'POST',
+            data: {
+                _token: $('#token').val(),
+                codigo_preventa: numero
+            },
+            success: function (response) {
+                if ($('#' + detalleRowId).length) return;
+
+                if (response.status !== 'OK' || !response.preventa) {
+                    toastr.error('No se pudieron cargar los productos');
+                    return;
+                }
+
+                const detalles = response.preventa.detalles || [];
+                let productosHtml;
+
+                if (detalles.length === 0) {
+                    productosHtml = '<em class="text-muted">Sin productos</em>';
+                } else {
+                    const filas = detalles.map(function (d) {
+                        const cantidad = (parseFloat(d.cantidad) || 0).toString().replace(/\.0+$/, '');
+                        return '<tr>' +
+                            '<td>' + (d.descripcion_producto || '-') + '</td>' +
+                            '<td class="text-center">' + cantidad + '</td>' +
+                            '<td class="text-right">' + formatCurrency(d.precio_unitario) + '</td>' +
+                            '<td class="text-center">' + (d.descuento_porcentaje || 0) + ' %</td>' +
+                            '<td class="text-right"><strong>' + formatCurrency(d.subtotal_linea) + '</strong></td>' +
+                        '</tr>';
+                    }).join('');
+
+                    productosHtml =
+                        '<table class="productos-sub-tabla">' +
+                            '<thead><tr>' +
+                                '<th>Producto</th>' +
+                                '<th class="text-center">Cant.</th>' +
+                                '<th class="text-right">P. Unit.</th>' +
+                                '<th class="text-center">Desc.</th>' +
+                                '<th class="text-right">Subtotal</th>' +
+                            '</tr></thead>' +
+                            '<tbody>' + filas + '</tbody>' +
+                        '</table>';
+                }
+
+                const $detalleRow = $('<tr class="detalle-productos" id="' + detalleRowId + '">' +
+                    '<td colspan="4">' + productosHtml + '</td>' +
+                '</tr>');
+
+                $row.after($detalleRow);
+                $btn.addClass('active');
+            },
+            error: function () {
+                toastr.error('Error al cargar los productos de la preventa');
+            },
+            complete: function () {
+                $btn.prop('disabled', false).html('<i class="fa fa-eye"></i> Productos');
+            }
+        });
+    });
 });

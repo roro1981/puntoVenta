@@ -1130,12 +1130,37 @@ $(document).ready(function() {
 
                                 <div class="alert alert-success mt-3">
                                     <h5><strong>Monto Esperado en Caja:</strong> ${formatCurrency(caja.monto_esperado)}</h5>
-                                    <small>Monto Inicial (${formatCurrency(caja.monto_inicial)}) + Total Ventas (${formatCurrency(caja.total_ventas)})</small>
+                                    <small>Inicial (${formatCurrency(caja.monto_inicial)}) + Ventas (${formatCurrency(caja.total_ventas)})${(caja.total_retiros > 0) ? ' − Retiros (' + formatCurrency(caja.total_retiros) + ')' : ''}</small>
                                 </div>
 
-                                <button class="btn btn-danger btn-lg btn-block mt-4" id="btnAbrirCierreCaja">
-                                    <i class="fa fa-power-off"></i> Cerrar Caja
-                                </button>
+                                ${(caja.retiros && caja.retiros.length > 0) ? `
+                                <h6 class="mt-3"><strong>Retiros registrados</strong></h6>
+                                <table class="table table-bordered table-sm">
+                                    <thead class="thead-light">
+                                        <tr><th>Hora</th><th>Motivo</th><th class="text-right">Monto</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${caja.retiros.map(r => `<tr>
+                                            <td style="white-space:nowrap;">${r.created_at}</td>
+                                            <td>${r.motivo}</td>
+                                            <td class="text-right text-danger font-weight-bold">-${formatCurrency(r.monto)}</td>
+                                        </tr>`).join('')}
+                                        <tr class="table-danger font-weight-bold">
+                                            <td colspan="2">TOTAL RETIROS</td>
+                                            <td class="text-right">-${formatCurrency(caja.total_retiros)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                ` : ''}
+
+                                <div class="d-flex" style="gap:8px;margin-top:12px;">
+                                    <button class="btn btn-warning flex-fill" id="btnAbrirRetiroCaja">
+                                        <i class="fa fa-minus-circle"></i> Registrar Retiro
+                                    </button>
+                                    <button class="btn btn-danger flex-fill" id="btnAbrirCierreCaja">
+                                        <i class="fa fa-power-off"></i> Cerrar Caja
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1151,9 +1176,60 @@ $(document).ready(function() {
         });
     }
 
+    // Abrir modal de retiro de caja
+    $(document).on('click', '#btnAbrirRetiroCaja', function() {
+        $('#retiroMonto').val('');
+        $('#retiroMotivo').val('');
+        $('#modalRetiroCaja').modal('show');
+    });
+
+    // Confirmar retiro de caja
+    $('#btnConfirmarRetiroCaja').on('click', function() {
+        const monto = parseFloat($('#retiroMonto').val());
+        const motivo = $('#retiroMotivo').val().trim();
+        const tipoCaja = $('#retiroCajaTipoCaja').val() || 'ALMACEN';
+
+        if (!monto || monto < 1) {
+            toastr.error('Ingrese un monto válido (mínimo $1)');
+            return;
+        }
+        if (!motivo || motivo.length < 3) {
+            toastr.error('Ingrese un motivo (mínimo 3 caracteres)');
+            return;
+        }
+
+        $('#btnConfirmarRetiroCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Registrando...');
+
+        $.ajax({
+            url: '/ventas/retiro-caja',
+            method: 'POST',
+            data: {
+                _token: $('#token').val(),
+                monto: monto,
+                motivo: motivo,
+                tipo_caja: tipoCaja
+            },
+            success: function(response) {
+                if (response.status === 'OK') {
+                    $('#modalRetiroCaja').modal('hide');
+                    toastr.success('Retiro registrado correctamente');
+                    cargarInfoCaja();
+                } else {
+                    toastr.error(response.message || 'Error al registrar retiro');
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al registrar retiro';
+                toastr.error(msg);
+            },
+            complete: function() {
+                $('#btnConfirmarRetiroCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Registrar Retiro');
+            }
+        });
+    });
+
     // Abrir modal de cierre de caja
     $(document).on('click', '#btnAbrirCierreCaja', function() {
-        // Cargar datos de la caja actual
         $.ajax({
             url: '/ventas/info-caja',
             method: 'GET',

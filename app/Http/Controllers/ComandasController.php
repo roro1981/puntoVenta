@@ -16,6 +16,7 @@ use App\Models\DetalleVenta;
 use App\Models\FormaPagoVenta;
 use App\Models\HistorialMovimientos;
 use App\Models\Caja;
+use App\Models\RetiroCaja;
 use App\Models\Globales;
 use App\Models\CorporateData;
 use App\Models\RangoPrecio;
@@ -317,7 +318,17 @@ class ComandasController extends Controller
                     'observaciones_apertura' => $caja->observaciones,
                     'total_ventas' => $totalVentas,
                     'cantidad_ventas' => $cantidadVentas,
-                    'monto_esperado' => $caja->monto_inicial + $totalVentas,
+                    'retiros' => RetiroCaja::where('caja_id', $caja->id)
+                        ->orderBy('created_at')
+                        ->get(['id', 'monto', 'motivo', 'created_at'])
+                        ->map(fn ($r) => [
+                            'id'         => $r->id,
+                            'monto'      => (float) $r->monto,
+                            'motivo'     => $r->motivo,
+                            'created_at' => $r->created_at->format('d/m/Y H:i'),
+                        ])->values()->toArray(),
+                    'total_retiros' => (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto'),
+                    'monto_esperado' => $caja->monto_inicial + $totalVentas - (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto'),
                     'desglose' => [
                         'efectivo' => $totalEfectivo,
                         'tarjeta_debito' => $totalTarjetaDebito,
@@ -349,7 +360,8 @@ class ComandasController extends Controller
             }
 
             $totalVentas = (float) Venta::where('caja_id', $caja->id)->sum('total');
-            $montoEsperado = $caja->monto_inicial + $totalVentas;
+            $totalRetiros = (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto');
+            $montoEsperado = $caja->monto_inicial + $totalVentas - $totalRetiros;
             $montoFinalDeclarado = $request->monto_final_declarado;
             $diferencia = $montoFinalDeclarado - $montoEsperado;
 
@@ -657,6 +669,7 @@ class ComandasController extends Controller
                     'propina' => $comanda->propina ?? 0,
                     'incluye_propina' => $comanda->incluye_propina ?? false,
                     'total' => $comanda->total,
+                    'observaciones' => $comanda->observaciones ?? '',
                     'fecha_apertura' => $comanda->fecha_apertura->format('d/m/Y H:i'),
                     'hora_apertura' => $horaApertura,
                     'detalles' => $detalles
@@ -999,6 +1012,7 @@ class ComandasController extends Controller
                 'numero_comanda' => 'TEMP-' . uniqid(),
                 'estado' => 'ABIERTA',
                 'comensales' => $request->comensales ?? 0,
+                'observaciones' => $request->observaciones ?? null,
                 'total' => 0,
                 'subtotal' => 0,
                 'impuestos' => 0,
@@ -1052,6 +1066,7 @@ class ComandasController extends Controller
             $comanda->garzon_id = $request->garzon_id ?? $comanda->garzon_id;
             $comanda->comensales = $request->comensales ?? $comanda->comensales;
             $comanda->incluye_propina = filter_var($request->incluye_propina, FILTER_VALIDATE_BOOLEAN);
+            $comanda->observaciones = $request->filled('observaciones') ? $request->observaciones : $comanda->observaciones;
             $comanda->estado = 'EN CONSUMO';
             $comanda->save();
 
@@ -1642,6 +1657,21 @@ class ComandasController extends Controller
                 'success' => false,
                 'message' => 'Error al guardar layout: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function imprimirTicketCocina($comandaId)
+    {
+        try {
+            $comanda = Comanda::with(['mesa', 'detalles.producto', 'detalles.receta', 'garzon'])
+                ->findOrFail($comandaId);
+
+            $pdf = Pdf::loadView('restaurant.ticket_cocina', compact('comanda'));
+            $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+
+            return $pdf->stream('cocina-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
+        } catch (\Exception $e) {
+            abort(500, 'Error al generar ticket de cocina: ' . $e->getMessage());
         }
     }
 

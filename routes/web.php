@@ -131,12 +131,16 @@ Route::get('/ventas/cerrar_comandas/info-caja', [ComandasController::class, 'obt
 Route::post('/ventas/cerrar_comandas/cerrar-caja', [ComandasController::class, 'cerrarCajaCerrarComandas']);
 Route::post('/ventas/cerrar_comandas/cerrar/{comandaId}', [ComandasController::class, 'cerrarComanda'])->middleware('sistema.activo');
 Route::post('/ventas/abrir-caja', [VentasController::class, 'abrirCaja']);
-Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword'])->middleware('throttle:5,1');
+Route::post('/ventas/verificar-password', [VentasController::class, 'verificarPassword'])->middleware('throttle:20,1');
 Route::get('/ventas/info-caja', [VentasController::class, 'obtenerInfoCaja']);
-Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja'])->middleware('throttle:10,1');
+Route::post('/ventas/cerrar-caja', [VentasController::class, 'cerrarCaja'])->middleware('throttle:20,1');
+Route::post('/ventas/retiro-caja', [VentasController::class, 'registrarRetiroCaja'])->middleware('throttle:30,1');
 Route::get('/ventas/cierres_caja', [VentasController::class, 'historialCierres']);
 Route::get('/ventas/obtener-cierres', [VentasController::class, 'obtenerCierresDataTable']);
 Route::get('/ventas/detalle-cierre/{id}', [VentasController::class, 'obtenerDetalleCierre']);
+Route::post('/ventas/consolidar-cajas', [VentasController::class, 'consolidarCajas']);
+Route::get('/ventas/consolidar-cajas/imprimir', [VentasController::class, 'imprimirConsolidado']);
+Route::get('/ventas/consolidar-cajas/excel', [VentasController::class, 'exportarConsolidado']);
 Route::get('/ventas/tickets_emitidos', [VentasController::class, 'historialTickets']);
 Route::get('/ventas/obtener-tickets', [VentasController::class, 'obtenerTickets']);
 Route::get('/ventas/detalle-ticket/{id}', [VentasController::class, 'obtenerDetalleTicket']);
@@ -253,6 +257,7 @@ Route::post('/restaurant/comandas/agregar-producto', [ComandasController::class,
 Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasController::class, 'actualizarProducto'])->middleware('sistema.activo');
 Route::delete('/restaurant/comandas/eliminar-producto/{detalleId}', [ComandasController::class, 'eliminarProducto']);
 Route::get('/restaurant/comandas/imprimir/{comandaId}', [ComandasController::class, 'imprimirComanda']);
+Route::get('/restaurant/comandas/ticket-cocina/{comandaId}', [ComandasController::class, 'imprimirTicketCocina']);
 Route::get('/restaurant/comandas/ticket-pago/{comandaId}/{ventaId}', [ComandasController::class, 'imprimirTicketPagoComanda']);
 Route::get('/restaurant/comandas/layout-json', [ComandasController::class, 'obtenerLayoutMesas']);
 Route::post('/restaurant/comandas/layout-json', [ComandasController::class, 'guardarLayoutMesas']);
@@ -273,5 +278,5 @@ Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventa
 
 }); // End middleware('auth') group
 
-Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:5,1')->name('login');
+Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:10,1')->name('login');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');

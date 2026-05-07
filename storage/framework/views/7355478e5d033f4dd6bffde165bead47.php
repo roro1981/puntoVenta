@@ -1,6 +1,6 @@
 <script type="text/javascript" src="js/ventas/generar_ventas.js"></script>
 <link rel="stylesheet" type="text/css" href="css/ventas/generar_ventas.css">
-<input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+<input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
 <div class="pos-container">
     <div class="left-panel">
         <div class="search-bar">
@@ -387,7 +387,8 @@
 
 <script>
   // Variable para saber si hay caja abierta
-  const cajaAbierta = @json($cajaAbierta);
+  const cajaAbierta = <?php echo json_encode($cajaAbierta, 15, 512) ?>;
 </script>
 
-@include('partials.modal_ayuda', ['modulo' => 'ventas'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'ventas'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/ventas/generar_venta.blade.php ENDPATH**/ ?>
