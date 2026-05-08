@@ -609,6 +609,33 @@
                                 </div>
                               </div>
 
+                              
+                              <div class="home-panel">
+                                <h4><i class="fa fa-money" style="color:#e67e22;margin-right:6px;"></i>Retiros de caja por cajero</h4>
+                                <div class="home-kpi-row" style="margin-bottom:10px;">
+                                  <span class="home-kpi-label">Total retiros: </span>
+                                  <strong id="ci-kpi-retiros-total" style="color:#e67e22;">—</strong>
+                                  &nbsp;|&nbsp;
+                                  <span class="home-kpi-label">Movimientos: </span>
+                                  <strong id="ci-kpi-retiros-cant">—</strong>
+                                </div>
+                                <div id="ci-container-retiros">
+                                  <div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>
+                                </div>
+                              </div>
+
+                              
+                              <div class="home-panel">
+                                <h4><i class="fa fa-warning" style="color:#c0392b;margin-right:6px;"></i>Cierres con diferencia <span id="ci-alerta-umbral"></span></h4>
+                                <div class="home-kpi-row" style="margin-bottom:10px;">
+                                  <span class="home-kpi-label">Alertas: </span>
+                                  <strong id="ci-kpi-alertas-total" style="color:#c0392b;">—</strong>
+                                </div>
+                                <div id="ci-container-cierres-alerta">
+                                  <div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>
+                                </div>
+                              </div>
+
                             </div>
                           </div>
 

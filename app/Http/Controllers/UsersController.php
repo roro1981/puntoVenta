@@ -979,7 +979,67 @@ class UsersController extends Controller
                 'costoMes'    => $costoMermas,
                 'cantidadMes' => $cantidadMermas,
             ],
+            'retiros' => $this->buildRetirosData($desde, $hasta),
+            'cierres_alerta' => $this->buildCierresAlertaData($desde, $hasta),
         ]);
+    }
+
+    /** Retiros de caja en el rango, agrupados por cajero */
+    private function buildRetirosData($desde, $hasta): array
+    {
+        $retiros = DB::table('retiros_caja as rc')
+            ->join('cajas as c', 'c.id', '=', 'rc.caja_id')
+            ->join('users as u', 'u.id', '=', 'rc.creado_por')
+            ->whereBetween('rc.created_at', [$desde, $hasta])
+            ->selectRaw('u.name as usuario, COUNT(*) as cantidad, SUM(rc.monto) as monto_total')
+            ->groupBy('u.name')
+            ->orderByDesc(DB::raw('SUM(rc.monto)'))
+            ->get()
+            ->map(fn ($r) => [
+                'usuario'    => $r->usuario,
+                'cantidad'   => (int) $r->cantidad,
+                'montoTotal' => (float) $r->monto_total,
+            ])->all();
+
+        return [
+            'porUsuario'   => $retiros,
+            'montoTotal'   => array_sum(array_column($retiros, 'montoTotal')),
+            'cantidadTotal'=> array_sum(array_column($retiros, 'cantidad')),
+        ];
+    }
+
+    /** Cierres de caja en el rango con diferencia superior a $5.000 */
+    private function buildCierresAlertaData($desde, $hasta): array
+    {
+        $umbral = 5000;
+        $cierres = DB::table('cajas as cj')
+            ->join('users as u', 'u.id', '=', 'cj.user_id')
+            ->where('cj.estado', 'cerrada')
+            ->whereBetween('cj.fecha_cierre', [$desde, $hasta])
+            ->whereRaw('ABS(COALESCE(cj.diferencia, 0)) >= ?', [$umbral])
+            ->selectRaw('
+                u.name as cajero,
+                cj.monto_inicial + cj.monto_ventas as monto_esperado,
+                cj.monto_final_declarado as monto_declarado,
+                cj.diferencia as diferencia,
+                DATE_FORMAT(cj.fecha_cierre, "%d/%m/%Y %H:%i") as fecha_cierre
+            ')
+            ->orderByDesc(DB::raw('ABS(COALESCE(cj.diferencia, 0))'))
+            ->limit(20)
+            ->get()
+            ->map(fn ($r) => [
+                'cajero'          => $r->cajero,
+                'montoEsperado'   => (float) $r->monto_esperado,
+                'montoDeclarado'  => (float) $r->monto_declarado,
+                'diferencia'      => (float) $r->diferencia,
+                'fechaCierre'     => $r->fecha_cierre,
+            ])->all();
+
+        return [
+            'cierres'     => $cierres,
+            'totalAlertas'=> count($cierres),
+            'umbral'      => $umbral,
+        ];
     }
 
     public function getUserMenus()

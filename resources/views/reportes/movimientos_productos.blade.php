@@ -94,6 +94,7 @@
 
     {{-- Tabla --}}
     <div class="mv-panel">
+        <div class="table-responsive">
         <table id="tbl_movis" class="table table-hover mv-tabla">
             <thead>
                 <tr>
@@ -106,6 +107,7 @@
             </thead>
             <tbody></tbody>
         </table>
+        </div>{{-- /table-responsive --}}
     </div>
 
 </div>

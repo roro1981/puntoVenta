@@ -15,7 +15,7 @@ set ZIP_LOCAL=%TEMP%\pventa_deploy.zip
 set ZIP_REMOTE=/tmp/pventa_deploy.zip
 
 :: -----------------------------------------------
-:: PASO 1: Copiar archivos a staging
+:: PASO 1: Copiar archivos a staging 
 ::   Se excluyen vendor, node_modules, .env,
 ::   caches de framework y archivos de solo-local
 :: -----------------------------------------------
@@ -34,6 +34,9 @@ robocopy "%LOCAL_PATH%" "%STAGING%" /E /NFL /NDL /NJH /NJS ^
       "storage\framework\sessions" ^
       "storage\framework\views" ^
       "bootstrap\cache" ^
+      "public\img\documentos_fotos" ^
+      "public\img\fotos_prod" ^
+      "public\img\logo_empresa" ^
   /XF ".env" "deploy.bat" ".last_deploy"
 
 for /f %%c in ('dir /s /b /a-d "%STAGING%" 2^>nul ^| find /c /v ""') do echo Archivos incluidos: %%c

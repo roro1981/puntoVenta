@@ -136,6 +136,7 @@
     color: #2c3e50;
 }
 .vv-panel-full { width: 100%; }
+.vv-panel-wide  { min-width: 0; }
 .vv-chart-wrap {
     position: relative;
     height: 260px;
@@ -220,4 +221,10 @@
     font-size: 13px;
     padding: 20px 0;
     text-align: center;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .vv-chart-wrap     { height: 200px !important; }
+    .vv-chart-wrap-bar { height: 180px !important; }
 }

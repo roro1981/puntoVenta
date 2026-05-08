@@ -323,3 +323,9 @@
     text-align: center;
     padding: 20px 0;
 }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .vc-dona-wrap  { height: 200px !important; }
+    .vc-chart-wrap { height: 200px !important; }
+}

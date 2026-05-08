@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use App\Models\Permiso;
 
 class StoreVentaRequest extends FormRequest
 {
@@ -120,6 +122,23 @@ class StoreVentaRequest extends FormRequest
                         $validator->errors()->add(
                             'formas_pago_desglose',
                             "La suma de los montos del desglose ($sumaMontosDesglose) debe ser igual al total de la venta ($totalVenta)."
+                        );
+                    }
+                }
+            }
+
+            // Validar límite de descuento por línea según permiso del usuario
+            $descuentoMaximo = 15; // % máximo para cajeros sin permiso especial
+            $usuarioActual = Auth::user();
+            $tieneDescuentoLibre = $usuarioActual && $usuarioActual->tienePermiso(Permiso::PERMISO_DESCUENTO_LIBRE);
+
+            if (!$tieneDescuentoLibre) {
+                foreach ($this->input('detalles', []) as $idx => $detalle) {
+                    $descuento = (float) ($detalle['descuento_porcentaje'] ?? 0);
+                    if ($descuento > $descuentoMaximo) {
+                        $validator->errors()->add(
+                            "detalles.{$idx}.descuento_porcentaje",
+                            "No tienes permiso para aplicar descuentos superiores al {$descuentoMaximo}% (línea " . ($idx + 1) . ")."
                         );
                     }
                 }

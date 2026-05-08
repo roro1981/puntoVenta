@@ -254,6 +254,17 @@
                     <input type="text" class="form-control" id="retiroMotivo"
                            placeholder="Ej: Pago proveedor, gastos operacionales..." maxlength="255" required>
                 </div>
+                <div id="retiroSupervisorWrap" style="display:none;">
+                  <hr>
+                  <div class="alert alert-danger" style="margin-bottom:10px;">
+                    <i class="fa fa-lock"></i> <strong>Autorización requerida.</strong> Ingresa la contraseña de un supervisor con permiso de retiro.
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label for="retiroSupervisorPassword"><strong>Contraseña del supervisor *</strong></label>
+                    <input type="password" class="form-control" id="retiroSupervisorPassword"
+                           placeholder="Contraseña del supervisor" autocomplete="new-password">
+                  </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>

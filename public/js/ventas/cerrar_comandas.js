@@ -280,6 +280,8 @@ function cargarDetalleCajaCerrarComandas() {
 $(document).on('click', '#btnAbrirRetiroCaja', function() {
     $('#retiroMonto').val('');
     $('#retiroMotivo').val('');
+    $('#retiroSupervisorPassword').val('');
+    $('#retiroSupervisorWrap').hide();
     $('#modalRetiroCaja').modal('show');
 });
 
@@ -288,6 +290,7 @@ $('#btnConfirmarRetiroCaja').on('click', function() {
     const monto = parseFloat($('#retiroMonto').val());
     const motivo = $('#retiroMotivo').val().trim();
     const tipoCaja = $('#retiroCajaTipoCaja').val() || 'RESTAURANT';
+    const supervisorPassword = $('#retiroSupervisorPassword').val();
 
     if (!monto || monto < 1) {
         toastr.error('Ingrese un monto válido (mínimo $1)');
@@ -297,20 +300,32 @@ $('#btnConfirmarRetiroCaja').on('click', function() {
         toastr.error('Ingrese un motivo (mínimo 3 caracteres)');
         return;
     }
+    if ($('#retiroSupervisorWrap').is(':visible') && !supervisorPassword) {
+        toastr.error('Ingresa la contraseña del supervisor');
+        $('#retiroSupervisorPassword').focus();
+        return;
+    }
 
     $('#btnConfirmarRetiroCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Registrando...');
+
+    const payload = {
+        _token: $('meta[name="csrf-token"]').attr('content') || $('#token').val(),
+        monto: monto,
+        motivo: motivo,
+        tipo_caja: tipoCaja
+    };
+    if (supervisorPassword) {
+        payload.supervisor_password = supervisorPassword;
+    }
 
     $.ajax({
         url: '/ventas/retiro-caja',
         method: 'POST',
-        data: {
-            _token: $('meta[name="csrf-token"]').attr('content') || $('#token').val(),
-            monto: monto,
-            motivo: motivo,
-            tipo_caja: tipoCaja
-        },
+        data: payload,
         success: function(response) {
             if (response.status === 'OK') {
+                $('#retiroSupervisorWrap').hide();
+                $('#retiroSupervisorPassword').val('');
                 $('#modalRetiroCaja').modal('hide');
                 toastr.success('Retiro registrado correctamente');
                 cargarDetalleCajaCerrarComandas();
@@ -319,8 +334,14 @@ $('#btnConfirmarRetiroCaja').on('click', function() {
             }
         },
         error: function(xhr) {
-            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al registrar retiro';
-            toastr.error(msg);
+            const res = xhr.responseJSON || {};
+            if (res.status === 'REQUIERE_SUPERVISOR') {
+                $('#retiroSupervisorWrap').show();
+                $('#retiroSupervisorPassword').focus();
+                toastr.warning(res.message || 'Se requiere autorización de supervisor.');
+            } else {
+                toastr.error(res.message || 'Error al registrar retiro');
+            }
         },
         complete: function() {
             $('#btnConfirmarRetiroCaja').prop('disabled', false).html('<i class="fa fa-check"></i> Registrar Retiro');

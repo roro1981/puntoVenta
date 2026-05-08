@@ -231,3 +231,9 @@
     color: #1a5276;
 }
 .hp-kpi-item.kpi-compra .hp-kpi-valor { color: #922b21; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .hp-chart-wrap  { height: 200px !important; }
+    .hp-sugerencias { min-width: 0; width: calc(100vw - 40px); }
+}

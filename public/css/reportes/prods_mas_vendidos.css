@@ -312,6 +312,7 @@
     .pmv-card-val    { font-size: 20px; }
     .pmv-row-charts  { gap: 8px; }
     .pmv-chart-bar-wrap, .pmv-chart-donut-wrap { flex: 1 1 100%; }
+    .pmv-canvas-wrap { height: 200px !important; }
     .pmv-row-operativo { gap: 8px; }
     .pmv-panel-critico, .pmv-panel-movimientos { flex: 1 1 100%; }
 }

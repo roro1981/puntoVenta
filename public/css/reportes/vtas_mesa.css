@@ -231,3 +231,10 @@
     padding: 20px 0;
     text-align: center;
 }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .vm-chart-wrap       { height: 200px !important; }
+    .vm-chart-wrap-bar   { height: 180px !important; }
+    .vm-chart-wrap-donut { height: 200px !important; }
+}

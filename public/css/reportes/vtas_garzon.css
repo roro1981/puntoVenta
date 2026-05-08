@@ -213,3 +213,9 @@
     padding: 20px 0;
     text-align: center;
 }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .vg-chart-wrap     { height: 200px !important; }
+    .vg-chart-wrap-bar { height: 180px !important; }
+}

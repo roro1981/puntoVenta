@@ -133,6 +133,7 @@
     width: 100%;
     margin-bottom: 22px;
 }
+.fp-panel-wide { min-width: 0; }
 .fp-chart-wrap {
     position: relative;
     height: 260px;
@@ -188,4 +189,10 @@
     font-size: 13px;
     padding: 20px 0;
     text-align: center;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .fp-chart-wrap { height: 200px !important; }
+    .fp-dona-wrap  { height: 200px !important; }
 }

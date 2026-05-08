@@ -37,6 +37,12 @@ class Permiso extends Model
     const PERMISO_DASHBOARD_ADMINISTRADOR = 'PERMISO_DASHBOARD_ADMINISTRADOR';
     const PERMISO_DASHBOARD_USUARIO = 'PERMISO_DASHBOARD_USUARIO';
 
+    // --- Seguridad de caja ---
+    /** Solo usuarios con este permiso pueden registrar retiros de caja. */
+    const PERMISO_RETIRO_CAJA = 'PERMISO_RETIRO_CAJA';
+    /** Usuarios con este permiso pueden aplicar descuentos superiores al límite configurado. */
+    const PERMISO_DESCUENTO_LIBRE = 'PERMISO_DESCUENTO_LIBRE';
+
     /**
      * Obtener permisos por módulo
      */

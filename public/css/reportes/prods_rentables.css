@@ -178,6 +178,7 @@
 .pr-canvas-wrap {
     position: relative;
     width: 100%;
+    height: 260px;
 }
 
 /* ── OPERATIVO ROW ── */
@@ -298,4 +299,5 @@
     .pr-card-val        { font-size: 18px; }
     .pr-row-charts,
     .pr-row-operativo   { flex-direction: column; }
+    .pr-canvas-wrap     { height: 200px !important; }
 }

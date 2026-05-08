@@ -5,6 +5,8 @@
 .home-dashboard {
   padding: 8px 4px 4px;
   color: #263238;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .home-hero {
@@ -165,6 +167,8 @@
   border: 1px solid #e8edf2;
   box-shadow: 0 10px 24px rgba(23, 42, 58, 0.06);
   padding: 18px;
+  min-width: 0;       /* evita overflow de grid item */
+  overflow: hidden;   /* contiene canvas y tablas anchas */
 }
 
 .home-panel h4 {
@@ -176,7 +180,15 @@
 
 .home-chart-wrap {
   position: relative;
-  min-height: 270px;
+  height: 270px;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Los canvas nunca deben sobrepasar su contenedor (fix crítico Chart.js móvil) */
+.home-chart-wrap canvas {
+  display: block;
+  max-width: 100%;
 }
 
 .home-payment-list,
@@ -204,6 +216,20 @@
   gap: 10px;
   font-weight: 700;
   color: #273746;
+}
+
+/* Fix crítico: nombre del producto no empuja la cantidad fuera de pantalla */
+.home-top-head span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.home-top-head span:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-left: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-payment-bar {
@@ -445,7 +471,7 @@
   .home-panels,
   .home-subgrid,
   .home-subgrid-3 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -568,7 +594,7 @@
   .home-panels,
   .home-subgrid,
   .home-subgrid-3 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-panel {
@@ -581,12 +607,15 @@
     margin-bottom: 10px;
   }
 
-  /* Gráficos */
+  /* Gráficos: height explícita (Chart.js requiere height, no min-height) */
   .home-chart-wrap {
-    min-height: 200px;
+    height: 220px;
   }
 
   /* Forma de pago: evitar overflow en nombre + montos */
+  .home-payment-item {
+    overflow: hidden;
+  }
   .home-payment-head {
     flex-direction: column;
     align-items: flex-start;
@@ -594,18 +623,19 @@
     font-size: 13px;
   }
 
-  /* Tablas */
-  .home-modal-table {
-    font-size: 12px;
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  /* Tablas — NO modificar display (rompe layout en Safari iOS)
+     El scroll se maneja con .table-responsive wrapper de Bootstrap */
   .home-modal-table th,
   .home-modal-table td {
-    padding: 8px 8px;
+    padding: 7px 8px;
+    font-size: 12px;
     white-space: nowrap;
+  }
+
+  /* Asegurar que la h4 del panel no desborde */
+  .home-panel h4 {
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   /* Cajas */
@@ -621,8 +651,16 @@
 
 /* ── Móvil pequeño (< 480px) ─────────────────────────────── */
 @media (max-width: 479px) {
+  .home-chart-wrap {
+    height: 190px;
+  }
+
   .home-kpi-value {
     font-size: 17px;
+  }
+
+  .home-kpi-label {
+    font-size: 10px;
   }
 
   .home-hero h3 {

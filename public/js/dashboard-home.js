@@ -27,6 +27,23 @@ document.addEventListener('DOMContentLoaded', function () {
     function clpFormatter(value) {
         return '$' + Number(value).toLocaleString('es-CL');
     }
+
+    /* Tick de eje abreviado en móvil para evitar que el label ancho achique el gráfico */
+    var isMobile = window.innerWidth < 768;
+    function clpTick(v) {
+        if (!isMobile) return '$' + Number(v).toLocaleString('es-CL');
+        var abs = Math.abs(v);
+        if (abs >= 1000000) return '$' + (v / 1000000).toFixed(1).replace('.', ',') + 'M';
+        if (abs >= 1000)    return '$' + Math.round(v / 1000) + 'K';
+        return '$' + Math.round(v);
+    }
+
+    /* Ajustes globales Chart.js para móvil */
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.global.defaultFontSize       = isMobile ? 10 : 12;
+        Chart.defaults.global.elements.point.radius = isMobile ?  2 :  3;
+        Chart.defaults.global.elements.point.hoverRadius = isMobile ? 4 : 6;
+    }
     var chartDefaults = {
         responsive: true,
         maintainAspectRatio: false,
@@ -42,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
             yAxes: [{
                 ticks: {
                     beginAtZero: true,
-                    callback: function (v) { return clpFormatter(v); }
+                    callback: function (v) { return clpTick(v); }
                 },
                 gridLines: { color: 'rgba(132,146,166,0.16)' }
             }],
@@ -150,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     xAxes: [{
                         ticks: {
                             beginAtZero: true,
-                            callback: function (v) { return clpFormatter(v); }
+                            callback: function (v) { return clpTick(v); }
                         },
                         gridLines: { color: 'rgba(132,146,166,0.16)' }
                     }],
@@ -196,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                legend: { display: true, position: 'top', labels: { fontSize: 12, boxWidth: 14 } },
+                legend: { display: true, position: 'top', labels: { fontSize: isMobile ? 10 : 12, boxWidth: 14 } },
                 tooltips: {
                     mode: 'index',
                     callbacks: {
@@ -209,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     yAxes: [{
                         ticks: {
                             beginAtZero: true,
-                            callback: function (v) { return clpFormatter(v); }
+                            callback: function (v) { return clpTick(v); }
                         },
                         gridLines: { color: 'rgba(132,146,166,0.16)' }
                     }],
@@ -286,6 +303,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* inicializar tooltips de Bootstrap en los iconos de ayuda */
     $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+
+    /* Forzar redibujado de gráficos tras animación del sidebar de AdminLTE (fix móvil) */
+    setTimeout(function () { if (typeof $ !== 'undefined') $(window).trigger('resize'); }, 420);
+    /* También al abrir/cerrar sidebar manualmente */
+    $(document).on('click', '.sidebar-toggle', function () {
+        setTimeout(function () { $(window).trigger('resize'); }, 350);
+    });
 
 });
 
@@ -560,11 +584,72 @@ $(function () {
         } else {
             $('#ci-container-mermas').html('<div class="home-empty" style="color:#27ae60;"><i class="fa fa-check-circle"></i> Sin mermas en este período.</div>');
         }
+
+        // ── Retiros de caja ──────────────────────────────────────────
+        var retiros = data.retiros || { porUsuario: [], montoTotal: 0, cantidadTotal: 0 };
+        $('#ci-kpi-retiros-total').text(ciFormatCLP(retiros.montoTotal || 0));
+        $('#ci-kpi-retiros-cant').text(retiros.cantidadTotal || 0);
+        if (retiros.porUsuario && retiros.porUsuario.length > 0) {
+            var htmlR = '<table class="home-modal-table"><thead><tr>'
+                + '<th style="text-align:left;">Cajero</th>'
+                + '<th style="text-align:center;">Retiros</th>'
+                + '<th style="text-align:right;">Monto total</th>'
+                + '</tr></thead><tbody>';
+            retiros.porUsuario.forEach(function (row) {
+                var alerta = row.montoTotal > 500000;
+                htmlR += '<tr' + (alerta ? ' style="background:#fff0e0;"' : '') + '>'
+                    + '<td style="text-align:left;">' + row.usuario + (alerta ? ' <i class="fa fa-warning" style="color:#e67e22;" title="Monto alto"></i>' : '') + '</td>'
+                    + '<td style="text-align:center;">' + row.cantidad + '</td>'
+                    + '<td style="text-align:right;color:#e67e22;font-weight:600;">' + ciFormatCLP(row.montoTotal) + '</td>'
+                    + '</tr>';
+            });
+            htmlR += '</tbody><tfoot><tr style="background:#fff5eb;">'
+                + '<td style="text-align:left;"><strong>Total</strong></td>'
+                + '<td style="text-align:center;"><strong>' + (retiros.cantidadTotal || 0) + '</strong></td>'
+                + '<td style="text-align:right;color:#e67e22;"><strong>' + ciFormatCLP(retiros.montoTotal || 0) + '</strong></td>'
+                + '</tr></tfoot></table>';
+            $('#ci-container-retiros').html('<div class="table-responsive">' + htmlR + '</div>');
+        } else {
+            $('#ci-container-retiros').html('<div class="home-empty" style="color:#27ae60;"><i class="fa fa-check-circle"></i> Sin retiros en este período.</div>');
+        }
+
+        // ── Cierres con diferencia alta ──────────────────────────────
+        var alertas = data.cierres_alerta || { cierres: [], totalAlertas: 0, umbral: 5000 };
+        var umbralFmt = '$' + ciFormatNum(alertas.umbral || 5000, 0);
+        $('#ci-alerta-umbral').text('> ' + umbralFmt);
+        $('#ci-kpi-alertas-total').text(alertas.totalAlertas || 0)
+            .css('color', (alertas.totalAlertas || 0) > 0 ? '#c0392b' : '#27ae60');
+        if (alertas.cierres && alertas.cierres.length > 0) {
+            var htmlA = '<table class="home-modal-table"><thead><tr>'
+                + '<th style="text-align:left;">Cajero</th>'
+                + '<th style="text-align:right;">Esperado</th>'
+                + '<th style="text-align:right;">Declarado</th>'
+                + '<th style="text-align:right;">Diferencia</th>'
+                + '<th style="text-align:left;">Cierre</th>'
+                + '</tr></thead><tbody>';
+            alertas.cierres.forEach(function (row) {
+                var dif = row.diferencia || 0;
+                var difStyle = dif < 0 ? 'color:#c0392b;font-weight:600;' : 'color:#27ae60;font-weight:600;';
+                htmlA += '<tr>'
+                    + '<td style="text-align:left;">' + row.cajero + '</td>'
+                    + '<td style="text-align:right;">' + ciFormatCLP(row.montoEsperado) + '</td>'
+                    + '<td style="text-align:right;">' + ciFormatCLP(row.montoDeclarado) + '</td>'
+                    + '<td style="text-align:right;' + difStyle + '">' + ciFormatCLP(dif) + '</td>'
+                    + '<td style="text-align:left;font-size:11px;color:#6b7280;">' + row.fechaCierre + '</td>'
+                    + '</tr>';
+            });
+            htmlA += '</tbody></table>';
+            $('#ci-container-cierres-alerta').html('<div class="table-responsive">' + htmlA + '</div>');
+        } else {
+            $('#ci-container-cierres-alerta').html('<div class="home-empty" style="color:#27ae60;"><i class="fa fa-check-circle"></i> Sin diferencias significativas en este período.</div>');
+        }
     }
 
     function cargarControlInterno(desde, hasta) {
         $('#ci-container-anulaciones').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
         $('#ci-container-mermas').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
+        $('#ci-container-retiros').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
+        $('#ci-container-cierres-alerta').html('<div class="home-empty"><i class="fa fa-spinner fa-spin"></i> Cargando...</div>');
         $.ajax({
             url: '/dashboard/control-interno',
             type: 'GET',
@@ -576,6 +661,8 @@ $(function () {
                 toastr.error('Error al cargar datos de Control Interno');
                 $('#ci-container-anulaciones').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
                 $('#ci-container-mermas').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
+                $('#ci-container-retiros').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
+                $('#ci-container-cierres-alerta').html('<div class="home-empty" style="color:#c0392b;">Error al cargar.</div>');
             }
         });
     }

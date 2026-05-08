@@ -248,6 +248,11 @@
 .inv-h-info    { background: #eaf4fb; color: #2980b9; }
 .inv-h-bad     { background: #fdedee; color: #e74c3c; }
 
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .inv-chart-wrap { height: 200px !important; }
+}
+
 /* ---- Tooltip hint ---- */
 .inv-th-info { font-size: 11px; color: #aaa; margin-left: 3px; cursor: help; }
 

@@ -65,6 +65,19 @@ class PermisosRolesSeeder extends Seeder
                 'descripcion' => 'Acceso al dashboard básico de usuario',
                 'modulo' => 'Dashboard'
             ],
+            // --- Seguridad de caja ---
+            [
+                'codigo' => Permiso::PERMISO_RETIRO_CAJA,
+                'nombre' => 'Registrar Retiros de Caja',
+                'descripcion' => 'Permite registrar retiros de efectivo de la caja. Sin este permiso el usuario no puede retirar dinero.',
+                'modulo' => 'Caja'
+            ],
+            [
+                'codigo' => Permiso::PERMISO_DESCUENTO_LIBRE,
+                'nombre' => 'Descuento Libre en Ventas',
+                'descripcion' => 'Permite aplicar descuentos superiores al límite permitido para cajeros (15%). Sin este permiso el descuento máximo por línea es 15%.',
+                'modulo' => 'Ventas'
+            ],
         ];
 
         $this->command->info("📋 Insertando permisos en la tabla permisos...");
@@ -135,6 +148,8 @@ class PermisosRolesSeeder extends Seeder
         $dashboardPorRol = [
             'Administrador' => [
                 Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
+                Permiso::PERMISO_RETIRO_CAJA,
+                Permiso::PERMISO_DESCUENTO_LIBRE,
             ],
             'Usuario' => [
                 Permiso::PERMISO_DASHBOARD_USUARIO,

@@ -216,3 +216,9 @@
     border-color: #2271a8;
     color: #fff;
 }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 767px) {
+    .mv-buscar-input { width: 100%; }
+    .mv-sugerencias  { min-width: 0; width: calc(100vw - 40px); }
+}

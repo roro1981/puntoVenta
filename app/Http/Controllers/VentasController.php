@@ -17,6 +17,7 @@ use App\Models\RetiroCaja;
 use App\Models\Comanda;
 use App\Models\Globales;
 use App\Models\RangoPrecio;
+use App\Models\Permiso;
 use App\Http\Requests\StoreVentaRequest;
 use App\Http\Requests\StorePreventaRequest;
 use App\Http\Requests\AperturaCajaRequest;
@@ -302,6 +303,39 @@ class VentasController extends Controller
      */
     public function registrarRetiroCaja(Request $request)
     {
+        $user = Auth::user();
+        $tienePropioPermiso = $user->tienePermiso(Permiso::PERMISO_RETIRO_CAJA);
+
+        // Si no tiene el permiso propio, exigir contraseña de un supervisor que sí lo tenga
+        if (!$tienePropioPermiso) {
+            $passwordSupervisor = $request->input('supervisor_password');
+
+            if (!$passwordSupervisor) {
+                return response()->json([
+                    'status'  => 'REQUIERE_SUPERVISOR',
+                    'message' => 'No tienes permiso para retirar. Ingresa la contraseña de un supervisor.',
+                ], 403);
+            }
+
+            // Buscar cualquier usuario activo con PERMISO_RETIRO_CAJA cuya contraseña coincida
+            $supervisorValido = \App\Models\User::where('estado', 1)
+                ->whereHas('role', function ($q) {
+                    $q->whereHas('permisos', function ($q2) {
+                        $q2->where('codigo_permiso', Permiso::PERMISO_RETIRO_CAJA)
+                           ->where('activo', true);
+                    });
+                })
+                ->get()
+                ->first(fn ($u) => \Illuminate\Support\Facades\Hash::check($passwordSupervisor, $u->password));
+
+            if (!$supervisorValido) {
+                return response()->json([
+                    'status'  => 'ERROR',
+                    'message' => 'Contraseña de supervisor incorrecta.',
+                ], 403);
+            }
+        }
+
         $request->validate([
             'monto'     => 'required|numeric|min:1',
             'motivo'    => 'required|string|min:3|max:255',
@@ -319,6 +353,10 @@ class VentasController extends Controller
                 ], 404);
             }
 
+            // Marcar si supera el límite alto para alertar en el dashboard
+            $montoMaximoSinAlerta = 500000;
+            $alertaMontoAlto = (float) $request->monto > $montoMaximoSinAlerta;
+
             RetiroCaja::create([
                 'caja_id'    => $caja->id,
                 'monto'      => $request->monto,
@@ -329,9 +367,10 @@ class VentasController extends Controller
             $totalRetiros = (float) RetiroCaja::where('caja_id', $caja->id)->sum('monto');
 
             return response()->json([
-                'status'        => 'OK',
-                'message'       => 'Retiro registrado correctamente',
-                'total_retiros' => $totalRetiros,
+                'status'            => 'OK',
+                'message'           => 'Retiro registrado correctamente',
+                'total_retiros'     => $totalRetiros,
+                'alerta_monto_alto' => $alertaMontoAlto,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1293,11 +1332,10 @@ class VentasController extends Controller
             $user = Auth::user();
             $caja = Caja::with(['usuario', 'ventas.formasPago'])->findOrFail($cajaId);
             
-            // Verificar permisos
-            $roleName = $user->role->role_name ?? '';
-            $esAdmin = in_array(strtolower($roleName), ['administrador', 'superadministrador', 'admin', 'superadmin']);
-            
-            if (!$esAdmin && $caja->user_id !== $user->id) {
+            // Verificar permisos usando el sistema formal
+            $puedeVerCierres = $user->tienePermiso(Permiso::PERMISO_CIERRES_CAJA);
+
+            if (!$puedeVerCierres && $caja->user_id !== $user->id) {
                 return response()->json([
                     'error' => 'No tienes permiso para ver este cierre'
                 ], 403);
@@ -1626,12 +1664,11 @@ class VentasController extends Controller
             
             $venta = Venta::with(['detalles', 'caja'])->findOrFail($ventaId);
             
-            // Verificar permisos
+            // Verificar permisos usando el sistema formal
             $user = Auth::user();
-            $roleName = $user->role->role_name ?? '';
-            $esAdmin = in_array(strtolower($roleName), ['administrador', 'superadministrador']);
-            
-            if (!$esAdmin && $venta->user_id != $user->id) {
+            $puedeAnular = $user->tienePermiso(Permiso::PERMISO_ANULAR_TICKETS);
+
+            if (!$puedeAnular && $venta->user_id != $user->id) {
                 return response()->json(['error' => 'No tienes permisos para anular este ticket'], 403);
             }
             
