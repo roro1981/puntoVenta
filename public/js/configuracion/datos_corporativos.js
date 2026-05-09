@@ -8,13 +8,21 @@ $(document).ready(function() {
     $('#saveCorporateDataBtn').click(function() {
     
         var formData = {
-            name_enterprise: $('#name_enterprise').val(),
+            name_enterprise:         $('#name_enterprise').val(),
             fantasy_name_enterprise: $('#fantasy_name_enterprise').val(),
-            address_enterprise: $('#address_enterprise').val(),
-            comuna_enterprise:$('#comuna_enterprise option:selected').text(),
-            phone_enterprise: $('#phone_enterprise').val(),
-            logo_enterprise: $('#nom_foto').val(),
+            address_enterprise:      $('#address_enterprise').val(),
+            comuna_enterprise:       $('#comuna_enterprise option:selected').text(),
+            phone_enterprise:        $('#phone_enterprise').val(),
+            mail_enterprise:         $('#mail_enterprise').val(),
+            logo_enterprise:         $('#nom_foto').val(),
         };
+
+        var reEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (!formData.mail_enterprise || !reEmail.test(formData.mail_enterprise)) {
+            toastr.warning('Ingresa un correo electrónico válido para la empresa.');
+            $('#mail_enterprise').focus();
+            return;
+        }
 
         if (formData.name_enterprise && formData.fantasy_name_enterprise && formData.address_enterprise &&
             formData.comuna_enterprise && formData.phone_enterprise && formData.logo_enterprise) {

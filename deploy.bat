@@ -34,9 +34,9 @@ robocopy "%LOCAL_PATH%" "%STAGING%" /E /NFL /NDL /NJH /NJS ^
       "storage\framework\sessions" ^
       "storage\framework\views" ^
       "bootstrap\cache" ^
-      "public\img\documentos_fotos" ^
-      "public\img\fotos_prod" ^
-      "public\img\logo_empresa" ^
+      "documentos_fotos" ^
+      "fotos_prod" ^
+      "logo_empresa" ^
   /XF ".env" "deploy.bat" ".last_deploy"
 
 for /f %%c in ('dir /s /b /a-d "%STAGING%" 2^>nul ^| find /c /v ""') do echo Archivos incluidos: %%c
@@ -104,7 +104,7 @@ echo.
 echo [4/4] Desplegando en servidor...
 echo.
 
-ssh %VPS_USER%@%VPS_HOST% "which unzip > /dev/null 2>&1 || apt-get install -y unzip -q; cd %VPS_PATH% && find . -maxdepth 1 -mindepth 1 ! -name storage ! -name .env -exec rm -rf {} + && unzip -q -o %ZIP_REMOTE% -d %VPS_PATH% && rm -f %ZIP_REMOTE% && echo '<?php' > vendor/composer/platform_check.php && mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs storage/app/public bootstrap/cache && rm -f bootstrap/cache/*.php && php artisan config:clear && php artisan cache:clear && php artisan view:clear && php artisan route:clear && php artisan config:cache && php artisan route:cache && chown -R zadmin:zadmin . && find . -type f -exec chmod 644 {} + && find . -type d -exec chmod 755 {} + && chmod -R 775 storage bootstrap/cache && chmod o+x /home/zadmin && echo DEPLOY OK"
+ssh %VPS_USER%@%VPS_HOST% "which unzip > /dev/null 2>&1 || apt-get install -y unzip -q; cd %VPS_PATH% && cp -rp public/img/documentos_fotos /tmp/pv_doc_bak 2>/dev/null; cp -rp public/img/fotos_prod /tmp/pv_fot_bak 2>/dev/null; cp -rp public/img/logo_empresa /tmp/pv_log_bak 2>/dev/null; find . -maxdepth 1 -mindepth 1 ! -name storage ! -name .env -exec rm -rf {} + && unzip -q -o %ZIP_REMOTE% -d %VPS_PATH% && mkdir -p public/img && mv /tmp/pv_doc_bak public/img/documentos_fotos 2>/dev/null; mv /tmp/pv_fot_bak public/img/fotos_prod 2>/dev/null; mv /tmp/pv_log_bak public/img/logo_empresa 2>/dev/null; rm -f %ZIP_REMOTE% && echo '<?php' > vendor/composer/platform_check.php && mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs storage/app/public bootstrap/cache && rm -f bootstrap/cache/*.php && php artisan config:clear && php artisan cache:clear && php artisan view:clear && php artisan route:clear && php artisan config:cache && php artisan route:cache && chown -R zadmin:zadmin . && find . -type f -exec chmod 644 {} + && find . -type d -exec chmod 755 {} + && chmod -R 775 storage bootstrap/cache && chmod o+x /home/zadmin && echo DEPLOY OK"
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

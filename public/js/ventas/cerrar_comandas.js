@@ -427,6 +427,7 @@ $('#btnConfirmarCierreCajaCerrarComandas').on('click', function () {
 
                 $('#modalTicketRest').off('hidden.bs.modal.cierreCajaRest').on('hidden.bs.modal.cierreCajaRest', function() {
                     $('#ticketFrameRest').attr('src', 'about:blank');
+
                     Swal.fire({
                         title: 'Caja Cerrada',
                         text: mensajeCierre,

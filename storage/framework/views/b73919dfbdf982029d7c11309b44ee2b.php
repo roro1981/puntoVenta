@@ -4,6 +4,7 @@
      <!-- Meta tags -->
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
 
 <!-- Title -->
@@ -98,6 +99,12 @@
 <link rel="stylesheet" href="<?php echo e(asset('css/dashboard-home.css')); ?>">
 <script src="<?php echo e(asset('js/dashboard-home.js')); ?>"></script>
 <script src="<?php echo e(asset('js/dashboard-preventas.js')); ?>"></script>
+<?php if($tipoDashboard === 'gerencial'): ?>
+<!-- PDF Export (solo dashboard gerencial) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="<?php echo e(asset('js/dashboard-gerencial-pdf.js')); ?>"></script>
+<?php endif; ?>
 
   </head>
   <body class="hold-transition skin-blue sidebar-mini">
@@ -202,6 +209,15 @@
                               <p style="margin-top:14px;max-width:720px;">
                                 Panel gerencial con vision diaria, semanal, mensual y semestral del negocio.
                               </p>
+                              <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                                <button id="btnExportarPdfGerencial" class="btn btn-default btn-sm" style="border-color:#c4d0d8;color:#4a6070;">
+                                  <i class="fa fa-file-pdf-o" style="color:#c0392b;margin-right:5px;"></i> Exportar PDF
+                                </button>
+                                <button id="btnAbrirEnviarPdfEmail" class="btn btn-default btn-sm" style="border-color:#c4d0d8;color:#4a6070;"
+                                  data-toggle="modal" data-target="#modalEnviarPdfEmail">
+                                  <i class="fa fa-envelope-o" style="color:#8e44ad;margin-right:5px;"></i> Enviar por correo
+                                </button>
+                              </div>
                             </div>
                             <div class="home-status-card <?php echo e($dashboardData['status']['level']); ?>">
                               <div class="home-status-label">Estado general</div>
@@ -1075,6 +1091,42 @@
         </div>
       </div>
     </div>
+
+    <?php if($tipoDashboard === 'gerencial'): ?>
+    <!-- Modal: Enviar PDF por correo -->
+    <div class="modal fade" id="modalEnviarPdfEmail" tabindex="-1" role="dialog" aria-labelledby="modalEnviarPdfEmailLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header" style="background:#f9f4ff;border-bottom:1px solid #e3d9f0;">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="modalEnviarPdfEmailLabel">
+              <i class="fa fa-envelope" style="color:#8e44ad;margin-right:7px;"></i>
+              Enviar Dashboard Gerencial por correo
+            </h4>
+          </div>
+          <div class="modal-body">
+            <p style="color:#5f7381;font-size:13px;margin-bottom:16px;">
+              Ingresa el correo electrónico al que deseas enviar el PDF con el resumen del dashboard gerencial.
+            </p>
+            <div class="form-group" id="emailPdfGroup">
+              <label for="inputEmailPdf" style="font-weight:600;font-size:13px;">Correo electrónico</label>
+              <input type="email" id="inputEmailPdf" class="form-control"
+                placeholder="ejemplo@correo.com" autocomplete="off" maxlength="150" />
+              <div id="emailPdfError" style="color:#c0392b;font-size:12px;margin-top:5px;display:none;"></div>
+            </div>
+            <div id="emailPdfResultado" style="display:none;padding:10px 14px;border-radius:6px;font-size:13px;margin-top:8px;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            <button type="button" id="btnConfirmarEnvioEmailPdf" class="btn btn-primary">
+              <i class="fa fa-paper-plane-o"></i> Enviar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <?php endif; ?>
 
   <?php if($tipoDashboard === 'gerencial'): ?>
@@ -1091,6 +1143,39 @@
     window.home6MonthsLabels    = <?php echo json_encode($dashboardData['evolucion6Meses']['labels'], 15, 512) ?>;
     window.home6MonthsVentas    = <?php echo json_encode($dashboardData['evolucion6Meses']['ventas'], 15, 512) ?>;
     window.home6MonthsCompras   = <?php echo json_encode($dashboardData['evolucion6Meses']['compras'], 15, 512) ?>;
+    // Datos estructurados para exportación PDF
+    window.homePdfData = {
+      empresa: {
+        nombre:      <?php echo json_encode($dashboardData['empresa']['nombre'], 15, 512) ?>,
+        fantasia:    <?php echo json_encode($dashboardData['empresa']['fantasia'], 15, 512) ?>,
+        tipoNegocio: <?php echo json_encode($dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'Restaurant' : 'Almacén', 15, 512) ?>
+      },
+      status: {
+        title:   <?php echo json_encode($dashboardData['status']['title'], 15, 512) ?>,
+        message: <?php echo json_encode($dashboardData['status']['message'], 15, 512) ?>,
+        score:   <?php echo e($dashboardData['status']['score']); ?>,
+        level:   <?php echo json_encode($dashboardData['status']['level'], 15, 512) ?>
+      },
+      summary: {
+        ventasHoy:          <?php echo e($dashboardData['summary']['ventasHoy']); ?>,
+        ticketPromedioHoy:  <?php echo e($dashboardData['summary']['ticketPromedioHoy']); ?>,
+        ticketsHoy:         <?php echo e($dashboardData['summary']['ticketsHoy']); ?>,
+        cajasAbiertas:      <?php echo e($dashboardData['summary']['cajasAbiertas']); ?>,
+        promedio7Dias:      <?php echo e($dashboardData['summary']['promedio7Dias']); ?>,
+        alertasStock:       <?php echo e($dashboardData['summary']['alertasStock']); ?>,
+        stockCritico:       <?php echo e($dashboardData['summary']['stockCritico']); ?>,
+        ventasMes:          <?php echo e($dashboardData['summary']['ventasMes']); ?>
+
+      },
+      deltaMes:          <?php echo e($dashboardData['deltaMes'] !== null ? $dashboardData['deltaMes'] : 'null'); ?>,
+      ventasMesAnterior: <?php echo e($dashboardData['ventasMesAnterior'] ?? 0); ?>,
+      margenBruto:       <?php echo e($dashboardData['margenBruto'] !== null ? $dashboardData['margenBruto'] : 'null'); ?>,
+      topProducts:       <?php echo json_encode($dashboardData['topProducts'], 15, 512) ?>,
+      paymentBreakdown:  <?php echo json_encode($dashboardData['paymentBreakdown'], 15, 512) ?>,
+      rotacionInventario:<?php echo json_encode($dashboardData['rotacionInventario'], 15, 512) ?>,
+      sobrestock:        <?php echo json_encode($dashboardData['sobrestock'], 15, 512) ?>,
+      insights:          <?php echo json_encode($dashboardData['insights'], 15, 512) ?>
+    };
   </script>
   <?php elseif($tipoDashboard === 'administrador'): ?>
   <script>

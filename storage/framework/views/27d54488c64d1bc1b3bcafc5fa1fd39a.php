@@ -1,12 +1,12 @@
 <script type="text/javascript" src="js/almacen/productos.js"></script>
 <div class='row'>
-  <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+  <input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
   <div class='col-xs-12'>
       <div style="width:100%">
         <div class='box-header' style="width:100%">
             <button class="btn btn-success" data-toggle="modal" id="nuevo_user" data-target="#modalNuevoProducto"><i class='fa fa fa-save'></i>Nuevo Producto</button>
           <button class="btn btn-info" type="button" data-toggle="modal" data-target="#modalCargaMasivaProductos"><i class="fa fa-upload"></i>Carga Masiva Excel</button>
-          <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}"><i class="fa fa-download"></i>Descargar Plantilla Excel</a>
+          <a class="btn btn-primary" href="<?php echo e(route('productos.plantilla.xlsx')); ?>"><i class="fa fa-download"></i>Descargar Plantilla Excel</a>
           <button class="btn btn-warning" id="btnGenerarEtiquetas" disabled title="Generar etiquetas de los productos seleccionados"><i class="fa fa-barcode"></i> Etiquetas <span id="contadorSeleccionados">(0)</span></button>
           <button class="btn btn-default" id="btnSeleccionarFiltrados" title="Selecciona todos los resultados visibles (incluye todas las páginas)"><i class="fa fa-check-square-o"></i> Sel. todos filtrados</button>
           <button class="btn btn-default" id="btnLimpiarSeleccion" title="Limpia toda la selección actual"><i class="fa fa-square-o"></i> Limpiar selección</button>
@@ -37,7 +37,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+        <input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
         <form id="createProdForm" autocomplete="off">
           <div class="form-group">
             <label for="codigo">Código</label>
@@ -55,18 +55,18 @@
             <label for="impuesto_1">Impuesto</label>
             <select class="form-control" onchange="calcula(this.value);" id="impuesto_1" name="impuesto_1" >
               <option value="0">Seleccione opción</option>
-              @foreach($impuesto_iva as $impuesto)
-                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
-              @endforeach
+              <?php $__currentLoopData = $impuesto_iva; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $impuesto): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <option value="<?php echo e($impuesto->id); ?>"><?php echo e($impuesto->nom_imp); ?> (<?php echo e($impuesto->valor_imp); ?>%)</option>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
             <label for="impuesto_2">Impuesto adicional</label>
             <select class="form-control" onchange="calcula2(this.value);" id="impuesto_2" name="impuesto_2">
               <option value="0" selected>Seleccione opción</option>
-              @foreach($impuesto_ad as $impuesto)
-                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
-              @endforeach
+              <?php $__currentLoopData = $impuesto_ad; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $impuesto): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <option value="<?php echo e($impuesto->id); ?>"><?php echo e($impuesto->nom_imp); ?> (<?php echo e($impuesto->valor_imp); ?>%)</option>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
@@ -89,9 +89,9 @@
             <label for="categoria">Categoría</label>
             <select class="form-control" id="categoria" name="categoria">
               <option value="">Seleccione opción</option>
-              @foreach($categorias as $categoria)
-              <option value="{{ $categoria->id }}">{{ $categoria->descripcion_categoria }}</option>
-            @endforeach
+              <?php $__currentLoopData = $categorias; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $categoria): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+              <option value="<?php echo e($categoria->id); ?>"><?php echo e($categoria->descripcion_categoria); ?></option>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
@@ -152,7 +152,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="_token" id="token_editar" value="{{ csrf_token() }}">
+        <input type="hidden" name="_token" id="token_editar" value="<?php echo e(csrf_token()); ?>">
         <input type="hidden" id="producto_uuid" name="producto_uuid"> <!-- Campo oculto para el ID del producto -->
         <form id="editProdForm" autocomplete="off">
           <div class="form-group">
@@ -171,18 +171,18 @@
             <label for="impuesto_1_editar">Impuesto</label>
             <select class="form-control" onchange="calcula(this.value);" id="impuesto_1_editar" name="impuesto_1_editar">
               <option value="0">Seleccione opción</option>
-              @foreach($impuesto_iva as $impuesto)
-                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
-              @endforeach
+              <?php $__currentLoopData = $impuesto_iva; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $impuesto): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <option value="<?php echo e($impuesto->id); ?>"><?php echo e($impuesto->nom_imp); ?> (<?php echo e($impuesto->valor_imp); ?>%)</option>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
             <label for="impuesto_2_editar">Impuesto adicional</label>
             <select class="form-control" onchange="calcula2(this.value);" id="impuesto_2_editar" name="impuesto_2_editar">
               <option value="0" selected>Seleccione opción</option>
-              @foreach($impuesto_ad as $impuesto)
-                <option value="{{ $impuesto->id }}">{{ $impuesto->nom_imp }} ({{ $impuesto->valor_imp }}%)</option>
-              @endforeach
+              <?php $__currentLoopData = $impuesto_ad; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $impuesto): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <option value="<?php echo e($impuesto->id); ?>"><?php echo e($impuesto->nom_imp); ?> (<?php echo e($impuesto->valor_imp); ?>%)</option>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
@@ -204,9 +204,9 @@
             <label for="categoria_editar">Categoría</label>
             <select class="form-control" id="categoria_editar" name="categoria_editar">
               <option value="">Seleccione opción</option>
-              @foreach($categorias as $categoria)
-                <option value="{{ $categoria->id }}">{{ $categoria->descripcion_categoria }}</option>
-              @endforeach
+              <?php $__currentLoopData = $categorias; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $categoria): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <option value="<?php echo e($categoria->id); ?>"><?php echo e($categoria->descripcion_categoria); ?></option>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
           </div>
           <div class="form-group">
@@ -293,16 +293,19 @@
 
         <div class="alert alert-warning">
           <strong>Categorías activas en el sistema:</strong>
-          {{ $categorias->pluck('descripcion_categoria')->implode(', ') }}
+          <?php echo e($categorias->pluck('descripcion_categoria')->implode(', ')); ?>
+
           <br><strong>Impuestos disponibles:</strong>
-          IVA: {{ $impuesto_iva->pluck('nom_imp')->implode(', ') }}
-          @if($impuesto_ad->count() > 0)
-            <br>Adicionales: {{ $impuesto_ad->pluck('nom_imp')->implode(', ') }}
-          @endif
+          IVA: <?php echo e($impuesto_iva->pluck('nom_imp')->implode(', ')); ?>
+
+          <?php if($impuesto_ad->count() > 0): ?>
+            <br>Adicionales: <?php echo e($impuesto_ad->pluck('nom_imp')->implode(', ')); ?>
+
+          <?php endif; ?>
         </div>
       </div>
       <div class="modal-footer">
-        <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}">Descargar Plantilla</a>
+        <a class="btn btn-primary" href="<?php echo e(route('productos.plantilla.xlsx')); ?>">Descargar Plantilla</a>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
         <button type="button" class="btn btn-success" id="btnImportProductsExcel">Importar Excel</button>
       </div>
@@ -311,8 +314,8 @@
 </div>
 
 <!-- Formulario oculto para etiquetas masivas (POST → nueva pestaña) -->
-<form id="formEtiquetasMasivas" action="{{ route('productos.etiquetas.masivas') }}" method="POST" target="_blank" style="display:none">
-  @csrf
+<form id="formEtiquetasMasivas" action="<?php echo e(route('productos.etiquetas.masivas')); ?>" method="POST" target="_blank" style="display:none">
+  <?php echo csrf_field(); ?>
   <input type="hidden" name="cantidad" id="etiquetas_masivas_cantidad" value="1">
 </form>
 
@@ -367,6 +370,7 @@
   </div>
 </div>
 
-@include('partials.modal_ayuda', ['modulo' => 'almacen_productos'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'almacen_productos'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
 
 
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/almacen/productos.blade.php ENDPATH**/ ?>

@@ -1318,7 +1318,8 @@ $(document).ready(function() {
                     data: {
                         _token: $('#token').val(),
                         monto_final_declarado: montoFinal,
-                        observaciones: observaciones
+                        observaciones: observaciones,
+                        modulo_origen: 'ALMACEN'
                     },
                     beforeSend: function() {
                         $('#btnConfirmarCierreCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Cerrando caja...');

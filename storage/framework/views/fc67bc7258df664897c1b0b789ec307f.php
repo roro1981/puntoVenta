@@ -377,11 +377,15 @@
             'color'  => '#495057',
             'pasos'  => [
                 ['icono' => 'fa-pencil',       'titulo' => 'Editar datos de la empresa',  'desc' => 'Completa o actualiza los campos: <strong>Nombre de la Empresa</strong>, <strong>Nombre Fantasía</strong>, <strong>Dirección</strong>, <strong>Comuna</strong> y <strong>Teléfono</strong>. Estos datos aparecen en los tickets de venta y documentos impresos.'],
+                ['icono' => 'fa-envelope',     'titulo' => 'Correo corporativo',         'desc' => 'Define el campo <strong>Correo electrónico</strong> porque allí se envían automáticamente los resúmenes de cierre de caja. El correo toma los datos actuales de la tabla corporativa y se actualiza al guardar el formulario.'],
+                ['icono' => 'fa-bell',         'titulo' => 'Alertas preventivas',       'desc' => 'Las alertas de stock mínimo y los correos automáticos usan esta configuración para saber a qué empresa y correo deben llegar. El envío diario se realiza a las 00:00.'],
                 ['icono' => 'fa-image',        'titulo' => 'Logo de la empresa',          'desc' => 'En la sección Logo haz clic en <strong>Seleccionar archivo</strong>, elige la imagen (JPG, PNG o GIF) y luego presiona <strong>Subir</strong> para cargarla. El logo se mostrará en los tickets impresos.'],
                 ['icono' => 'fa-save',         'titulo' => 'Guardar cambios',             'desc' => 'Haz clic en <strong>Guardar</strong> al final del formulario para confirmar todos los cambios. Los datos actualizados se verán reflejados en los próximos documentos generados.'],
             ],
             'tips' => [
                 'El nombre de la empresa aparece en el encabezado de cada ticket de venta.',
+                'El correo configurado aquí recibe los resúmenes automáticos del cierre de caja.',
+                'Las alertas preventivas por stock mínimo también se envían por correo; se generan todos los días a las 00:00 y los datos corporativos definen la empresa y el destinatario.',
                 'Si cambias el logo, el cambio aplica de inmediato en los nuevos tickets.',
                 'La comuna seleccionada debe coincidir con la dirección real del negocio — aparece en las boletas.',
                 'Mantén el teléfono actualizado ya que aparece en los documentos impresos para contacto.',

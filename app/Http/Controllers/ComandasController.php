@@ -22,6 +22,7 @@ use App\Models\CorporateData;
 use App\Models\RangoPrecio;
 use App\Http\Requests\CierreCajaRequest;
 use App\Services\PrecioService;
+use App\Services\TurnoFotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -374,11 +375,14 @@ class ComandasController extends Controller
                 'observaciones' => $caja->observaciones . "\n\nCIERRE: " . ($request->observaciones ?? '')
             ]);
 
+            $resumenCierre = app(TurnoFotoService::class)->enviarResumenCorreo($caja, 'RESTAURANT');
+
             return response()->json([
                 'status' => 'OK',
                 'message' => 'Caja RESTAURANT cerrada correctamente',
                 'caja_id' => $caja->id,
-                'diferencia' => $diferencia
+                'diferencia' => $diferencia,
+                'resumen_cierre' => $resumenCierre,
             ]);
         } catch (\Exception $e) {
             return response()->json([

@@ -25,6 +25,7 @@ use App\Http\Requests\CierreCajaRequest;
 use App\Models\HistorialEstadoVenta;
 use App\Helpers\BarcodeHelper;
 use App\Services\PrecioService;
+use App\Services\TurnoFotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -283,11 +284,22 @@ class VentasController extends Controller
                 'observaciones' => $caja->observaciones . "\n\nCIERRE: " . ($request->observaciones ?? '')
             ]);
 
+            $moduloOrigen = strtoupper((string) $request->input('modulo_origen', 'ALMACEN'));
+            if (!in_array($moduloOrigen, ['ALMACEN', 'ALMACEN_PREVENTA', 'RESTAURANT'], true)) {
+                $tipoNegocio = strtoupper((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var'));
+                $moduloOrigen = in_array($tipoNegocio, ['ALMACEN', 'ALMACEN_PREVENTA', 'RESTAURANT'], true)
+                    ? $tipoNegocio
+                    : 'ALMACEN';
+            }
+
+            $resumenCierre = app(TurnoFotoService::class)->enviarResumenCorreo($caja, $moduloOrigen);
+
             return response()->json([
                 'status' => 'OK',
                 'message' => 'Caja cerrada correctamente',
                 'caja_id' => $caja->id,
-                'diferencia' => $diferencia
+                'diferencia' => $diferencia,
+                'resumen_cierre' => $resumenCierre,
             ]);
 
         } catch (\Exception $e) {

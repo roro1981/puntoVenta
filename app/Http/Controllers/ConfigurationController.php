@@ -7,6 +7,7 @@ use App\Models\Globales;
 use App\Models\Impuestos;
 use Illuminate\Http\Request;
 use App\Models\CorporateData;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\GlobalsRequest;
 use App\Http\Requests\ImpuestosRequest;
@@ -30,18 +31,21 @@ class ConfigurationController extends Controller
 
         try{
             $dataToUpdate = [
-                'name_enterprise' => $request->input('name_enterprise'),
+                'name_enterprise'         => $request->input('name_enterprise'),
                 'fantasy_name_enterprise' => $request->input('fantasy_name_enterprise'),
-                'address_enterprise' => $request->input('address_enterprise'),
-                'comuna_enterprise' => $request->input('comuna_enterprise'),
-                'phone_enterprise' => $request->input('phone_enterprise'),
-                'logo_enterprise' => $request->input('logo_enterprise'),
+                'address_enterprise'      => $request->input('address_enterprise'),
+                'comuna_enterprise'       => $request->input('comuna_enterprise'),
+                'phone_enterprise'        => $request->input('phone_enterprise'),
+                'mail_enterprise'         => $request->input('mail_enterprise'),
+                'logo_enterprise'         => $request->input('logo_enterprise'),
             ];
 
             foreach ($dataToUpdate as $itemName => $itemValue) {
                 CorporateData::where('item', $itemName)
                     ->update(['description_item' => $itemValue]);
             }
+
+            Cache::forget('corporate_data');
 
             $response = response()->json([
                 'error' => 200,

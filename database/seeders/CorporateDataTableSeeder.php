@@ -13,13 +13,21 @@ class CorporateDataTableSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('corporate_data')->insert([
-            ['item' => 'name_enterprise', 'description_item' => null],
-            ['item' => 'fantasy_name_enterprise', 'description_item' => null],
-            ['item' => 'address_enterprise', 'description_item' => null],
-            ['item' => 'comuna_enterprise', 'description_item' => null],
-            ['item' => 'phone_enterprise', 'description_item' => null],
-            ['item' => 'logo_enterprise', 'description_item' => '/img/fotos_prod/sin_imagen.jpg'],
-        ]);
+        $rows = [
+            ['item' => 'name_enterprise',         'description_item' => null],
+            ['item' => 'fantasy_name_enterprise',  'description_item' => null],
+            ['item' => 'address_enterprise',       'description_item' => null],
+            ['item' => 'comuna_enterprise',        'description_item' => null],
+            ['item' => 'phone_enterprise',         'description_item' => null],
+            ['item' => 'mail_enterprise',          'description_item' => null],
+            ['item' => 'logo_enterprise',          'description_item' => '/img/fotos_prod/sin_imagen.jpg'],
+        ];
+
+        foreach ($rows as $row) {
+            DB::table('corporate_data')->updateOrInsert(
+                ['item' => $row['item']],
+                ['description_item' => $row['description_item']]
+            );
+        }
     }
 }

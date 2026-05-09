@@ -205,7 +205,7 @@ $(document).on('click', '.editar_prod', function () {
             $('#margen_editar').val(Math.round(margenGanancia));
             $('#precio_venta_editar').val(response.precio_venta);
             $('#categoria_editar').val(response.categoria_id);
-            $('#stock_minimo_editar').val(parseInt(response.stock_minimo));
+            $('#stock_minimo_editar').val(parseFloat(response.stock_minimo) || 0);
             $('#tipo_editar').val(response.tipo);
             $('#unidad_medida_editar').val(response.unidad_medida);
             $('#imagen_editar').attr('src', response.imagen ? response.imagen : "/img/fotos_prod/sin_imagen.jpg");
@@ -219,7 +219,7 @@ $(document).on('click', '.editar_prod', function () {
                 precio_compra_bruto: response.precio_compra_bruto,
                 precio_venta: response.precio_venta,
                 categoria: response.categoria_id,
-                stock_minimo: parseInt(response.stock_minimo),
+                stock_minimo: parseFloat(response.stock_minimo) || 0,
                 tipo: response.tipo,
                 nom_foto: response.imagen
             };
@@ -271,9 +271,11 @@ $('#guardarCambios').click(function (event) {
             'X-CSRF-TOKEN': $("#token_editar").val()
         },
         success: function (response) {
+            $('#modalEditarProducto').one('hidden.bs.modal', function () {
+                $('#contenido').load('/almacen/productos');
+            });
             $('#modalEditarProducto').modal('hide');
             toastr.success(response.message);
-            $('#contenido').load('/almacen/productos');
         },
         error: function (xhr, status, error) {
             if (xhr.status === 422) {

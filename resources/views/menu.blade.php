@@ -4,6 +4,7 @@
      <!-- Meta tags -->
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
 
 <!-- Title -->
@@ -98,6 +99,12 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-home.css') }}">
 <script src="{{ asset('js/dashboard-home.js') }}"></script>
 <script src="{{ asset('js/dashboard-preventas.js') }}"></script>
+@if($tipoDashboard === 'gerencial')
+<!-- PDF Export (solo dashboard gerencial) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="{{ asset('js/dashboard-gerencial-pdf.js') }}"></script>
+@endif
 
   </head>
   <body class="hold-transition skin-blue sidebar-mini">
@@ -199,6 +206,15 @@
                               <p style="margin-top:14px;max-width:720px;">
                                 Panel gerencial con vision diaria, semanal, mensual y semestral del negocio.
                               </p>
+                              <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                                <button id="btnExportarPdfGerencial" class="btn btn-default btn-sm" style="border-color:#c4d0d8;color:#4a6070;">
+                                  <i class="fa fa-file-pdf-o" style="color:#c0392b;margin-right:5px;"></i> Exportar PDF
+                                </button>
+                                <button id="btnAbrirEnviarPdfEmail" class="btn btn-default btn-sm" style="border-color:#c4d0d8;color:#4a6070;"
+                                  data-toggle="modal" data-target="#modalEnviarPdfEmail">
+                                  <i class="fa fa-envelope-o" style="color:#8e44ad;margin-right:5px;"></i> Enviar por correo
+                                </button>
+                              </div>
                             </div>
                             <div class="home-status-card {{ $dashboardData['status']['level'] }}">
                               <div class="home-status-label">Estado general</div>
@@ -1076,6 +1092,42 @@
         </div>
       </div>
     </div>
+
+    @if($tipoDashboard === 'gerencial')
+    <!-- Modal: Enviar PDF por correo -->
+    <div class="modal fade" id="modalEnviarPdfEmail" tabindex="-1" role="dialog" aria-labelledby="modalEnviarPdfEmailLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header" style="background:#f9f4ff;border-bottom:1px solid #e3d9f0;">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="modalEnviarPdfEmailLabel">
+              <i class="fa fa-envelope" style="color:#8e44ad;margin-right:7px;"></i>
+              Enviar Dashboard Gerencial por correo
+            </h4>
+          </div>
+          <div class="modal-body">
+            <p style="color:#5f7381;font-size:13px;margin-bottom:16px;">
+              Ingresa el correo electrónico al que deseas enviar el PDF con el resumen del dashboard gerencial.
+            </p>
+            <div class="form-group" id="emailPdfGroup">
+              <label for="inputEmailPdf" style="font-weight:600;font-size:13px;">Correo electrónico</label>
+              <input type="email" id="inputEmailPdf" class="form-control"
+                placeholder="ejemplo@correo.com" autocomplete="off" maxlength="150" />
+              <div id="emailPdfError" style="color:#c0392b;font-size:12px;margin-top:5px;display:none;"></div>
+            </div>
+            <div id="emailPdfResultado" style="display:none;padding:10px 14px;border-radius:6px;font-size:13px;margin-top:8px;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            <button type="button" id="btnConfirmarEnvioEmailPdf" class="btn btn-primary">
+              <i class="fa fa-paper-plane-o"></i> Enviar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    @endif
+
     @endif
 
   @if($tipoDashboard === 'gerencial')
@@ -1092,6 +1144,38 @@
     window.home6MonthsLabels    = @json($dashboardData['evolucion6Meses']['labels']);
     window.home6MonthsVentas    = @json($dashboardData['evolucion6Meses']['ventas']);
     window.home6MonthsCompras   = @json($dashboardData['evolucion6Meses']['compras']);
+    // Datos estructurados para exportación PDF
+    window.homePdfData = {
+      empresa: {
+        nombre:      @json($dashboardData['empresa']['nombre']),
+        fantasia:    @json($dashboardData['empresa']['fantasia']),
+        tipoNegocio: @json($dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'Restaurant' : 'Almacén')
+      },
+      status: {
+        title:   @json($dashboardData['status']['title']),
+        message: @json($dashboardData['status']['message']),
+        score:   {{ $dashboardData['status']['score'] }},
+        level:   @json($dashboardData['status']['level'])
+      },
+      summary: {
+        ventasHoy:          {{ $dashboardData['summary']['ventasHoy'] }},
+        ticketPromedioHoy:  {{ $dashboardData['summary']['ticketPromedioHoy'] }},
+        ticketsHoy:         {{ $dashboardData['summary']['ticketsHoy'] }},
+        cajasAbiertas:      {{ $dashboardData['summary']['cajasAbiertas'] }},
+        promedio7Dias:      {{ $dashboardData['summary']['promedio7Dias'] }},
+        alertasStock:       {{ $dashboardData['summary']['alertasStock'] }},
+        stockCritico:       {{ $dashboardData['summary']['stockCritico'] }},
+        ventasMes:          {{ $dashboardData['summary']['ventasMes'] }}
+      },
+      deltaMes:          {{ $dashboardData['deltaMes'] !== null ? $dashboardData['deltaMes'] : 'null' }},
+      ventasMesAnterior: {{ $dashboardData['ventasMesAnterior'] ?? 0 }},
+      margenBruto:       {{ $dashboardData['margenBruto'] !== null ? $dashboardData['margenBruto'] : 'null' }},
+      topProducts:       @json($dashboardData['topProducts']),
+      paymentBreakdown:  @json($dashboardData['paymentBreakdown']),
+      rotacionInventario:@json($dashboardData['rotacionInventario']),
+      sobrestock:        @json($dashboardData['sobrestock']),
+      insights:          @json($dashboardData['insights'])
+    };
   </script>
   @elseif($tipoDashboard === 'administrador')
   <script>

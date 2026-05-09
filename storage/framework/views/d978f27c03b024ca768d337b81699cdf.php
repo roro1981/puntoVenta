@@ -1,0 +1,173 @@
+<script type="text/javascript" src="js/almacen/editar_recetas.js"></script>
+<link rel="stylesheet" type="text/css" href="css/almacen/crear_recetas.css">
+
+<div class="container">
+    <input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
+    <button id="volver" class="btn btn-secondary mb-3">
+        ← Volver al listado
+    </button>
+
+    <h2>Editar Receta</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+
+                
+                <div class="form-group mb-3">
+                    <label for="codigo">Código</label>
+                    <input type="text" name="codigo" id="codigo" class="form-control"
+                           value="<?php echo e(old('codigo', $receta->codigo)); ?>" required readonly>
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="nombre">Nombre de la Receta</label>
+                    <input type="text" name="nombre" id="nombre" class="form-control"
+                           value="<?php echo e(old('nombre', $receta->nombre)); ?>" required>
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="categoria_id">Categoría</label>
+                    <select name="categoria_id" id="categoria_id" class="form-control">
+                        <option value="">-- Seleccione --</option>
+                        <?php $__currentLoopData = $categorias; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option 
+                                value="<?php echo e($cat->id); ?>"
+                                <?php echo e((old('categoria_id', $receta->categoria_id) == $cat->id) ? 'selected' : ''); ?>
+
+                            >
+                                <?php echo e($cat->descripcion_categoria); ?> 
+                            </option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </select>
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="descripcion">Preparación / Descripción</label>
+                    <textarea id="descripcion" name="descripcion" class="form-control"><?php echo e(old('descripcion', $receta->descripcion)); ?></textarea>
+                </div>
+
+            </div> 
+
+            <div class="col-md-6">
+
+                
+                <div class="form-group mb-3">
+                    <label for="precio_costo">Precio Costo</label>
+                    <input type="text" name="precio_costo" id="precio_costo" class="form-control"
+                           value="<?php echo e(old('precio_costo', $receta->precio_costo)); ?>"
+                           readonly>
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="margen">Margen (%)</label>
+                    <input type="text" id="margen" class="form-control" placeholder="Ej: 25.0" onkeypress="return soloNumeros(event)">
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="precio_venta">Precio Venta</label>
+                    <input type="text" name="precio_venta" id="precio_venta" class="form-control" onkeypress="return soloNumeros(event)"
+                           value="<?php echo e(old('precio_venta', $receta->precio_venta)); ?>">
+                </div>
+
+                
+                <div class="form-group mb-3">
+                    <label for="image" class="form-label">Foto receta</label>
+                    <div class="d-flex align-items-center">
+                        <!-- Contenedor para el input de archivo y botón -->
+                        <div class="flex-grow-1 pr-3">
+                            <img class="card-img-top" src="<?php echo e($receta->imagen ? $receta->imagen : '/img/fotos_prod/sin_imagen.jpg'); ?>"
+                                 style="max-width:100px; max-height:100px; object-fit:cover;float:right"
+                                 alt="Foto de la receta">
+                            <input type="file"
+                                   title="Solo formato jpg o png, máximo 5 MB"
+                                   class="form-control-file"
+                                   id="image"
+                                   accept="image/jpeg,image/png">
+                            <small class="form-text text-muted"><i class="fa fa-info-circle"></i> JPG o PNG &middot; máx. 800&times;800 px &middot; máx. 5 MB</small>
+                            <input type="button" class="btn btn-primary upload mt-2" value="Subir">
+                            <input type="hidden" id="foto_receta" name="foto_receta">
+                        </div>
+                        <!-- Imagen: se alinea a la derecha gracias a flex-grow-1 en el contenedor anterior -->
+                        
+                    </div>
+                </div>
+            </div> 
+        </div> 
+
+        <hr>
+
+        <div class='col-md-8' >
+            <form class="form-inline" role="form">
+            <div class="form-group" style="position: relative; display: inline-block;">
+               <span style="width:140px; font-size:15px; font-weight:bold; display:inline-block;" class="form-control bg-aqua">
+                   Ingrese código
+               </span>
+           
+               <!-- Campo de texto -->
+               <input 
+                   type="text" 
+                   class="form-control" 
+                   id="insumo" 
+                   autocomplete="off"
+                   style="width:150px; font-size:15px; text-align:center; font-weight:bold; display:inline-block;"
+                   autofocus 
+                   tabindex="1"
+               >
+           
+               <div id="listaResultados" class="suggestion-box" style="display: none;"></div>
+            </div>
+                <div class="form-group">
+                    <span style="width:85px;font-size:15px;font-weight: bold;" class="form-control bg-blue">Cantidad</span><input type='text' class="form-control" autocomplete="off" id='cant_insumo' onkeypress="return soloNumeros(event)" style="width:90px;font-size:15px; text-align:center; font-weight: bold;" tabindex="2">		   
+                </div>
+                <button type="button" id="act_receta" class="btn btn-success">Guardar cambios</button>
+                <input type="hidden" id="uuid_receta" value="<?php echo e($receta->uuid); ?>">
+            </form>
+        </div>
+        <br>
+        
+        <div class='col-md-12'>
+            <div>
+                <div class='box-header'>
+                    <h3 class='box-title'>Detalle de receta</h3>
+                </div>
+                
+                <div class='box-body table-responsive' >
+                    <table class="table table-bordered" id="tabla_ingredientes">
+                        <thead>
+                            <tr>
+                                <th>Código Prod</th>
+                                <th>Nombre</th>
+                                <th>Unidad medida</th>
+                                <th>Cantidad</th>
+                                <th>Precio unitario</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $__currentLoopData = $receta->ingredientes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ingrediente): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <tr data-codigo="<?php echo e($ingrediente->producto->codigo); ?>">
+                                    <td><?php echo e($ingrediente->producto->codigo); ?></td>
+                                    <td><?php echo e($ingrediente->producto->descripcion); ?></td>
+                                    <td class="td-unidad"><?php echo e($ingrediente->unidad); ?></td>
+                                    <td class="td-cantidad"><?php echo e($ingrediente->cantidad); ?></td>
+                                    <td class="td-precio"><?php echo e($ingrediente->producto->precio_compra_neto); ?></td>
+                                    <td class="td-total"><?php echo e($ingrediente->cantidad * $ingrediente->producto->precio_compra_neto); ?></td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm btnEliminar">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+</div><?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/almacen/editar_recetas.blade.php ENDPATH**/ ?>

@@ -20,9 +20,11 @@ use App\Models\Venta;
 use Illuminate\Http\Request;
 use App\Http\Requests\UserRequest;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Mail\DashboardGerencialPdf;
 use function PHPUnit\Framework\throwException;
 
 class UsersController extends Controller
@@ -1330,7 +1332,7 @@ class UsersController extends Controller
     }
     public function getRoles()
     {
-        $roles = Role::all();
+        $roles = Role::where('role_name', '<>', 'SuperAdministrador')->get();
         $user = Auth::user();
         return view('users.principal', compact('roles', 'user'));
     }
@@ -1515,5 +1517,33 @@ class UsersController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect(route('inicio'));
+    }
+
+    public function enviarPdfGerencial(Request $request)
+    {
+        $request->validate([
+            'email'       => ['required', 'email:rfc,dns'],
+            'pdf_base64'  => ['required', 'string'],
+        ]);
+
+        $email      = $request->input('email');
+        $pdfBase64  = $request->input('pdf_base64');
+
+        // Verificar tamaño máximo ~22 MB de datos reales en base64
+        if (strlen($pdfBase64) > 30_000_000) {
+            return response()->json(['success' => false, 'message' => 'El PDF generado supera el tamaño permitido (máx. 22 MB).'], 422);
+        }
+
+        $empresa  = CorporateData::first();
+        $nombre   = $empresa ? ($empresa->fantasia ?: $empresa->nombre ?? 'Empresa') : 'Empresa';
+        $filename = 'dashboard-gerencial-' . now()->format('Y-m-d') . '.pdf';
+
+        try {
+            Mail::to($email)->send(new DashboardGerencialPdf($nombre, $pdfBase64, $filename));
+            return response()->json(['success' => true, 'message' => 'PDF enviado correctamente a ' . $email]);
+        } catch (\Exception $e) {
+            Log::error('[DashboardPDF] Error al enviar correo: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'No se pudo enviar el correo. Verifica la configuración de correo del sistema.'], 500);
+        }
     }
 }

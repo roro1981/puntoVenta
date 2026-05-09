@@ -42,6 +42,12 @@
         <input type="text" id="phone_enterprise" class="form-control" value="{{ $data['item'] ==  'phone_enterprise' ? $data['description_item'] : '' }}" name="phone_enterprise" required>
     </div>
     @endif
+    @if($data['item']=='mail_enterprise')
+    <div class="form-group col-md-8">
+        <label for="mail_enterprise">Correo electrónico</label>
+        <input type="email" id="mail_enterprise" class="form-control" value="{{ $data['item'] == 'mail_enterprise' ? $data['description_item'] : '' }}" name="mail_enterprise" placeholder="contacto@empresa.cl" required>
+    </div>
+    @endif
     @if($data['item']=='logo_enterprise')
     <div class="form-group col-md-8">
        

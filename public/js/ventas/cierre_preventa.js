@@ -517,7 +517,8 @@ $(document).ready(function () {
                 data: {
                     _token: $('#token').val(),
                     monto_final_declarado: montoFinal,
-                    observaciones: observaciones
+                    observaciones: observaciones,
+                    modulo_origen: 'ALMACEN_PREVENTA'
                 },
                 beforeSend: function () {
                     $('#btnConfirmarCierreCaja').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Cerrando caja...');
@@ -531,7 +532,16 @@ $(document).ready(function () {
                         $('#modalTicket').modal('show');
 
                         $('#modalTicket').one('hidden.bs.modal', function () {
-                            window.location.reload();
+                            const mensaje = response.message || 'Caja cerrada correctamente';
+
+                            Swal.fire({
+                                title: 'Caja Cerrada',
+                                text: mensaje,
+                                type: 'success',
+                                confirmButtonText: 'OK'
+                            }).then(function () {
+                                window.location.reload();
+                            });
                         });
                     } else {
                         toastr.error(response.message || 'Error al cerrar caja');
