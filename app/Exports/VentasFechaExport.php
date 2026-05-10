@@ -31,14 +31,14 @@ class VentasFechaExport implements FromCollection, WithHeadings, WithTitle, Shou
 
         if ($tipoNegocio === 'RESTAURANT') {
             $rows = DB::table('comandas as c')
-                ->leftJoin('garzon as g', 'g.id', '=', 'c.garzon_id')
+                ->leftJoin('users as g', 'g.id', '=', 'c.garzon_id')
                 ->leftJoin('mesas as m', 'm.id', '=', 'c.mesa_id')
                 ->where('c.estado', 'CERRADA')
                 ->whereBetween('c.fecha_cierre', [$desde, $hasta])
                 ->selectRaw("
                     c.id as folio,
                     DATE_FORMAT(c.fecha_cierre, '%d-%m-%Y %H:%i') as fecha_cierre,
-                    COALESCE(g.nombre, 'Sin garzón') as garzon,
+                    COALESCE(NULLIF(TRIM(COALESCE(g.name_complete, g.name)), ''), 'Sin garzón') as garzon,
                     COALESCE(m.nombre, 'Sin mesa') as mesa,
                     c.total,
                     c.estado

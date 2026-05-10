@@ -160,6 +160,23 @@ $(document).ready(function () {
     });
 
 });
+
+function limpiarBackdropModal() {
+    $('body').removeClass('modal-open');
+    $('.modal-backdrop').remove();
+}
+
+function cerrarModalSeguro(selectorModal, onClosed) {
+    var $modal = $(selectorModal);
+    $modal.one('hidden.bs.modal', function () {
+        limpiarBackdropModal();
+        if (typeof onClosed === 'function') {
+            onClosed();
+        }
+    });
+    $modal.modal('hide');
+}
+
 $('#modalCargaMasivaProductos').on('hidden.bs.modal', function () {
     $('#importProductsExcelForm')[0].reset();
 });
@@ -271,10 +288,9 @@ $('#guardarCambios').click(function (event) {
             'X-CSRF-TOKEN': $("#token_editar").val()
         },
         success: function (response) {
-            $('#modalEditarProducto').one('hidden.bs.modal', function () {
+            cerrarModalSeguro('#modalEditarProducto', function () {
                 $('#contenido').load('/almacen/productos');
             });
-            $('#modalEditarProducto').modal('hide');
             toastr.success(response.message);
         },
         error: function (xhr, status, error) {
@@ -427,9 +443,10 @@ $('#createProdForm').submit(function (event) {
         contentType: false,
         processData: false,
         success: function (data) {
-            $('#modalNuevoProducto').modal('hide');
             toastr.success(data.message);
-            $('#contenido').load('/almacen/productos');
+            cerrarModalSeguro('#modalNuevoProducto', function () {
+                $('#contenido').load('/almacen/productos');
+            });
         },
         error: function (xhr, status, error) {
             if (xhr.status === 422) {
@@ -466,9 +483,10 @@ function importarProductosExcel() {
         contentType: false,
         processData: false,
         success: function (response) {
-            $('#modalCargaMasivaProductos').modal('hide');
             toastr.success(response.message);
-            $('#contenido').load('/almacen/productos');
+            cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                $('#contenido').load('/almacen/productos');
+            });
         },
         error: function (xhr) {
             if (xhr.status === 422) {

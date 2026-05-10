@@ -26,7 +26,7 @@ class GarzonPropinasExport implements FromCollection, WithHeadings, WithTitle, S
         $hasta = Carbon::parse($this->hasta)->endOfDay();
 
         return DB::table('comandas as com')
-            ->leftJoin('garzones as g', 'g.id', '=', 'com.garzon_id')
+            ->leftJoin('users as g', 'g.id', '=', 'com.garzon_id')
             ->leftJoin('mesas as m', 'm.id', '=', 'com.mesa_id')
             ->where('com.estado', 'CERRADA')
             ->where('com.incluye_propina', 1)
@@ -34,11 +34,11 @@ class GarzonPropinasExport implements FromCollection, WithHeadings, WithTitle, S
             ->selectRaw("
                 com.numero_comanda as Folio,
                 DATE_FORMAT(com.fecha_cierre, '%d-%m-%Y %H:%i') as 'Fecha Cierre',
-                COALESCE(CONCAT(g.nombre, ' ', g.apellido), 'Sin garzón') as Garzon,
+                COALESCE(NULLIF(TRIM(COALESCE(g.name_complete, g.name)), ''), 'Sin garzón') as Garzon,
                 COALESCE(m.nombre, 'Sin mesa') as Mesa,
                 com.propina as Propina
             ")
-            ->orderBy('g.nombre')
+            ->orderBy('g.name_complete')
             ->orderBy('com.fecha_cierre')
             ->get();
     }

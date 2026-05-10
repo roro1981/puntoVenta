@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\PermisoRole;
 use App\Models\Permiso;
 use App\Models\Role;
+use App\Models\Globales;
 
 class PermisosController extends Controller
 {
@@ -14,8 +15,15 @@ class PermisosController extends Controller
      */
     public function index()
     {
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
 
-        $roles = Role::where('role_name', '!=', 'SuperAdministrador')
+        $rolesFiltrados = Role::all()
+            ->filter(function ($role) use ($tipoNegocio) {
+                return Role::esRolVisiblePorTipoNegocio($role->role_name, $tipoNegocio);
+            })
+            ->values();
+
+        $roles = Role::whereIn('id', $rolesFiltrados->pluck('id')->all())
             ->with(['permisos' => function($query) {
                 $query->where('activo', true);
             }])

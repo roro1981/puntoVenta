@@ -10,7 +10,6 @@ use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\MesasController;
 use App\Http\Controllers\ComandasController;
-use App\Http\Controllers\GarzonesController;
 
 
 
@@ -138,6 +137,8 @@ Route::post('/ventas/retiro-caja', [VentasController::class, 'registrarRetiroCaj
 Route::get('/ventas/cierres_caja', [VentasController::class, 'historialCierres']);
 Route::get('/ventas/obtener-cierres', [VentasController::class, 'obtenerCierresDataTable']);
 Route::get('/ventas/detalle-cierre/{id}', [VentasController::class, 'obtenerDetalleCierre']);
+Route::get('/ventas/control_propinas', [ReportesController::class, 'indexControlPropinas']);
+Route::get('/ventas/control_propinas/data', [ReportesController::class, 'dataControlPropinas']);
 Route::post('/ventas/consolidar-cajas', [VentasController::class, 'consolidarCajas']);
 Route::get('/ventas/consolidar-cajas/imprimir', [VentasController::class, 'imprimirConsolidado']);
 Route::get('/ventas/consolidar-cajas/excel', [VentasController::class, 'exportarConsolidado']);
@@ -232,11 +233,6 @@ Route::get('/permisos/role/{roleId}', [PermisosController::class, 'permisosPorRo
 
 //menu restaurant
 Route::get('/configuracion/restaurant/config-mesas', [MesasController::class, 'index']);
-Route::get('/configuracion/restaurant/config-garzones', [GarzonesController::class, 'index']);
-Route::get('/restaurant/garzones/obtener', [GarzonesController::class, 'obtener']);
-Route::post('/restaurant/garzones/crear', [GarzonesController::class, 'crear']);
-Route::put('/restaurant/garzones/actualizar/{id}', [GarzonesController::class, 'actualizar']);
-Route::delete('/restaurant/garzones/eliminar/{id}', [GarzonesController::class, 'eliminar']);
 Route::get('/restaurant/mesas/obtener', [MesasController::class, 'obtener']);
 Route::post('/restaurant/mesas/crear', [MesasController::class, 'crear']);
 Route::put('/restaurant/mesas/actualizar/{id}', [MesasController::class, 'actualizar']);

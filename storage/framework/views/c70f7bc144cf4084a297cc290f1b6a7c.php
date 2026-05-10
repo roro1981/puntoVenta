@@ -2,7 +2,7 @@
 <script type="text/javascript" src="/js/restaurant/garzones.js"></script>
 
 <div class="row">
-  <input type="hidden" name="_token" id="token" value="{{ csrf_token() }}">
+  <input type="hidden" name="_token" id="token" value="<?php echo e(csrf_token()); ?>">
   <div class="col-xs-12">
     <div style="width:100%">
       <div class="box-header" style="width:100%">
@@ -97,4 +97,5 @@
   </div>
 </div>
 
-@include('partials.modal_ayuda', ['modulo' => 'config_garzones'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'config_garzones'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/restaurant/garzones.blade.php ENDPATH**/ ?>

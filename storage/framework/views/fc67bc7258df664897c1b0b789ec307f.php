@@ -440,24 +440,6 @@
             ],
         ],
 
-        'config_garzones' => [
-            'titulo' => 'Configurar Garzones',
-            'icono'  => 'fa-user-circle',
-            'color'  => '#0891b2',
-            'pasos'  => [
-                ['icono' => 'fa-plus-circle',  'titulo' => 'Nuevo garzón',                'desc' => 'Haz clic en <strong>Nuevo Garzón</strong>. Completa los campos obligatorios (*): Nombre, Apellido y RUT (con formato 12345678-9). Los campos Teléfono y Email son opcionales.'],
-                ['icono' => 'fa-edit',         'titulo' => 'Editar garzón',               'desc' => 'Haz clic en el ícono de lápiz <i class="fa fa-edit"></i> de la fila correspondiente. Puedes actualizar cualquier dato del garzón, incluyendo cambiar su estado a Activo o Inactivo.'],
-                ['icono' => 'fa-ban',          'titulo' => 'Desactivar garzón',           'desc' => 'Si un garzón ya no trabaja en el local, cámbia su estado a <strong>Inactivo</strong> desde el formulario de edición. El garzón dejará de aparecer como opción al asignarlo a una comanda.'],
-                ['icono' => 'fa-trash',        'titulo' => 'Eliminar garzón',             'desc' => 'Haz clic en el ícono de basura <i class="fa fa-trash"></i>. Solo elimina garzones que no tengan historial de comandas. Para casos con historial, usa la opción Inactivo.'],
-            ],
-            'tips' => [
-                'El RUT del garzón se valida automáticamente — usa el formato 12345678-9.',
-                'Los garzones activos aparecen en el selector al abrir o gestionar una comanda.',
-                'Los reportes de ventas por garzón se generan en <strong>Reportes → Ventas por Garzón</strong>.',
-                'Un garzón inactivo sigue apareciendo en el historial de comandas anteriores, pero no en nuevas asignaciones.',
-            ],
-        ],
-
         'reactiv_categorias' => [
             'titulo' => 'Categorías Eliminadas',
             'icono'  => 'fa-tags',

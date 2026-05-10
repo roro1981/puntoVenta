@@ -146,6 +146,9 @@ class PermisosRolesSeeder extends Seeder
         $this->command->newLine();
 
         $dashboardPorRol = [
+            'Gerencia' => [
+                Permiso::PERMISO_DASHBOARD_GERENCIAL,
+            ],
             'Administrador' => [
                 Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
                 Permiso::PERMISO_RETIRO_CAJA,
@@ -155,6 +158,9 @@ class PermisosRolesSeeder extends Seeder
                 Permiso::PERMISO_DASHBOARD_USUARIO,
             ],
             'Cajero' => [
+                Permiso::PERMISO_DASHBOARD_USUARIO,
+            ],
+            'Garzón' => [
                 Permiso::PERMISO_DASHBOARD_USUARIO,
             ],
         ];

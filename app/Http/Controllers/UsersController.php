@@ -745,6 +745,49 @@ class UsersController extends Controller
             ->whereBetween('fecha', [$inicioMes, Carbon::now()])
             ->count();
 
+        // ============================================================
+        // PANEL RENTABILIDAD EN TIEMPO REAL (Fases 1, 2 y 3)
+        // ============================================================
+        $ahora = Carbon::now();
+        $rentabilidadHoy = $this->calcularRentabilidadSnapshot($tipoNegocio, $tipoCajaDashboard, $hoy, $ahora);
+
+        $rentabilidadUltimos7Dias = [];
+        for ($d = 1; $d <= 7; $d++) {
+            $diaHistorico = Carbon::today()->subDays($d);
+            $horaHistorica = $diaHistorico->copy()->setTime($ahora->hour, $ahora->minute, $ahora->second);
+            $snapshotHistorico = $this->calcularRentabilidadSnapshot($tipoNegocio, $tipoCajaDashboard, $diaHistorico, $horaHistorica);
+            $rentabilidadUltimos7Dias[] = $snapshotHistorico['utilidad_neta'];
+        }
+
+        $promedioRentabilidad7DiasHora = count($rentabilidadUltimos7Dias) > 0
+            ? (array_sum($rentabilidadUltimos7Dias) / count($rentabilidadUltimos7Dias))
+            : 0.0;
+
+        $variacionRentabilidadPct = $promedioRentabilidad7DiasHora > 0
+            ? round((($rentabilidadHoy['utilidad_neta'] - $promedioRentabilidad7DiasHora) / $promedioRentabilidad7DiasHora) * 100, 1)
+            : null;
+
+        $umbralVerde = (float) (Globales::where('nom_var', 'UMBRAL_RENTAB_VERDE')->value('valor_var') ?? 5);
+        $umbralAmarillo = (float) (Globales::where('nom_var', 'UMBRAL_RENTAB_AMARILLO')->value('valor_var') ?? -5);
+
+        if (!is_null($variacionRentabilidadPct)) {
+            if ($variacionRentabilidadPct >= $umbralVerde) {
+                $nivelRentabilidad = 'green';
+                $estadoRentabilidad = 'Por encima del promedio';
+            } elseif ($variacionRentabilidadPct >= $umbralAmarillo) {
+                $nivelRentabilidad = 'yellow';
+                $estadoRentabilidad = 'En rango';
+            } else {
+                $nivelRentabilidad = 'red';
+                $estadoRentabilidad = 'Por debajo del promedio';
+            }
+        } else {
+            $nivelRentabilidad = $rentabilidadHoy['utilidad_neta'] > 0 ? 'green' : 'yellow';
+            $estadoRentabilidad = 'Sin base de comparación';
+        }
+
+        $driversRentabilidad = $this->obtenerDriversRentabilidadHoy($tipoNegocio, $tipoCajaDashboard, $hoy, $ahora);
+
         $insights = [];
         $insights[] = $ticketsHoy > 0
             ? ($tipoNegocio === 'RESTAURANT'
@@ -800,6 +843,28 @@ class UsersController extends Controller
             'paymentBreakdown' => $paymentBreakdown,
             'topProducts' => $topProducts,
             'insights' => $insights,
+            'rentabilidad' => [
+                'utilidadNetaHoy' => $rentabilidadHoy['utilidad_neta'],
+                'margenNetoHoy' => $rentabilidadHoy['margen_neto'],
+                'promedio7DiasMismaHora' => $promedioRentabilidad7DiasHora,
+                'variacionPct' => $variacionRentabilidadPct,
+                'nivel' => $nivelRentabilidad,
+                'estado' => $estadoRentabilidad,
+                'umbrales' => [
+                    'verde' => $umbralVerde,
+                    'amarillo' => $umbralAmarillo,
+                ],
+                'componentes' => [
+                    'ingresos' => $rentabilidadHoy['ingresos'],
+                    'costo' => $rentabilidadHoy['costo'],
+                    'gastosOperativos' => $rentabilidadHoy['gastos_operativos'],
+                ],
+                'drivers' => [
+                    'top' => $driversRentabilidad['top'],
+                    'worst' => $driversRentabilidad['worst'],
+                ],
+                'referenciaHora' => $ahora->format('H:i:s'),
+            ],
             'ventasPorHora' => $ventasPorHora,
             'ventasMesAnterior' => $ventasMesAnteriorTotal,
             'deltaMes' => $deltaMes,
@@ -841,6 +906,140 @@ class UsersController extends Controller
         $minutos = $minutosTotales % 60;
 
         return $horas . 'h ' . $minutos . 'm';
+    }
+
+    private function calcularRentabilidadSnapshot(string $tipoNegocio, string $tipoCajaDashboard, Carbon $fecha, Carbon $horaCorte): array
+    {
+        $fechaStr = $fecha->toDateString();
+        $horaStr = $horaCorte->format('H:i:s');
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            $ingresos = (float) DB::table('comandas')
+                ->where('estado', 'CERRADA')
+                ->whereDate('fecha_cierre', $fechaStr)
+                ->whereTime('fecha_cierre', '<=', $horaStr)
+                ->sum('total');
+
+            $costo = (float) DB::table('detalle_comandas as dc')
+                ->join('comandas as com', 'com.id', '=', 'dc.comanda_id')
+                ->join('productos as p', 'p.id', '=', 'dc.producto_id')
+                ->where('com.estado', 'CERRADA')
+                ->whereDate('com.fecha_cierre', $fechaStr)
+                ->whereTime('com.fecha_cierre', '<=', $horaStr)
+                ->where('dc.tipo_item', 'PRODUCTO')
+                ->sum(DB::raw('dc.cantidad * COALESCE(p.precio_compra_neto, 0)'));
+        } else {
+            $ingresos = (float) DB::table('ventas as v')
+                ->join('cajas as c', 'c.id', '=', 'v.caja_id')
+                ->where('c.tipo_caja', $tipoCajaDashboard)
+                ->whereDate('v.fecha_venta', $fechaStr)
+                ->whereTime('v.fecha_venta', '<=', $horaStr)
+                ->where('v.estado', '!=', 'anulada')
+                ->sum('v.total');
+
+            $costo = (float) DB::table('detalles_ventas as dv')
+                ->join('ventas as v', 'v.id', '=', 'dv.venta_id')
+                ->join('cajas as c', 'c.id', '=', 'v.caja_id')
+                ->join('productos as p', 'p.uuid', '=', 'dv.producto_uuid')
+                ->where('c.tipo_caja', $tipoCajaDashboard)
+                ->whereDate('v.fecha_venta', $fechaStr)
+                ->whereTime('v.fecha_venta', '<=', $horaStr)
+                ->where('v.estado', '!=', 'anulada')
+                ->where(function ($q) {
+                    $q->whereNull('dv.anulado')->orWhere('dv.anulado', false);
+                })
+                ->sum(DB::raw('dv.cantidad * COALESCE(p.precio_compra_neto, 0)'));
+        }
+
+        $retiros = (float) DB::table('retiros_caja as rc')
+            ->join('cajas as c', 'c.id', '=', 'rc.caja_id')
+            ->where('c.tipo_caja', $tipoCajaDashboard)
+            ->whereDate('rc.created_at', $fechaStr)
+            ->whereTime('rc.created_at', '<=', $horaStr)
+            ->sum('rc.monto');
+
+        $mermasQuery = DB::table('historial_movimientos as hm')
+            ->join('productos as p', 'p.id', '=', 'hm.producto_id')
+            ->leftJoin('categorias as cat', 'cat.id', '=', 'p.categoria_id')
+            ->whereRaw("UPPER(hm.tipo_mov) LIKE '%MERMA%'")
+            ->whereDate('hm.fecha', $fechaStr)
+            ->whereTime('hm.fecha', '<=', $horaStr);
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            $mermasQuery->whereRaw("LOWER(TRIM(COALESCE(cat.descripcion_categoria, ''))) = ?", ['insumos']);
+        } else {
+            $mermasQuery->where(function ($q) {
+                $q->whereNull('cat.descripcion_categoria')
+                    ->orWhereRaw("LOWER(TRIM(cat.descripcion_categoria)) <> ?", ['insumos']);
+            });
+        }
+
+        $mermas = (float) $mermasQuery->sum(DB::raw('ABS(hm.cantidad) * COALESCE(p.precio_compra_neto, 0)'));
+        $gastosOperativos = $retiros + $mermas;
+
+        $utilidadNeta = $ingresos - $costo - $gastosOperativos;
+        $margenNeto = $ingresos > 0 ? round(($utilidadNeta / $ingresos) * 100, 1) : null;
+
+        return [
+            'ingresos' => round($ingresos, 2),
+            'costo' => round($costo, 2),
+            'gastos_operativos' => round($gastosOperativos, 2),
+            'utilidad_neta' => round($utilidadNeta, 2),
+            'margen_neto' => $margenNeto,
+        ];
+    }
+
+    private function obtenerDriversRentabilidadHoy(string $tipoNegocio, string $tipoCajaDashboard, Carbon $fecha, Carbon $horaCorte): array
+    {
+        $fechaStr = $fecha->toDateString();
+        $horaStr = $horaCorte->format('H:i:s');
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            $rows = DB::table('detalle_comandas as dc')
+                ->join('comandas as com', 'com.id', '=', 'dc.comanda_id')
+                ->join('productos as p', 'p.id', '=', 'dc.producto_id')
+                ->where('com.estado', 'CERRADA')
+                ->whereDate('com.fecha_cierre', $fechaStr)
+                ->whereTime('com.fecha_cierre', '<=', $horaStr)
+                ->where('dc.tipo_item', 'PRODUCTO')
+                ->selectRaw('p.descripcion as producto, SUM(dc.subtotal) as ingresos, SUM(dc.cantidad * COALESCE(p.precio_compra_neto, 0)) as costo')
+                ->groupBy('p.id', 'p.descripcion')
+                ->get();
+        } else {
+            $rows = DB::table('detalles_ventas as dv')
+                ->join('ventas as v', 'v.id', '=', 'dv.venta_id')
+                ->join('cajas as c', 'c.id', '=', 'v.caja_id')
+                ->join('productos as p', 'p.uuid', '=', 'dv.producto_uuid')
+                ->where('c.tipo_caja', $tipoCajaDashboard)
+                ->whereDate('v.fecha_venta', $fechaStr)
+                ->whereTime('v.fecha_venta', '<=', $horaStr)
+                ->where('v.estado', '!=', 'anulada')
+                ->where(function ($q) {
+                    $q->whereNull('dv.anulado')->orWhere('dv.anulado', false);
+                })
+                ->selectRaw('COALESCE(dv.descripcion_producto, p.descripcion) as producto, SUM(dv.subtotal_linea) as ingresos, SUM(dv.cantidad * COALESCE(p.precio_compra_neto, 0)) as costo')
+                ->groupBy('dv.producto_uuid', 'dv.descripcion_producto', 'p.descripcion')
+                ->get();
+        }
+
+        $drivers = collect($rows)->map(function ($row) {
+            $ingresos = (float) $row->ingresos;
+            $costo = (float) $row->costo;
+            $utilidad = $ingresos - $costo;
+
+            return [
+                'producto' => (string) $row->producto,
+                'ingresos' => round($ingresos, 2),
+                'costo' => round($costo, 2),
+                'utilidad' => round($utilidad, 2),
+                'margen' => $ingresos > 0 ? round(($utilidad / $ingresos) * 100, 1) : null,
+            ];
+        });
+
+        return [
+            'top' => $drivers->sortByDesc('utilidad')->take(5)->values()->all(),
+            'worst' => $drivers->sortBy('utilidad')->take(5)->values()->all(),
+        ];
     }
 
     private function buildDashboardStatus(
@@ -1055,10 +1254,19 @@ class UsersController extends Controller
     {
         $menus = [];
         $role = $user->role;
+        $roleName = mb_strtolower(trim((string) ($role->role_name ?? '')));
         $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
 
         foreach ($role->submenus as $submenu) {
+            if (strtolower(trim((string) $submenu->submenu_route)) === '/restaurant/config-garzones') {
+                continue;
+            }
+
             if ($this->debeOcultarSubmenuPorTipoNegocio($tipoNegocio, $submenu->submenu_route)) {
+                continue;
+            }
+
+            if (strtolower(trim((string) $submenu->submenu_route)) === '/control_propinas' && !in_array($roleName, ['garzon', 'garzón'], true)) {
                 continue;
             }
 
@@ -1095,6 +1303,7 @@ class UsersController extends Controller
                 '/generar_ventas',
                 '/generar_preventa',
                 '/cierre_preventa',
+                '/vtas_vendedor',
                 '/promociones_crear',
                 '/promociones',
                 '/promos_elim',
@@ -1106,8 +1315,8 @@ class UsersController extends Controller
             return in_array($ruta, [
                 '/generar_comandas',
                 '/cerrar_comandas',
+                '/control_propinas',
                 '/restaurant/config-mesas',
-                '/restaurant/config-garzones',
                 '/vtas_garzon',
                 '/vtas_mesa',
                 '/recetas_crear',
@@ -1124,8 +1333,8 @@ class UsersController extends Controller
                 '/generar_ventas',
                 '/generar_comandas',
                 '/cerrar_comandas',
+                '/control_propinas',
                 '/restaurant/config-mesas',
-                '/restaurant/config-garzones',
                 '/vtas_garzon',
                 '/vtas_mesa',
                 '/recetas_crear',
@@ -1277,6 +1486,13 @@ class UsersController extends Controller
         try {
             $role = Role::findOrFail($id);
 
+            if (Role::esRolSistemaPorDefecto($role->role_name)) {
+                return response()->json([
+                    'error' => 403,
+                    'message' => "No se puede eliminar el rol {$role->role_name} porque es un rol base del sistema."
+                ], 403);
+            }
+
             $userCount = User::where('role_id', $id)->count();
             if ($userCount > 0) {
                 return response()->json([
@@ -1307,9 +1523,9 @@ class UsersController extends Controller
     }
     public function rolesTable()
     {
-        $roles = Role::select('roles.id', 'roles.role_name', 'roles.created_at', 'roles.updated_at')
-            ->where('roles.role_name', '<>', 'SuperAdministrador')
-            ->get()
+        $tipoNegocio = $this->obtenerTipoNegocioActual();
+
+        $roles = $this->obtenerRolesVisiblesPorTipoNegocio($tipoNegocio)
             ->map(function ($roles) {
                 $roles->asociados = '<button type="button" data-id="' . $roles->id . '" class="btn btn-primary ver-btn">
                                             <i class="fa fa-eye"></i> Ver
@@ -1319,7 +1535,13 @@ class UsersController extends Controller
                                         </button>';
                 $roles->created_at = date('d/m/Y H:i:s', strtotime($roles->created_at));
                 $roles->updated_at = $roles->updated_at ? date('d/m/Y H:i:s', strtotime($roles->updated_at)) : 'Aún no tiene modificaciones';
-                $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar-rol" data-toggle="tooltip" data-rolid="' . $roles->id . '" data-namerol="' . $roles->role_name . '" title="Eliminar rol ' . $roles->role_name . '"><i class="fa fa-trash"></i></a>';
+
+                if (Role::esRolSistemaPorDefecto($roles->role_name)) {
+                    $roles->actions = '<span class="label label-default" title="Rol base protegido">Protegido</span>';
+                } else {
+                    $roles->actions = '<a href="" class="btn btn-sm btn-danger eliminar-rol" data-toggle="tooltip" data-rolid="' . $roles->id . '" data-namerol="' . $roles->role_name . '" title="Eliminar rol ' . $roles->role_name . '"><i class="fa fa-trash"></i></a>';
+                }
+
                 return $roles;
             });
 
@@ -1332,7 +1554,7 @@ class UsersController extends Controller
     }
     public function getRoles()
     {
-        $roles = Role::where('role_name', '<>', 'SuperAdministrador')->get();
+        $roles = $this->obtenerRolesVisiblesPorTipoNegocio($this->obtenerTipoNegocioActual());
         $user = Auth::user();
         return view('users.principal', compact('roles', 'user'));
     }
@@ -1344,6 +1566,7 @@ class UsersController extends Controller
     public function ver($id)
     {
         $rol = Role::findOrFail($id);
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
 
         $menus = Menu::with(['submenus' => function ($query) use ($id) {
             $query->whereHas('menuRoles', function ($query) use ($id) {
@@ -1354,7 +1577,21 @@ class UsersController extends Controller
                 $query->where('role_id', $id);
             })
             ->orderBy('id', 'asc')
-            ->get();
+            ->get()
+            ->map(function ($menu) use ($tipoNegocio) {
+                $submenusFiltrados = $menu->submenus
+                    ->filter(function ($submenu) use ($tipoNegocio) {
+                        return !$this->debeOcultarSubmenuPorTipoNegocio($tipoNegocio, $submenu->submenu_route);
+                    })
+                    ->values();
+
+                $menu->setRelation('submenus', $submenusFiltrados);
+                return $menu;
+            })
+            ->filter(function ($menu) {
+                return $menu->submenus->isNotEmpty();
+            })
+            ->values();
 
         return response()->json([
             'role_name' => $rol->role_name,
@@ -1387,9 +1624,24 @@ class UsersController extends Controller
     }
     public function getRolesPermisos()
     {
-        $roles = Role::where('role_name', '!=', 'SuperAdministrador')->get();
+        $roles = $this->obtenerRolesVisiblesPorTipoNegocio($this->obtenerTipoNegocioActual());
         return view('users.permisos', compact('roles'));
     }
+
+    private function obtenerTipoNegocioActual(): string
+    {
+        return strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+    }
+
+    private function obtenerRolesVisiblesPorTipoNegocio(string $tipoNegocio)
+    {
+        return Role::all()
+            ->filter(function ($role) use ($tipoNegocio) {
+                return Role::esRolVisiblePorTipoNegocio($role->role_name, $tipoNegocio);
+            })
+            ->values();
+    }
+
     public function getMenus(Request $request)
     {
         $roleId = $request->role_id;

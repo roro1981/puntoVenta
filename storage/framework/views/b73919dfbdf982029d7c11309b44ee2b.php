@@ -242,6 +242,21 @@
                                 <div class="home-kpi-note">Base diaria cerrada y no anulada.</div>
                               </div>
                               <div class="home-kpi">
+                                <div class="home-kpi-label">Ganancia neta hoy</div>
+                                <div class="home-kpi-value" style="color: <?php echo e($dashboardData['rentabilidad']['nivel'] === 'green' ? '#198754' : ($dashboardData['rentabilidad']['nivel'] === 'yellow' ? '#d98a00' : '#b73a3a')); ?>;">
+                                  $<?php echo e(number_format($dashboardData['rentabilidad']['utilidadNetaHoy'], 0, ',', '.')); ?>
+
+                                </div>
+                                <div class="home-kpi-note"><?php echo e($dashboardData['rentabilidad']['estado']); ?> · <?php echo e($dashboardData['rentabilidad']['referenciaHora']); ?></div>
+                                <div class="home-kpi-note" style="margin-top:4px;">
+                                  Referencia semanal: $<?php echo e(number_format($dashboardData['rentabilidad']['promedio7DiasMismaHora'], 0, ',', '.')); ?>
+
+                                  <?php if(!is_null($dashboardData['rentabilidad']['variacionPct'])): ?>
+                                    | <?php echo e($dashboardData['rentabilidad']['variacionPct'] >= 0 ? '+' : ''); ?><?php echo e(number_format($dashboardData['rentabilidad']['variacionPct'], 1, ',', '.')); ?>%
+                                  <?php endif; ?>
+                                </div>
+                              </div>
+                              <div class="home-kpi">
                                 <div class="home-kpi-label">Ticket promedio hoy</div>
                                 <div class="home-kpi-value">$<?php echo e(number_format($dashboardData['summary']['ticketPromedioHoy'], 0, ',', '.')); ?></div>
                                 <div class="home-kpi-note"><?php echo e($dashboardData['summary']['ticketsHoy']); ?> <?php echo e($dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'comanda(s) cerrada(s)' : 'ticket(s) emitido(s)'); ?> hoy.</div>
@@ -287,6 +302,72 @@
                                 <h4>Ventas por hora del dia</h4>
                                 <div class="home-chart-wrap">
                                   <canvas id="homeHourlyChart"></canvas>
+                                </div>
+                              </div>
+                              <div class="home-panel">
+                                <h4>
+                                  Rentabilidad en tiempo real (hoy)
+                                  <i class="fa fa-question-circle" style="margin-left:6px;color:#9aabb6;cursor:pointer;font-size:13px;"
+                                     data-toggle="tooltip" data-placement="top"
+                                     title="Ganancia neta hoy = Ingresos - Costo - Gastos operacionales (retiros de caja + mermas valorizadas por costo de compra)."></i>
+                                </h4>
+                                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                                  <span class="label" style="background:#f1f5f9;color:#1f2937;padding:6px 10px;">Ingresos: $<?php echo e(number_format($dashboardData['rentabilidad']['componentes']['ingresos'], 0, ',', '.')); ?></span>
+                                  <span class="label" style="background:#fef3c7;color:#7c2d12;padding:6px 10px;">Costo: $<?php echo e(number_format($dashboardData['rentabilidad']['componentes']['costo'], 0, ',', '.')); ?></span>
+                                  <span class="label" style="background:#fee2e2;color:#7f1d1d;padding:6px 10px;">
+                                    Gastos op.: $<?php echo e(number_format($dashboardData['rentabilidad']['componentes']['gastosOperativos'], 0, ',', '.')); ?>
+
+                                    <i class="fa fa-info-circle" style="margin-left:4px;cursor:pointer;"
+                                       data-toggle="tooltip" data-placement="top"
+                                       title="Incluye retiros de caja + mermas del día, valorizadas a costo de compra."></i>
+                                  </span>
+                                  <span class="label" style="background:#dcfce7;color:#14532d;padding:6px 10px;">Margen neto: <?php echo e($dashboardData['rentabilidad']['margenNetoHoy'] !== null ? number_format($dashboardData['rentabilidad']['margenNetoHoy'], 1, ',', '.') . '%' : 'N/D'); ?></span>
+                                </div>
+                                <div class="home-subgrid home-subgrid-2">
+                                  <div>
+                                    <h5 style="margin:0 0 8px 0;">
+                                      Impulsan la ganancia
+                                      <i class="fa fa-info-circle" style="margin-left:4px;color:#9aabb6;cursor:pointer;"
+                                         data-toggle="tooltip" data-placement="top"
+                                         title="Listado de productos con mayor utilidad bruta acumulada hoy (ingresos - costo del producto)."></i>
+                                    </h5>
+                                    <?php if(count($dashboardData['rentabilidad']['drivers']['top']) > 0): ?>
+                                      <div class="home-top-list">
+                                        <?php $__currentLoopData = $dashboardData['rentabilidad']['drivers']['top']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                          <div class="home-top-item">
+                                            <div class="home-top-head">
+                                              <span><?php echo e($item['producto']); ?></span>
+                                              <span style="color:#198754;">$<?php echo e(number_format($item['utilidad'], 0, ',', '.')); ?></span>
+                                            </div>
+                                          </div>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                      </div>
+                                    <?php else: ?>
+                                      <div class="home-empty">Sin datos de rentabilidad para hoy.</div>
+                                    <?php endif; ?>
+                                  </div>
+                                  <div>
+                                    <h5 style="margin:0 0 8px 0;">
+                                      Presionan la rentabilidad
+                                      <i class="fa fa-info-circle" style="margin-left:4px;color:#9aabb6;cursor:pointer;"
+                                         data-toggle="tooltip" data-placement="top"
+                                         title="Productos con menor utilidad bruta hoy. Si aparece negativo, su costo supera su ingreso de venta."></i>
+                                    </h5>
+                                    <?php if(count($dashboardData['rentabilidad']['drivers']['worst']) > 0): ?>
+                                      <div class="home-top-list">
+                                        <?php $__currentLoopData = $dashboardData['rentabilidad']['drivers']['worst']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                          <div class="home-top-item">
+                                            <div class="home-top-head">
+                                              <span><?php echo e($item['producto']); ?></span>
+                                              <span style="color:<?php echo e($item['utilidad'] < 0 ? '#b73a3a' : '#d98a00'); ?>;">$<?php echo e(number_format($item['utilidad'], 0, ',', '.')); ?></span>
+                                            </div>
+                                          </div>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                      </div>
+                                    <?php else: ?>
+                                      <div class="home-empty">Sin datos de productos a corregir.</div>
+                                    <?php endif; ?>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1143,6 +1224,7 @@
     window.home6MonthsLabels    = <?php echo json_encode($dashboardData['evolucion6Meses']['labels'], 15, 512) ?>;
     window.home6MonthsVentas    = <?php echo json_encode($dashboardData['evolucion6Meses']['ventas'], 15, 512) ?>;
     window.home6MonthsCompras   = <?php echo json_encode($dashboardData['evolucion6Meses']['compras'], 15, 512) ?>;
+    window.homeProfitability    = <?php echo json_encode($dashboardData['rentabilidad'], 15, 512) ?>;
     // Datos estructurados para exportación PDF
     window.homePdfData = {
       empresa: {

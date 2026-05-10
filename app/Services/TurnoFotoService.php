@@ -271,9 +271,9 @@ class TurnoFotoService
             ->whereNotNull('comandas.fecha_cierre')
             ->whereBetween('comandas.fecha_cierre', [$fechaApertura, $fechaCierre])
             ->where('comandas.estado', 'CERRADA')
-            ->leftJoin('garzones', 'garzones.id', '=', 'comandas.garzon_id')
-            ->selectRaw("comandas.garzon_id, COALESCE(CONCAT(garzones.nombre, ' ', garzones.apellido), 'Sin garzon') as garzon, SUM(comandas.propina) as propina_total, SUM(comandas.comensales) as comensales, COUNT(comandas.id) as comandas")
-            ->groupBy('comandas.garzon_id', 'garzones.nombre', 'garzones.apellido')
+            ->leftJoin('users', 'users.id', '=', 'comandas.garzon_id')
+            ->selectRaw("comandas.garzon_id, COALESCE(NULLIF(TRIM(COALESCE(users.name_complete, users.name)), ''), 'Sin garzon') as garzon, SUM(comandas.propina) as propina_total, SUM(comandas.comensales) as comensales, COUNT(comandas.id) as comandas")
+            ->groupBy('comandas.garzon_id', 'users.name_complete', 'users.name')
             ->orderByDesc('propina_total')
             ->get()
             ->map(fn($row) => [

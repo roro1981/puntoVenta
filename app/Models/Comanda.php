@@ -51,7 +51,7 @@ class Comanda extends Model
 
     public function garzon()
     {
-        return $this->belongsTo(Garzon::class);
+        return $this->belongsTo(User::class, 'garzon_id');
     }
 
     public function detalles()

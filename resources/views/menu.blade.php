@@ -241,6 +241,19 @@
                                 <div class="home-kpi-note">Base diaria cerrada y no anulada.</div>
                               </div>
                               <div class="home-kpi">
+                                <div class="home-kpi-label">Ganancia neta hoy</div>
+                                <div class="home-kpi-value" style="color: {{ $dashboardData['rentabilidad']['nivel'] === 'green' ? '#198754' : ($dashboardData['rentabilidad']['nivel'] === 'yellow' ? '#d98a00' : '#b73a3a') }};">
+                                  ${{ number_format($dashboardData['rentabilidad']['utilidadNetaHoy'], 0, ',', '.') }}
+                                </div>
+                                <div class="home-kpi-note">{{ $dashboardData['rentabilidad']['estado'] }} · {{ $dashboardData['rentabilidad']['referenciaHora'] }}</div>
+                                <div class="home-kpi-note" style="margin-top:4px;">
+                                  Referencia semanal: ${{ number_format($dashboardData['rentabilidad']['promedio7DiasMismaHora'], 0, ',', '.') }}
+                                  @if(!is_null($dashboardData['rentabilidad']['variacionPct']))
+                                    | {{ $dashboardData['rentabilidad']['variacionPct'] >= 0 ? '+' : '' }}{{ number_format($dashboardData['rentabilidad']['variacionPct'], 1, ',', '.') }}%
+                                  @endif
+                                </div>
+                              </div>
+                              <div class="home-kpi">
                                 <div class="home-kpi-label">Ticket promedio hoy</div>
                                 <div class="home-kpi-value">${{ number_format($dashboardData['summary']['ticketPromedioHoy'], 0, ',', '.') }}</div>
                                 <div class="home-kpi-note">{{ $dashboardData['summary']['ticketsHoy'] }} {{ $dashboardData['tipoNegocio'] === 'RESTAURANT' ? 'comanda(s) cerrada(s)' : 'ticket(s) emitido(s)' }} hoy.</div>
@@ -285,6 +298,71 @@
                                 <h4>Ventas por hora del dia</h4>
                                 <div class="home-chart-wrap">
                                   <canvas id="homeHourlyChart"></canvas>
+                                </div>
+                              </div>
+                              <div class="home-panel">
+                                <h4>
+                                  Rentabilidad en tiempo real (hoy)
+                                  <i class="fa fa-question-circle" style="margin-left:6px;color:#9aabb6;cursor:pointer;font-size:13px;"
+                                     data-toggle="tooltip" data-placement="top"
+                                     title="Ganancia neta hoy = Ingresos - Costo - Gastos operacionales (retiros de caja + mermas valorizadas por costo de compra)."></i>
+                                </h4>
+                                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                                  <span class="label" style="background:#f1f5f9;color:#1f2937;padding:6px 10px;">Ingresos: ${{ number_format($dashboardData['rentabilidad']['componentes']['ingresos'], 0, ',', '.') }}</span>
+                                  <span class="label" style="background:#fef3c7;color:#7c2d12;padding:6px 10px;">Costo: ${{ number_format($dashboardData['rentabilidad']['componentes']['costo'], 0, ',', '.') }}</span>
+                                  <span class="label" style="background:#fee2e2;color:#7f1d1d;padding:6px 10px;">
+                                    Gastos op.: ${{ number_format($dashboardData['rentabilidad']['componentes']['gastosOperativos'], 0, ',', '.') }}
+                                    <i class="fa fa-info-circle" style="margin-left:4px;cursor:pointer;"
+                                       data-toggle="tooltip" data-placement="top"
+                                       title="Incluye retiros de caja + mermas del día, valorizadas a costo de compra."></i>
+                                  </span>
+                                  <span class="label" style="background:#dcfce7;color:#14532d;padding:6px 10px;">Margen neto: {{ $dashboardData['rentabilidad']['margenNetoHoy'] !== null ? number_format($dashboardData['rentabilidad']['margenNetoHoy'], 1, ',', '.') . '%' : 'N/D' }}</span>
+                                </div>
+                                <div class="home-subgrid home-subgrid-2">
+                                  <div>
+                                    <h5 style="margin:0 0 8px 0;">
+                                      Impulsan la ganancia
+                                      <i class="fa fa-info-circle" style="margin-left:4px;color:#9aabb6;cursor:pointer;"
+                                         data-toggle="tooltip" data-placement="top"
+                                         title="Listado de productos con mayor utilidad bruta acumulada hoy (ingresos - costo del producto)."></i>
+                                    </h5>
+                                    @if(count($dashboardData['rentabilidad']['drivers']['top']) > 0)
+                                      <div class="home-top-list">
+                                        @foreach($dashboardData['rentabilidad']['drivers']['top'] as $item)
+                                          <div class="home-top-item">
+                                            <div class="home-top-head">
+                                              <span>{{ $item['producto'] }}</span>
+                                              <span style="color:#198754;">${{ number_format($item['utilidad'], 0, ',', '.') }}</span>
+                                            </div>
+                                          </div>
+                                        @endforeach
+                                      </div>
+                                    @else
+                                      <div class="home-empty">Sin datos de rentabilidad para hoy.</div>
+                                    @endif
+                                  </div>
+                                  <div>
+                                    <h5 style="margin:0 0 8px 0;">
+                                      Presionan la rentabilidad
+                                      <i class="fa fa-info-circle" style="margin-left:4px;color:#9aabb6;cursor:pointer;"
+                                         data-toggle="tooltip" data-placement="top"
+                                         title="Productos con menor utilidad bruta hoy. Si aparece negativo, su costo supera su ingreso de venta."></i>
+                                    </h5>
+                                    @if(count($dashboardData['rentabilidad']['drivers']['worst']) > 0)
+                                      <div class="home-top-list">
+                                        @foreach($dashboardData['rentabilidad']['drivers']['worst'] as $item)
+                                          <div class="home-top-item">
+                                            <div class="home-top-head">
+                                              <span>{{ $item['producto'] }}</span>
+                                              <span style="color:{{ $item['utilidad'] < 0 ? '#b73a3a' : '#d98a00' }};">${{ number_format($item['utilidad'], 0, ',', '.') }}</span>
+                                            </div>
+                                          </div>
+                                        @endforeach
+                                      </div>
+                                    @else
+                                      <div class="home-empty">Sin datos de productos a corregir.</div>
+                                    @endif
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1144,6 +1222,7 @@
     window.home6MonthsLabels    = @json($dashboardData['evolucion6Meses']['labels']);
     window.home6MonthsVentas    = @json($dashboardData['evolucion6Meses']['ventas']);
     window.home6MonthsCompras   = @json($dashboardData['evolucion6Meses']['compras']);
+    window.homeProfitability    = @json($dashboardData['rentabilidad']);
     // Datos estructurados para exportación PDF
     window.homePdfData = {
       empresa: {

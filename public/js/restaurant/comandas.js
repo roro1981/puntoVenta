@@ -570,7 +570,7 @@ function abrirModalPOSConComanda(mesaId, comanda, mesaData) {
         posFechaApertura = fechaHoraApertura;
         $('#pos_hora_inicio').text(fechaHoraApertura);
 
-        cargarGarzones(comanda.garzon_id);
+        cargarGarzones(comanda.garzon_id, comanda.garzon_nombre || '');
 
         posCarrito = [];
         if (comanda.detalles && comanda.detalles.length > 0) {
@@ -738,10 +738,38 @@ function cargarProductosPOS(busqueda) {
     });
 }
 
-function cargarGarzones(garzonIdSeleccionado = null) {
-    function _renderGarzones(garzones) {
+function cargarGarzones(garzonIdSeleccionado = null, garzonNombreSeleccionado = '') {
+    function _renderGarzones(garzones, esGarzon) {
         const select = $('#pos_garzon_id');
         select.empty();
+
+        if (esGarzon) {
+            if (garzones.length === 0) {
+                select.append('<option value="">Sin garzón asignado</option>');
+                select.prop('disabled', true);
+                return;
+            }
+
+            const propio = garzones[0];
+            const propioId = String(propio.id);
+            const seleccionadoId = garzonIdSeleccionado !== null && garzonIdSeleccionado !== undefined
+                ? String(garzonIdSeleccionado)
+                : '';
+
+            // Si el garzón abre una mesa de otro, mostrar arriba el garzón real asignado.
+            if (seleccionadoId && seleccionadoId !== propioId) {
+                const nombreReal = (garzonNombreSeleccionado || '').trim() || `Garzón asignado #${seleccionadoId}`;
+                select.append(`<option value="${seleccionadoId}" selected>${nombreReal}</option>`);
+                select.prop('disabled', true);
+                return;
+            }
+
+            select.append(`<option value="${propioId}" selected>${propio.nombre_completo}</option>`);
+            select.prop('disabled', true);
+            return;
+        }
+
+        select.prop('disabled', false);
         select.append('<option value="">Seleccionar...</option>');
         garzones.forEach(function(garzon) {
             const selected = garzonIdSeleccionado && garzon.id == garzonIdSeleccionado ? 'selected' : '';
@@ -750,7 +778,7 @@ function cargarGarzones(garzonIdSeleccionado = null) {
     }
 
     if (_garzonesCache) {
-        _renderGarzones(_garzonesCache);
+        _renderGarzones(_garzonesCache.garzones || [], !!_garzonesCache.es_garzon);
         return;
     }
 
@@ -760,8 +788,11 @@ function cargarGarzones(garzonIdSeleccionado = null) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                _garzonesCache = response.garzones;
-                _renderGarzones(_garzonesCache);
+                _garzonesCache = {
+                    es_garzon: !!response.es_garzon,
+                    garzones: response.garzones || []
+                };
+                _renderGarzones(_garzonesCache.garzones, _garzonesCache.es_garzon);
             }
         }
     });

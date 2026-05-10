@@ -19,6 +19,8 @@ class RolesTableSeeder extends Seeder
             ['role_name' => 'Usuario', 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_name' => 'SuperAdministrador', 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_name' => 'Cajero', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_name' => 'Garzón', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_name' => 'Gerencia', 'created_at' => Carbon::now()->toDateTimeString()],
             // Añade aquí más menús según lo necesites
         ]);
     }

@@ -32,6 +32,7 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 3, 'submenu_name' => 'Cerrar comandas', 'submenu_route' => '/cerrar_comandas', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 3, 'submenu_name' => 'Tickets emitidos', 'submenu_route' => '/tickets_emitidos', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 3, 'submenu_name' => 'Cierres de caja', 'submenu_route' => '/cierres_caja', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 3, 'submenu_name' => 'Control de tus propinas', 'submenu_route' => '/control_propinas', 'created_at' => Carbon::now()->toDateTimeString()],
             // -- Ventas --
             ['menu_id' => 4, 'submenu_name' => 'Ventas por fecha',         'submenu_route' => '/vtas_fecha',       'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 4, 'submenu_name' => 'Ventas por forma de pago', 'submenu_route' => '/vtas_forma_pago',  'created_at' => Carbon::now()->toDateTimeString()],
@@ -59,7 +60,6 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 7, 'submenu_name' => 'Recetas eliminadas', 'submenu_route' => '/recetas_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Promociones eliminadas', 'submenu_route' => '/promos_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Proveedores eliminados', 'submenu_route' => '/provs_elim', 'created_at' => Carbon::now()->toDateTimeString()],
-            ['menu_id' => 6, 'submenu_name' => 'Configurar Garzones', 'submenu_route' => '/restaurant/config-garzones', 'created_at' => Carbon::now()->toDateTimeString()],
         ]);
     }
 }

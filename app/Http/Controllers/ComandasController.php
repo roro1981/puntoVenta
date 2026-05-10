@@ -7,7 +7,6 @@ use App\Models\Comanda;
 use App\Models\DetalleComanda;
 use App\Models\HistorialEstadoComanda;
 use App\Models\Producto;
-use App\Models\Garzon;
 use App\Models\Receta;
 use App\Models\Promocion;
 use App\Models\PromocionDetalle;
@@ -20,6 +19,7 @@ use App\Models\RetiroCaja;
 use App\Models\Globales;
 use App\Models\CorporateData;
 use App\Models\RangoPrecio;
+use App\Models\User;
 use App\Http\Requests\CierreCajaRequest;
 use App\Services\PrecioService;
 use App\Services\TurnoFotoService;
@@ -237,7 +237,7 @@ class ComandasController extends Controller
                         'numero_comanda' => $comanda->numero_comanda,
                         'mesa_id' => $comanda->mesa_id,
                         'mesa_nombre' => optional($comanda->mesa)->nombre,
-                        'garzon' => optional($comanda->garzon)->nombre_completo,
+                        'garzon' => $this->nombreCompletoUsuario($comanda->garzon),
                         'comensales' => $comanda->comensales ?? 0,
                         'cantidad_items' => (int) ($comanda->detalles_sum_cantidad ?? 0),
                         'subtotal' => (float) $comanda->subtotal,
@@ -586,7 +586,7 @@ class ComandasController extends Controller
                                 'total' => number_format($mesa->comandaAbierta->total, 0, ',', '.'),
                                 'cantidad_items' => $mesa->comandaAbierta->detalles->sum('cantidad'),
                                 'comensales' => $mesa->comandaAbierta->comensales ?? 0,
-                                'mesero' => $mesa->comandaAbierta->garzon ? $mesa->comandaAbierta->garzon->nombre . ' ' . $mesa->comandaAbierta->garzon->apellido : 'Sin asignar',
+                                'mesero' => $this->nombreCompletoUsuario($mesa->comandaAbierta->garzon) ?: 'Sin asignar',
                                 'tiempo' => $mesa->comandaAbierta->updated_at->diffForHumans()
                             ] : null
                         ];
@@ -666,7 +666,7 @@ class ComandasController extends Controller
                     'mesa' => $mesa->nombre,
                     'mesero' => $comanda->user->name_complete ?? '',
                     'garzon_id' => $comanda->garzon_id,
-                    'garzon_nombre' => $comanda->garzon ? $comanda->garzon->nombre_completo : '',
+                    'garzon_nombre' => $this->nombreCompletoUsuario($comanda->garzon),
                     'comensales' => $comanda->comensales ?? $mesa->capacidad,
                     'subtotal' => $comanda->subtotal,
                     'impuestos' => $comanda->impuestos,
@@ -967,18 +967,45 @@ class ComandasController extends Controller
     public function obtenerGarzones()
     {
         try {
-            $garzones = Garzon::where('estado', 'Activo')
-                ->select('id', 'nombre', 'apellido')
+            $usuario = Auth::user();
+            $roleName = mb_strtolower(trim((string) optional($usuario->role)->role_name));
+            $esGarzon = in_array($roleName, ['garzon', 'garzón'], true);
+
+            if ($esGarzon) {
+                $garzonUsuario = $this->resolverGarzonDesdeUsuario($usuario);
+
+                $garzones = collect();
+                if ($garzonUsuario) {
+                    $garzones = collect([[
+                        'id' => $garzonUsuario->id,
+                        'nombre_completo' => $this->nombreCompletoUsuario($garzonUsuario)
+                    ]]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'es_garzon' => true,
+                    'garzones' => $garzones,
+                ], 200);
+            }
+
+            $garzones = User::query()
+                ->join('roles as r', 'r.id', '=', 'users.role_id')
+                ->where('users.estado', 1)
+                ->whereRaw("LOWER(TRIM(r.role_name)) IN ('garzon', 'garzón')")
+                ->select('users.id', 'users.name', 'users.name_complete')
+                ->orderByRaw("COALESCE(NULLIF(TRIM(users.name_complete), ''), users.name)")
                 ->get()
                 ->map(function($garzon) {
                     return [
                         'id' => $garzon->id,
-                        'nombre_completo' => $garzon->nombre . ' ' . $garzon->apellido
+                        'nombre_completo' => $this->nombreCompletoUsuario($garzon)
                     ];
                 });
 
             return response()->json([
                 'success' => true,
+                'es_garzon' => false,
                 'garzones' => $garzones
             ], 200);
         } catch (\Exception $e) {
@@ -989,10 +1016,52 @@ class ComandasController extends Controller
         }
     }
 
+    private function resolverGarzonDesdeUsuario($usuario): ?User
+    {
+        if (!$usuario) {
+            return null;
+        }
+
+        $roleName = mb_strtolower(trim((string) optional($usuario->role)->role_name));
+        if (!in_array($roleName, ['garzon', 'garzón'], true)) {
+            return null;
+        }
+
+        return User::where('id', $usuario->id)
+            ->where('estado', 1)
+            ->first();
+    }
+
+    private function nombreCompletoUsuario($usuario): string
+    {
+        if (!$usuario) {
+            return '';
+        }
+
+        return trim((string) ($usuario->name_complete ?: $usuario->name ?: ''));
+    }
+
     public function crearComanda(Request $request)
     {
         try {
             DB::beginTransaction();
+
+            $usuario = Auth::user();
+            $roleName = mb_strtolower(trim((string) optional($usuario->role)->role_name));
+            $esGarzon = in_array($roleName, ['garzon', 'garzón'], true);
+
+            $garzonIdComanda = $request->garzon_id;
+            if ($esGarzon) {
+                $garzonUsuario = $this->resolverGarzonDesdeUsuario($usuario);
+                if (!$garzonUsuario) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No tiene un usuario garzon activo. Solicite configuracion al administrador.'
+                    ], 422);
+                }
+                $garzonIdComanda = $garzonUsuario->id;
+            }
 
             // Verificar si la mesa ya tiene una comanda abierta
             $comandaExistente = Comanda::where('mesa_id', $request->mesa_id)
@@ -1012,7 +1081,7 @@ class ComandasController extends Controller
             $comanda = Comanda::create([
                 'mesa_id' => $request->mesa_id,
                 'user_id' => auth()->id(),
-                'garzon_id' => $request->garzon_id,
+                'garzon_id' => $garzonIdComanda,
                 'numero_comanda' => 'TEMP-' . uniqid(),
                 'estado' => 'ABIERTA',
                 'comensales' => $request->comensales ?? 0,
@@ -1065,9 +1134,32 @@ class ComandasController extends Controller
 
             $comanda = Comanda::findOrFail($comandaId);
             $estadoAnterior = $comanda->estado;
+
+            $usuario = Auth::user();
+            $roleName = mb_strtolower(trim((string) optional($usuario->role)->role_name));
+            $esGarzon = in_array($roleName, ['garzon', 'garzón'], true);
+
+            $garzonIdComanda = $request->garzon_id ?? $comanda->garzon_id;
+            if ($esGarzon) {
+                $garzonUsuario = $this->resolverGarzonDesdeUsuario($usuario);
+                $propioGarzonId = $garzonUsuario ? (int) $garzonUsuario->id : null;
+                $garzonActualId = $comanda->garzon_id ? (int) $comanda->garzon_id : null;
+                $garzonSolicitadoId = $garzonIdComanda ? (int) $garzonIdComanda : null;
+
+                // Si la comanda es de otro garzón, bloquear cambio de asignación.
+                if (!is_null($garzonActualId) && !is_null($propioGarzonId) && $garzonActualId !== $propioGarzonId) {
+                    $garzonIdComanda = $garzonActualId;
+                } else {
+                    // Si la comanda es propia (o sin asignación), solo permitir mantener actual o propio.
+                    $idsPermitidos = array_values(array_filter([$garzonActualId, $propioGarzonId], fn ($id) => !is_null($id)));
+                    if (!is_null($garzonSolicitadoId) && !in_array($garzonSolicitadoId, $idsPermitidos, true)) {
+                        $garzonIdComanda = $garzonActualId;
+                    }
+                }
+            }
             
             // Actualizar solo los campos permitidos
-            $comanda->garzon_id = $request->garzon_id ?? $comanda->garzon_id;
+            $comanda->garzon_id = $garzonIdComanda ?? $comanda->garzon_id;
             $comanda->comensales = $request->comensales ?? $comanda->comensales;
             $comanda->incluye_propina = filter_var($request->incluye_propina, FILTER_VALIDATE_BOOLEAN);
             $comanda->observaciones = $request->filled('observaciones') ? $request->observaciones : $comanda->observaciones;

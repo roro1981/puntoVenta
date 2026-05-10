@@ -83,4 +83,9 @@ class User extends Authenticatable
         
         return $this->role->tienePermiso($codigoPermiso);
     }
+
+    public function getNombreCompletoAttribute(): string
+    {
+        return trim((string) ($this->name_complete ?: $this->name ?: ''));
+    }
 }

@@ -62,6 +62,23 @@ $(document).ready(function() {
         });
     });
 });
+
+function limpiarBackdropModal() {
+    $('body').removeClass('modal-open');
+    $('.modal-backdrop').remove();
+}
+
+function cerrarModalSeguro(selectorModal, onClosed) {
+    var $modal = $(selectorModal);
+    $modal.one('hidden.bs.modal', function () {
+        limpiarBackdropModal();
+        if (typeof onClosed === 'function') {
+            onClosed();
+        }
+    });
+    $modal.modal('hide');
+}
+
  $(document).on('click', '.eliminar-rol', function(event) {
     event.preventDefault();
     var rolId = $(this).data('rolid');
@@ -112,8 +129,9 @@ $('#createRolForm').submit(function(event) {
         },
         success: function(data) {
             toastr.success(data.message);
-            $("#createRolModal").modal("hide");
-            $('#contenido').load('/usuarios/roles');
+            cerrarModalSeguro('#createRolModal', function () {
+                $('#contenido').load('/usuarios/roles');
+            });
         },
         error: function(xhr, status, error) {
             toastr.error("Error "+xhr.responseJSON.error+"<br>"+xhr.responseJSON.message);

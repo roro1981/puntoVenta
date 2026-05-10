@@ -325,11 +325,24 @@ class ReportesController extends Controller
     public function indexVendedor()
     {
         $tipoNegocio = $this->tipoNegocio();
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            abort(403, 'Este modulo no esta disponible para negocios tipo restaurant.');
+        }
+
         return view('reportes.vtas_vendedor', compact('tipoNegocio'));
     }
 
     public function dataVendedor(Request $request)
     {
+        $tipoNegocio = $this->tipoNegocio();
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            return response()->json([
+                'message' => 'Este modulo no esta disponible para negocios tipo restaurant.'
+            ], 403);
+        }
+
         $request->validate([
             'desde'       => 'required|date',
             'hasta'       => 'required|date|after_or_equal:desde',
@@ -340,7 +353,6 @@ class ReportesController extends Controller
         $hasta      = Carbon::parse($request->hasta)->endOfDay();
         $vendedorId = $request->input('vendedor_id') ?: null;
 
-        $tipoNegocio = $this->tipoNegocio();
         $tipoCaja    = $tipoNegocio === 'RESTAURANT' ? 'RESTAURANT' : 'ALMACEN';
 
         // --- lista de vendedores con ventas en el periodo (para el select) ---
@@ -456,6 +468,10 @@ class ReportesController extends Controller
 
     public function exportarVendedor(Request $request)
     {
+        if ($this->tipoNegocio() === 'RESTAURANT') {
+            abort(403, 'Este modulo no esta disponible para negocios tipo restaurant.');
+        }
+
         $request->validate([
             'desde'       => 'required|date',
             'hasta'       => 'required|date|after_or_equal:desde',
@@ -471,6 +487,139 @@ class ReportesController extends Controller
         $fileName    = "ventas_vendedor_{$desdeFormat}_al_{$hastaFormat}.xlsx";
 
         return Excel::download(new VendedorExport($desde, $hasta, $vendedorId), $fileName);
+    }
+
+    // ---------------------------------------------------------------
+    // CONTROL DE TUS PROPINAS
+    // ---------------------------------------------------------------
+
+    public function indexControlPropinas()
+    {
+        if ($this->tipoNegocio() !== 'RESTAURANT') {
+            abort(403, 'Este modulo solo esta disponible para negocios tipo restaurant.');
+        }
+
+        $rol = strtolower(trim((string) optional(auth()->user()->role)->role_name));
+        $esGarzon = in_array($rol, ['garzon', 'garzón'], true);
+
+        if (!$esGarzon) {
+            abort(403, 'Este modulo esta disponible solo para usuarios con rol Garzon.');
+        }
+
+        return view('ventas.control_propinas', compact('esGarzon'));
+    }
+
+    public function dataControlPropinas(Request $request)
+    {
+        if ($this->tipoNegocio() !== 'RESTAURANT') {
+            return response()->json([
+                'message' => 'Este modulo solo esta disponible para negocios tipo restaurant.'
+            ], 403);
+        }
+
+        $request->validate([
+            'desde' => 'required|date',
+            'hasta' => 'required|date|after_or_equal:desde',
+        ]);
+
+        $desde = Carbon::parse($request->query('desde'))->startOfDay();
+        $hasta = Carbon::parse($request->query('hasta'))->endOfDay();
+
+        $usuario = auth()->user();
+        $rol = strtolower(trim((string) optional($usuario->role)->role_name));
+        $esGarzon = in_array($rol, ['garzon', 'garzón'], true);
+
+        if (!$esGarzon) {
+            return response()->json([
+                'message' => 'Este modulo esta disponible solo para usuarios con rol Garzon.'
+            ], 403);
+        }
+
+        $garzones = DB::table('comandas as com')
+            ->join('users as g', 'g.id', '=', 'com.garzon_id')
+            ->join('roles as rg', 'rg.id', '=', 'g.role_id')
+            ->where('com.estado', 'CERRADA')
+            ->whereBetween('com.fecha_cierre', [$desde, $hasta])
+            ->whereRaw("LOWER(TRIM(rg.role_name)) IN ('garzon', 'garzón')")
+            ->where('g.estado', 1)
+            ->selectRaw("g.id, COALESCE(NULLIF(TRIM(g.name_complete), ''), g.name) as nombre")
+            ->groupBy('g.id', 'g.name_complete', 'g.name')
+            ->orderBy('g.name_complete')
+            ->get()
+            ->map(fn ($r) => ['id' => (int) $r->id, 'nombre' => $r->nombre])
+            ->values()
+            ->all();
+
+        $base = DB::table('comandas as com')
+            ->leftJoin('users as g', 'g.id', '=', 'com.garzon_id')
+            ->leftJoin('mesas as m', 'm.id', '=', 'com.mesa_id')
+            ->where('com.estado', 'CERRADA')
+            ->whereBetween('com.fecha_cierre', [$desde, $hasta]);
+
+        // Un garzon solo puede ver sus propias comandas y propinas.
+        $base->where('com.garzon_id', $usuario->id);
+
+        $totales = (clone $base)
+            ->selectRaw('COUNT(*) as comandas')
+            ->selectRaw('SUM(com.total) as ventas')
+            ->selectRaw('SUM(CASE WHEN com.incluye_propina = 1 THEN com.propina ELSE 0 END) as propinas')
+            ->first();
+
+        $totalComandas = (int) ($totales->comandas ?? 0);
+        $totalVentas = (float) ($totales->ventas ?? 0);
+        $totalPropinas = (float) ($totales->propinas ?? 0);
+
+        $tendencia = (clone $base)
+            ->selectRaw('DATE(com.fecha_cierre) as fecha')
+            ->selectRaw('COUNT(*) as comandas')
+            ->selectRaw('SUM(com.total) as ventas')
+            ->selectRaw('SUM(CASE WHEN com.incluye_propina = 1 THEN com.propina ELSE 0 END) as propinas')
+            ->groupBy(DB::raw('DATE(com.fecha_cierre)'))
+            ->orderBy('fecha')
+            ->get()
+            ->map(fn ($r) => [
+                'fecha' => Carbon::parse($r->fecha)->format('d/m'),
+                'comandas' => (int) $r->comandas,
+                'ventas' => (float) $r->ventas,
+                'propinas' => (float) $r->propinas,
+            ])
+            ->values()
+            ->all();
+
+        $detalle = (clone $base)
+            ->selectRaw('com.numero_comanda as folio')
+            ->selectRaw("DATE_FORMAT(com.fecha_cierre, '%d-%m-%Y %H:%i') as fecha")
+            ->selectRaw("COALESCE(NULLIF(TRIM(COALESCE(g.name_complete, g.name)), ''), 'Sin garzon') as garzon")
+            ->selectRaw("COALESCE(m.nombre, 'Sin mesa') as mesa")
+            ->selectRaw('com.total as ventas')
+            ->selectRaw('CASE WHEN com.incluye_propina = 1 THEN com.propina ELSE 0 END as propina')
+            ->orderByDesc('com.fecha_cierre')
+            ->limit(300)
+            ->get()
+            ->map(fn ($r) => [
+                'folio' => $r->folio,
+                'fecha' => $r->fecha,
+                'garzon' => $r->garzon,
+                'mesa' => $r->mesa,
+                'ventas' => (float) $r->ventas,
+                'propina' => (float) $r->propina,
+            ])
+            ->values()
+            ->all();
+
+        $nombreGarzon = $usuario->name_complete ?: $usuario->name;
+
+        return response()->json([
+            'esGarzon' => $esGarzon,
+            'nombreGarzon' => $nombreGarzon,
+            'garzones' => $garzones,
+            'totalComandas' => $totalComandas,
+            'totalVentas' => $totalVentas,
+            'totalPropinas' => $totalPropinas,
+            'tasaPropina' => $totalVentas > 0 ? round(($totalPropinas / $totalVentas) * 100, 2) : 0,
+            'tendencia' => $tendencia,
+            'detalle' => $detalle,
+        ]);
     }
 
     // ---------------------------------------------------------------
@@ -497,12 +646,15 @@ class ReportesController extends Controller
 
         // --- lista de garzones con comandas en el periodo (para el select) ---
         $garzones = DB::table('comandas as com')
-            ->join('garzones as g', 'g.id', '=', 'com.garzon_id')
+            ->join('users as g', 'g.id', '=', 'com.garzon_id')
+            ->join('roles as rg', 'rg.id', '=', 'g.role_id')
             ->where('com.estado', 'CERRADA')
             ->whereBetween('com.fecha_cierre', [$desde, $hasta])
-            ->selectRaw("g.id, CONCAT(g.nombre, ' ', g.apellido) as nombre")
-            ->groupBy('g.id', 'g.nombre', 'g.apellido')
-            ->orderBy('g.nombre')
+            ->whereRaw("LOWER(TRIM(rg.role_name)) IN ('garzon', 'garzón')")
+            ->where('g.estado', 1)
+            ->selectRaw("g.id, COALESCE(NULLIF(TRIM(g.name_complete), ''), g.name) as nombre")
+            ->groupBy('g.id', 'g.name_complete', 'g.name')
+            ->orderBy('g.name_complete')
             ->get()
             ->map(fn ($r) => ['id' => $r->id, 'nombre' => $r->nombre])
             ->all();
@@ -521,20 +673,22 @@ class ReportesController extends Controller
 
         // --- ranking por garzón ---
         $rankingRaw = DB::table('comandas as com')
-            ->join('garzones as g', 'g.id', '=', 'com.garzon_id')
+            ->join('users as g', 'g.id', '=', 'com.garzon_id')
+            ->join('roles as rg', 'rg.id', '=', 'g.role_id')
             ->where('com.estado', 'CERRADA')
             ->whereBetween('com.fecha_cierre', [$desde, $hasta])
+            ->whereRaw("LOWER(TRIM(rg.role_name)) IN ('garzon', 'garzón')")
             ->when($garzonId, fn ($q) => $q->where('com.garzon_id', $garzonId))
             ->selectRaw("
                 g.id,
-                CONCAT(g.nombre, ' ', g.apellido) as nombre,
+                COALESCE(NULLIF(TRIM(g.name_complete), ''), g.name) as nombre,
                 COUNT(*) as comandas,
                 COUNT(DISTINCT com.mesa_id) as mesas,
                 SUM(com.comensales) as comensales,
                 SUM(com.total) as total,
                 SUM(CASE WHEN com.incluye_propina = 1 THEN com.propina ELSE 0 END) as propina
             ")
-            ->groupBy('g.id', 'g.nombre', 'g.apellido')
+            ->groupBy('g.id', 'g.name_complete', 'g.name')
             ->orderByDesc('total')
             ->get();
 
@@ -569,18 +723,20 @@ class ReportesController extends Controller
 
         // --- propinas por garzón ---
         $propinasRaw = DB::table('comandas as com')
-            ->join('garzones as g', 'g.id', '=', 'com.garzon_id')
+            ->join('users as g', 'g.id', '=', 'com.garzon_id')
+            ->join('roles as rg', 'rg.id', '=', 'g.role_id')
             ->where('com.estado', 'CERRADA')
             ->where('com.incluye_propina', 1)
             ->whereBetween('com.fecha_cierre', [$desde, $hasta])
+            ->whereRaw("LOWER(TRIM(rg.role_name)) IN ('garzon', 'garzón')")
             ->when($garzonId, fn ($q) => $q->where('com.garzon_id', $garzonId))
             ->selectRaw("
-                CONCAT(g.nombre, ' ', g.apellido) as nombre,
+                COALESCE(NULLIF(TRIM(g.name_complete), ''), g.name) as nombre,
                 COUNT(*) as comandas,
                 SUM(com.propina) as propina,
                 AVG(com.propina) as promedio
             ")
-            ->groupBy('g.id', 'g.nombre', 'g.apellido')
+            ->groupBy('g.id', 'g.name_complete', 'g.name')
             ->orderByDesc('propina')
             ->get();
 
@@ -593,7 +749,7 @@ class ReportesController extends Controller
 
         // --- detalle de comandas ---
         $detalle = DB::table('comandas as com')
-            ->leftJoin('garzones as g', 'g.id', '=', 'com.garzon_id')
+            ->leftJoin('users as g', 'g.id', '=', 'com.garzon_id')
             ->leftJoin('mesas as m', 'm.id', '=', 'com.mesa_id')
             ->where('com.estado', 'CERRADA')
             ->whereBetween('com.fecha_cierre', [$desde, $hasta])
@@ -601,7 +757,7 @@ class ReportesController extends Controller
             ->selectRaw("
                 com.numero_comanda as folio,
                 DATE_FORMAT(com.fecha_cierre, '%d-%m-%Y %H:%i') as fecha_cierre,
-                COALESCE(CONCAT(g.nombre, ' ', g.apellido), 'Sin garzón') as garzon,
+                COALESCE(NULLIF(TRIM(COALESCE(g.name_complete, g.name)), ''), 'Sin garzón') as garzon,
                 COALESCE(m.nombre, 'Sin mesa') as mesa,
                 com.comensales,
                 com.subtotal,
@@ -2245,12 +2401,24 @@ class ReportesController extends Controller
                 'descripcion' => $r->nombre,
             ]));
         }
+        
+                if ($tipoNegocio === 'RESTAURANT') {
+                    abort(403, 'Este modulo no esta disponible para negocios tipo restaurant.');
+                }
 
         if ($tipo === 'PROMOCION') {
             $data = Promocion::where('estado', 'Activo')
                 ->where(function ($q) use ($term) {
                     $q->where('codigo', 'like', "%{$term}%")
                       ->orWhere('nombre', 'like', "%{$term}%");
+                $tipoNegocio = $this->tipoNegocio();
+
+                if ($tipoNegocio === 'RESTAURANT') {
+                    return response()->json([
+                        'message' => 'Este modulo no esta disponible para negocios tipo restaurant.'
+                    ], 403);
+                }
+
                 })
                 ->limit(10)
                 ->get(['id', 'codigo', 'nombre']);
