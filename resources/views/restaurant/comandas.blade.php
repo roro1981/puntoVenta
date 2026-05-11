@@ -16,6 +16,7 @@
                 </div>
                 <div>
                     <span class="badge mr-2 badge-estado-libre"><i class="fa fa-circle"></i> Libre: <span id="total_mesas_libres">0</span></span>
+                    <span class="badge mr-2 badge-estado-reservada"><i class="fa fa-circle"></i> Reservada: <span id="total_mesas_reservadas">0</span></span>
                     <span class="badge mr-2 badge-estado-ocupada"><i class="fa fa-circle"></i> Ocupada: <span id="total_mesas_ocupadas">0</span></span>
                     <span class="badge mr-2 badge-estado-pendiente"><i class="fa fa-circle"></i> Pendientes pago: <span id="total_mesas_pendientes_pago">0</span></span>
                     <button class="btn btn-info" id="btn_ver_plano_mesas" style="margin-right:6px;">

@@ -18,7 +18,6 @@ use App\Models\Caja;
 use App\Models\RetiroCaja;
 use App\Models\Globales;
 use App\Models\CorporateData;
-use App\Models\RangoPrecio;
 use App\Models\User;
 use App\Http\Requests\CierreCajaRequest;
 use App\Services\PrecioService;
@@ -34,6 +33,74 @@ class ComandasController extends Controller
 {
     private const TIPO_CAJA_MODULO_COMANDAS = 'RESTAURANT';
     private const LAYOUT_FILE = 'layouts/restaurant_mesas_layout.json';
+    private const RESERVA_EXPIRACION_MINUTOS_DEFAULT = 15;
+
+    private function obtenerMinutosExpiracionReservaMesas(): int
+    {
+        $valor = Cache::remember('global_RESERVA_EXPIRACION_MESA_MINUTOS', 300, fn () => Globales::where('nom_var', 'RESERVA_EXPIRACION_MESA_MINUTOS')->value('valor_var'));
+        $minutos = (int) ($valor ?? self::RESERVA_EXPIRACION_MINUTOS_DEFAULT);
+
+        return max(1, $minutos);
+    }
+
+    private function limpiarReservasExpiradas(?int $mesaId = null): void
+    {
+        $limite = now()->subMinutes($this->obtenerMinutosExpiracionReservaMesas());
+
+        $query = Mesa::where('reservada', true)
+            ->whereNotNull('reservada_at')
+            ->where('reservada_at', '<=', $limite)
+            ->with('comandaAbierta');
+
+        if (!is_null($mesaId)) {
+            $query->where('id', $mesaId);
+        }
+
+        $mesasExpiradas = $query->get();
+        $huboCambios = false;
+
+        foreach ($mesasExpiradas as $mesa) {
+            if ($mesa->comandaAbierta) {
+                continue;
+            }
+
+            $mesa->reservada = false;
+            $mesa->reservada_por_user_id = null;
+            $mesa->reservada_at = null;
+            $mesa->save();
+            $huboCambios = true;
+        }
+
+        if ($huboCambios) {
+            Cache::forget('mesas_data');
+        }
+    }
+
+    private function liberarReservaMesaSiCorresponde(int $mesaId, ?int $userId = null): void
+    {
+        $mesa = Mesa::find($mesaId);
+        if (!$mesa || !$mesa->reservada) {
+            return;
+        }
+
+        if (!is_null($userId) && !is_null($mesa->reservada_por_user_id) && (int) $mesa->reservada_por_user_id !== (int) $userId) {
+            return;
+        }
+
+        $mesa->reservada = false;
+        $mesa->reservada_por_user_id = null;
+        $mesa->reservada_at = null;
+        $mesa->save();
+    }
+
+    private function puedeUsarMesaReservada(Mesa $mesa, int $userId): bool
+    {
+        if (!$mesa->reservada) {
+            return true;
+        }
+
+        return !is_null($mesa->reservada_por_user_id) && (int) $mesa->reservada_por_user_id === $userId;
+    }
 
     private function resolverPrecioUnitarioComanda(Producto $producto, float $cantidad): float
     {
@@ -560,8 +627,11 @@ class ComandasController extends Controller
     public function obtenerMesas()
     {
         try {
+            $this->limpiarReservasExpiradas();
+
             $mesas = Cache::remember('mesas_data', 8, function () {
                 return Mesa::where('activa', true)
+                    ->with('reservadaPor')
                     ->with(['comandaAbierta' => function($query) {
                         $query->with(['detalles', 'garzon']);
                     }])
@@ -573,6 +643,8 @@ class ComandasController extends Controller
                             $estadoMesa = $mesa->comandaAbierta->estado === 'PENDIENTE DE PAGO'
                                 ? 'PENDIENTE DE PAGO'
                                 : 'OCUPADA';
+                        } elseif ($mesa->reservada) {
+                            $estadoMesa = 'RESERVADA';
                         }
 
                         return [
@@ -580,6 +652,12 @@ class ComandasController extends Controller
                             'nombre' => $mesa->nombre,
                             'capacidad' => $mesa->capacidad,
                             'estado' => $estadoMesa,
+                            'reservada' => (bool) $mesa->reservada,
+                            'reservada_por_id' => $mesa->reservada_por_user_id,
+                            'reservada_por' => $this->nombreCompletoUsuario($mesa->reservadaPor),
+                            'reservada_at' => optional($mesa->reservada_at)->format('d/m/Y H:i'),
+                            'reservada_at_iso' => optional($mesa->reservada_at)?->toIso8601String(),
+                            'es_reserva_propia' => false,
                             'comanda' => $mesa->comandaAbierta ? [
                                 'id' => $mesa->comandaAbierta->id,
                                 'numero_comanda' => $mesa->comandaAbierta->numero_comanda,
@@ -593,8 +671,15 @@ class ComandasController extends Controller
                     });
             });
 
+            $mesas = $mesas->map(function ($mesa) {
+                $mesa['es_reserva_propia'] = !is_null($mesa['reservada_por_id']) && (int) $mesa['reservada_por_id'] === (int) Auth::id();
+
+                return $mesa;
+            });
+
             return response()->json([
                 'success' => true,
+                'minutos_expiracion_reserva' => $this->obtenerMinutosExpiracionReservaMesas(),
                 'mesas' => $mesas
             ], 200);
         } catch (\Exception $e) {
@@ -605,9 +690,87 @@ class ComandasController extends Controller
         }
     }
 
+    public function reservarMesa($mesaId)
+    {
+        try {
+            $this->limpiarReservasExpiradas((int) $mesaId);
+
+            $mesa = Mesa::where('activa', true)->findOrFail($mesaId);
+
+            if ($mesa->comandaAbierta()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede reservar una mesa que ya tiene una comanda activa'
+                ], 400);
+            }
+
+            if ($mesa->reservada && (int) $mesa->reservada_por_user_id !== (int) Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La mesa ya está reservada por otro garzón'
+                ], 400);
+            }
+
+            $mesa->reservada = true;
+            $mesa->reservada_por_user_id = Auth::id();
+            $mesa->reservada_at = now();
+            $mesa->save();
+
+            Cache::forget('mesas_data');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mesa reservada correctamente',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reservar mesa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function liberarReservaMesa($mesaId)
+    {
+        try {
+            $this->limpiarReservasExpiradas((int) $mesaId);
+
+            $mesa = Mesa::where('activa', true)->findOrFail($mesaId);
+
+            if (!$mesa->reservada) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La mesa no está reservada'
+                ], 400);
+            }
+
+            if (!is_null($mesa->reservada_por_user_id) && (int) $mesa->reservada_por_user_id !== (int) Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo el garzón que reservó la mesa puede liberar la reserva'
+                ], 403);
+            }
+
+            $this->liberarReservaMesaSiCorresponde((int) $mesa->id, (int) Auth::id());
+            Cache::forget('mesas_data');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reserva liberada correctamente',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al liberar reserva: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function verComanda($mesaId)
     {
         try {
+            $this->limpiarReservasExpiradas((int) $mesaId);
+
             $mesa = Mesa::with(['comandaAbierta.detalles.producto', 'comandaAbierta.detalles.receta', 'comandaAbierta.user', 'comandaAbierta.garzon'])
                 ->findOrFail($mesaId);
 
@@ -1063,6 +1226,17 @@ class ComandasController extends Controller
                 $garzonIdComanda = $garzonUsuario->id;
             }
 
+            $this->limpiarReservasExpiradas((int) $request->mesa_id);
+
+            $mesa = Mesa::findOrFail($request->mesa_id);
+            if (!$this->puedeUsarMesaReservada($mesa, (int) auth()->id())) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La mesa está reservada por otro garzón'
+                ], 403);
+            }
+
             // Verificar si la mesa ya tiene una comanda abierta
             $comandaExistente = Comanda::where('mesa_id', $request->mesa_id)
                 ->whereIn('estado', ['ABIERTA', 'EN CONSUMO', 'PENDIENTE DE PAGO'])
@@ -1108,6 +1282,8 @@ class ComandasController extends Controller
                 'fecha_cambio' => now(),
                 'observacion' => 'Apertura de comanda',
             ]);
+
+            $this->liberarReservaMesaSiCorresponde((int) $comanda->mesa_id, (int) auth()->id());
 
             DB::commit();
 
@@ -1165,6 +1341,8 @@ class ComandasController extends Controller
             $comanda->observaciones = $request->filled('observaciones') ? $request->observaciones : $comanda->observaciones;
             $comanda->estado = 'EN CONSUMO';
             $comanda->save();
+
+            $this->liberarReservaMesaSiCorresponde((int) $comanda->mesa_id, (int) auth()->id());
 
             if ($estadoAnterior !== $comanda->estado) {
                 HistorialEstadoComanda::create([
@@ -1427,6 +1605,11 @@ class ComandasController extends Controller
 
             // Actualizar totales de la comanda
             $this->recalcularTotales($request->comanda_id);
+
+            $comanda = Comanda::find($request->comanda_id);
+            if ($comanda) {
+                $this->liberarReservaMesaSiCorresponde((int) $comanda->mesa_id, (int) auth()->id());
+            }
 
             DB::commit();
 

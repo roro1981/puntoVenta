@@ -58,6 +58,15 @@
     border-color: #20c997;
 }
 
+.mesa-card-comanda.reservada {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #ffffff 0%, #f7f0ff 100%);
+}
+
+.mesa-card-comanda.reservada:hover {
+    border-color: #6d28d9;
+}
+
 .mesa-card-comanda.ocupada {
     border-color: #dc3545;
     background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
@@ -110,9 +119,19 @@
     color: white;
 }
 
+.mesa-status-badge.reservada {
+    background-color: #7c3aed;
+    color: white;
+}
+
 .mesa-status-badge.pendiente-de-pago {
     background-color: #ff9800;
     color: white;
+}
+
+.badge-estado-reservada {
+    background-color: #7c3aed;
+    color: #fff;
 }
 
 .mesa-info {
@@ -184,6 +203,64 @@
     display: flex;
     justify-content: space-between;
     gap: 6px;
+}
+
+.mesa-reserva-box {
+    margin-top: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f8f3ff;
+    border: 1px solid #e6dbff;
+}
+
+.mesa-reserva-titulo {
+    font-size: 12px;
+    font-weight: 700;
+    color: #5b21b6;
+    margin-bottom: 4px;
+}
+
+.mesa-reserva-detalle {
+    font-size: 11px;
+    color: #5f5b75;
+    margin: 2px 0;
+}
+
+.mesa-acciones-reserva {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+}
+
+.btn-reservar-mesa,
+.btn-liberar-reserva {
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: #fff;
+}
+
+.btn-reservar-mesa {
+    border-color: #7c3aed;
+    color: #7c3aed;
+}
+
+.btn-reservar-mesa:hover {
+    background: #7c3aed;
+    color: #fff;
+}
+
+.btn-liberar-reserva {
+    border-color: #6b7280;
+    color: #4b5563;
+}
+
+.btn-liberar-reserva:hover {
+    background: #6b7280;
+    color: #fff;
 }
 
 .btn-imprimir-preventa {

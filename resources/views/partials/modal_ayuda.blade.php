@@ -5,6 +5,11 @@
 --}}
 
 @php
+    $minutosExpiracionMesa = (int) (
+        \App\Models\Globales::where('nom_var', 'RESERVA_EXPIRACION_MESA_MINUTOS')->value('valor_var')
+        ?? 15
+    );
+
     $ayuda = [
         'ventas' => [
             'titulo' => 'Generar Venta',
@@ -519,8 +524,11 @@
             'icono'  => 'fa-utensils',
             'color'  => '#d97706',
             'pasos'  => [
-                ['icono' => 'fa-map',           'titulo' => 'Ver y organizar el plano',   'desc' => 'Usa <strong>Ver plano de mesas</strong> para ver la distribución del local. Las mesas muestran su estado: <span style="color:#28a745">●</span> Libre, <span style="color:#e67e22">●</span> Ocupada, <span style="color:#c0392b">●</span> Pendiente de pago. Puedes arrastrar las mesas para reubicarlas y luego guardar el layout con <strong>Guardar layout</strong>.'],
-                ['icono' => 'fa-hand-pointer-o','titulo' => 'Abrir una mesa',             'desc' => 'Haz clic en una mesa libre para iniciar una nueva comanda. Si la mesa ya está ocupada, al hacer clic se reabre su pedido en el panel POS donde puedes agregar productos, asignar un garzón y registrar el número de comensales.'],
+                ['icono' => 'fa-map',           'titulo' => 'Ver y organizar el plano',   'desc' => 'Usa <strong>Ver plano de mesas</strong> para ver la distribución del local. Las mesas muestran su estado: <span style="color:#28a745">●</span> Libre, <span style="color:#7c3aed">●</span> Reservada, <span style="color:#e67e22">●</span> Ocupada y <span style="color:#c0392b">●</span> Pendiente de pago. Puedes arrastrar las mesas para reubicarlas y luego guardar el layout con <strong>Guardar layout</strong>.'],
+                ['icono' => 'fa-bookmark',      'titulo' => 'Reservar una mesa',          'desc' => 'En una mesa libre puedes usar el botón <strong>Reservar</strong>. La reserva queda visible para todos los garzones y muestra quién la tomó. Mientras esté reservada, otro garzón no podrá abrirla ni usarla como destino en <strong>Cambiar mesa</strong>.'],
+                ['icono' => 'fa-hourglass-half','titulo' => 'Expiración automática',      'desc' => 'Si una mesa reservada no tiene actividad, la reserva vence automáticamente después de <strong>' . $minutosExpiracionMesa . ' minutos</strong>. Al vencer, vuelve a estado libre sin intervención manual.'],
+                ['icono' => 'fa-hand-pointer-o','titulo' => 'Abrir una mesa',             'desc' => 'Haz clic en una mesa libre para iniciar una nueva comanda. Si la reserva es tuya, también puedes abrirla normalmente. Si la mesa ya está ocupada, al hacer clic se reabre su pedido en el panel POS donde puedes agregar productos, asignar un garzón y registrar el número de comensales.'],
+                ['icono' => 'fa-unlock',        'titulo' => 'Liberar reserva',            'desc' => 'El mismo garzón que reservó puede usar <strong>Liberar</strong> para soltar la mesa manualmente. Además, cuando ese garzón empieza a usarla y guarda o actualiza la comanda, la reserva se elimina automáticamente.'],
                 ['icono' => 'fa-plus',          'titulo' => 'Agregar productos y notas',  'desc' => 'Busca el producto por nombre o código en el panel POS. Puedes ajustar la cantidad con los controles +/−. Para agregar una indicación especial (ej. "sin cebolla"), usa el ícono <i class="fa fa-comment-o"></i> junto al ítem para escribir una <strong>nota al plato</strong>.'],
                 ['icono' => 'fa-print',         'titulo' => 'Ticket de preventa',         'desc' => 'Usa el botón <strong>Imprimir Comanda</strong> (panel POS, pie del formulario) para generar el ticket de preventa con los productos, precios y total. Queda disponible para el cliente o para uso interno. Puedes imprimirlo cuantas veces necesites.'],
                 ['icono' => 'fa-bell',          'titulo' => 'Ticket de cocina',           'desc' => 'Usa el botón <strong>Ticket Cocina</strong> (panel POS, pie del formulario) para enviar un ticket simplificado a la cocina, solo con los platos a preparar, sin precios. Ambos botones (preventa y cocina) se activan una vez que el pedido tiene productos guardados.'],
@@ -529,7 +537,11 @@
             ],
             'tips' => [
                 'El contador de comensales en la parte superior muestra el total de personas en el restaurant en tiempo real.',
+                'Las reservas visibles en color morado ayudan a evitar que dos garzones tomen la misma mesa al mismo tiempo.',
+                'Si una mesa quedó reservada y nadie la usó, el sistema la libera automáticamente al cumplir el tiempo configurado en <strong>RESERVA_EXPIRACION_MESA_MINUTOS</strong>.',
+                'Ese tiempo se puede modificar desde <strong>Datos Globales</strong> por un usuario autorizado.',
                 'Puedes cambiar una comanda de mesa usando el botón <strong>Cambiar mesa</strong> sin perder los productos pedidos.',
+                'Las mesas reservadas no aparecen como destino disponible al usar <strong>Cambiar mesa</strong>.',
                 'El botón <strong>Actualizar</strong> refresca el estado de todas las mesas. Útil si hay varios meseros trabajando simultáneamente.',
                 'Los productos marcados como receta verifican además el stock de los ingredientes antes de agregarlos al pedido.',
                 'El <strong>ticket de cocina</strong> y el <strong>ticket de preventa</strong> son documentos distintos: la preventa incluye precios y totales; el de cocina solo muestra los platos para facilitar la preparación.',
@@ -643,6 +655,10 @@
                         <li style="display:flex; gap:8px; font-size:12.5px; color:#475569; margin-bottom:8px; align-items:flex-start; line-height:1.55;">
                             <span style="color:#f59e0b; font-size:11px; margin-top:3px; flex-shrink:0;">●</span>
                             <span><strong>PORCENTAJE_PROPINA</strong>: define el % de propina por defecto que se sugiere al cerrar una comanda o venta de restaurant.</span>
+                        </li>
+                        <li style="display:flex; gap:8px; font-size:12.5px; color:#475569; margin-bottom:8px; align-items:flex-start; line-height:1.55;">
+                            <span style="color:#f59e0b; font-size:11px; margin-top:3px; flex-shrink:0;">●</span>
+                            <span><strong>RESERVA_EXPIRACION_MESA_MINUTOS</strong>: define cuántos minutos sin actividad debe durar una reserva antes de liberarse automáticamente. Solo aplica en <strong>RESTAURANT</strong> y puede ajustarse desde esta pantalla por un usuario autorizado.</span>
                         </li>
                         @endif
                     </ul>

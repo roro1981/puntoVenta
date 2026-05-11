@@ -55,6 +55,7 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 6, 'submenu_name' => 'Datos globales', 'submenu_route' => '/datos_glob', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 6, 'submenu_name' => 'Impuestos', 'submenu_route' => '/impuestos', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 6, 'submenu_name' => 'Configurar Mesas', 'submenu_route' => '/restaurant/config-mesas', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 6, 'submenu_name' => 'Configurar Menú QR', 'submenu_route' => '/restaurant/config-menu-qr', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Categorías eliminadas', 'submenu_route' => '/cats_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Productos eliminados', 'submenu_route' => '/prods_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Recetas eliminadas', 'submenu_route' => '/recetas_elim', 'created_at' => Carbon::now()->toDateTimeString()],

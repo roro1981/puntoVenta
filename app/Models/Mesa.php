@@ -15,13 +15,18 @@ class Mesa extends Model
         'nombre',
         'orden',
         'capacidad',
-        'activa'
+        'activa',
+        'reservada',
+        'reservada_por_user_id',
+        'reservada_at'
     ];
 
     protected $casts = [
         'activa' => 'boolean',
+        'reservada' => 'boolean',
         'orden' => 'integer',
-        'capacidad' => 'integer'
+        'capacidad' => 'integer',
+        'reservada_at' => 'datetime'
     ];
 
     // Relaciones
@@ -33,5 +38,10 @@ class Mesa extends Model
     public function comandaAbierta()
     {
         return $this->hasOne(Comanda::class)->whereIn('estado', ['ABIERTA', 'EN CONSUMO', 'PENDIENTE DE PAGO'])->latest();
+    }
+
+    public function reservadaPor()
+    {
+        return $this->belongsTo(User::class, 'reservada_por_user_id');
     }
 }

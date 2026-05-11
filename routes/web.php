@@ -7,6 +7,7 @@ use App\Http\Controllers\ComprasController;
 use App\Http\Controllers\ReportesController;
 use App\Http\Controllers\ProductosController;
 use App\Http\Controllers\ConfigurationController;
+use App\Http\Controllers\MenuQrController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\MesasController;
 use App\Http\Controllers\ComandasController;
@@ -241,6 +242,8 @@ Route::delete('/restaurant/mesas/eliminar/{id}', [MesasController::class, 'elimi
 // Comandas - Atención de mesas
 Route::get('/ventas/generar_comandas', [ComandasController::class, 'index']);
 Route::get('/restaurant/comandas/obtener-mesas', [ComandasController::class, 'obtenerMesas']);
+Route::post('/restaurant/comandas/reservar-mesa/{mesaId}', [ComandasController::class, 'reservarMesa']);
+Route::delete('/restaurant/comandas/reservar-mesa/{mesaId}', [ComandasController::class, 'liberarReservaMesa']);
 Route::get('/restaurant/comandas/ver/{mesaId}', [ComandasController::class, 'verComanda']);
 Route::put('/restaurant/comandas/actualizar-comensales/{comandaId}', [ComandasController::class, 'actualizarComensales']);
 Route::get('/restaurant/comandas/obtener-productos', [ComandasController::class, 'obtenerProductos']);
@@ -270,11 +273,16 @@ Route::put('/configuracion/update-global/{id}', [ConfigurationController::class,
 Route::get('/configuracion/impuestos', [ConfigurationController::class, 'indexImpuestos']);
 Route::get('/configuracion/impuestos-table', [ConfigurationController::class, 'impuestosTable']);
 Route::put('/configuracion/update-impuesto/{id}', [ConfigurationController::class, 'updateImpuesto']);
+Route::get('/configuracion/restaurant/config-menu-qr', [MenuQrController::class, 'index'])->name('menu-qr.index');
+Route::post('/configuracion/restaurant/config-menu-qr', [MenuQrController::class, 'guardar'])->name('menu-qr.guardar');
+Route::get('/configuracion/restaurant/config-menu-qr/pdf/{token}', [MenuQrController::class, 'pdf'])->name('menu-qr.pdf');
 
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->name('dashboard');
 Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventasPendientesDashboard'])->name('dashboard.preventas-pendientes');
 
 }); // End middleware('auth') group
+
+Route::get('/menu-qr/{token}', [MenuQrController::class, 'publico'])->name('menu-qr.publico');
 
 Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:10,1')->name('login');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');

@@ -16,6 +16,7 @@ var posPrecioInFlight = window.posPrecioInFlight instanceof Map ? window.posPrec
 var posSearchTimer = window.posSearchTimer || null;
 var posLayoutMesasActual = window.posLayoutMesasActual || null;
 var posLayoutDragState = window.posLayoutDragState || null;
+var posReservaExpiracionMinutos = typeof window.posReservaExpiracionMinutos !== 'undefined' ? parseInt(window.posReservaExpiracionMinutos, 10) : 15;
 var _garzonesCache = null;
 
 window.posProductos = posProductos;
@@ -35,6 +36,7 @@ window.posPrecioInFlight = posPrecioInFlight;
 window.posSearchTimer = posSearchTimer;
 window.posLayoutMesasActual = posLayoutMesasActual;
 window.posLayoutDragState = posLayoutDragState;
+window.posReservaExpiracionMinutos = posReservaExpiracionMinutos;
 
 if (window.comandasRefreshInterval) {
     clearInterval(window.comandasRefreshInterval);
@@ -345,6 +347,10 @@ function cargarMesas() {
         },
         success: function(response) {
             if (response.success) {
+                if (typeof response.minutos_expiracion_reserva !== 'undefined' && response.minutos_expiracion_reserva !== null) {
+                    posReservaExpiracionMinutos = parseInt(response.minutos_expiracion_reserva, 10) || 15;
+                    window.posReservaExpiracionMinutos = posReservaExpiracionMinutos;
+                }
                 renderizarMesas(response.mesas);
             }
         },
@@ -357,12 +363,27 @@ function cargarMesas() {
     });
 }
 
+function calcularMinutosRestantesReserva(mesa) {
+    const minutosConfigurados = parseInt(posReservaExpiracionMinutos, 10) || 15;
+    const reservadaAt = mesa && mesa.reservada_at_iso ? new Date(mesa.reservada_at_iso) : null;
+
+    if (!reservadaAt || Number.isNaN(reservadaAt.getTime())) {
+        return null;
+    }
+
+    const transcurridos = Math.max(0, Math.floor((Date.now() - reservadaAt.getTime()) / 60000));
+    const restantes = minutosConfigurados - transcurridos;
+
+    return Math.max(0, restantes);
+}
+
 function renderizarMesas(mesas) {
     const container = $('#mesas-container');
     container.empty();
     
     let totalComensales = 0;
     let totalLibres = 0;
+    let totalReservadas = 0;
     let totalOcupadas = 0;
     let totalPendientesPago = 0;
     
@@ -371,9 +392,12 @@ function renderizarMesas(mesas) {
         const estado = estadoTexto.toLowerCase();
         const estadoClass = estado.replace(/\s+/g, '-');
         const esLibre = estado === 'libre';
+        const esReservada = estado === 'reservada';
 
         if (estado === 'libre') {
             totalLibres++;
+        } else if (estado === 'reservada') {
+            totalReservadas++;
         } else if (estado === 'ocupada') {
             totalOcupadas++;
         } else if (estado === 'pendiente de pago') {
@@ -427,17 +451,47 @@ function renderizarMesas(mesas) {
                     </button>
                 </div>
             `;
+        } else if (esReservada) {
+            const reservadaPor = mesa.reservada_por || 'Otro garzón';
+            const reservadaAt = mesa.reservada_at || '';
+            const minutosRestantes = calcularMinutosRestantesReserva(mesa);
+            const expiracionHtml = minutosRestantes !== null
+                ? `<div class="mesa-reserva-detalle"><strong>Expira en:</strong> ${minutosRestantes} min</div>`
+                : '';
+            consumoHtml = `
+                <div class="mesa-reserva-box">
+                    <div class="mesa-reserva-titulo"><i class="fa fa-bookmark"></i> Mesa reservada</div>
+                    <div class="mesa-reserva-detalle"><strong>Por:</strong> ${reservadaPor}</div>
+                    ${reservadaAt ? `<div class="mesa-reserva-detalle"><strong>Desde:</strong> ${reservadaAt}</div>` : ''}
+                    ${expiracionHtml}
+                    <div class="mesa-acciones-reserva">
+                        ${mesa.es_reserva_propia ? `<button type="button" class="btn-liberar-reserva" data-mesa-id="${mesa.id}"><i class="fa fa-unlock"></i> Liberar</button>` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            consumoHtml = `
+                <div class="mesa-acciones-reserva">
+                    <button type="button" class="btn-reservar-mesa" data-mesa-id="${mesa.id}">
+                        <i class="fa fa-bookmark"></i> Reservar
+                    </button>
+                </div>
+            `;
         }
         
+        const numeroComandaHtml = mesa.comanda && mesa.comanda.numero_comanda
+            ? `<p><i class="fa fa-receipt"></i> ${mesa.comanda.numero_comanda}</p>`
+            : '';
+
         const mesaHtml = `
-            <div class="mesa-card-comanda ${estadoClass}" data-mesa-id="${mesa.id}" data-estado="${estado}">
+            <div class="mesa-card-comanda ${estadoClass}" data-mesa-id="${mesa.id}" data-estado="${estado}" data-reserva-propia="${mesa.es_reserva_propia ? '1' : '0'}" data-reservada-por="${mesa.reservada_por || ''}">
                 <div class="mesa-header-comanda">
                     <h3><i class="fa fa-chair"></i> ${mesa.nombre}</h3>
                     <span class="mesa-status-badge ${estadoClass}">${estadoTexto}</span>
                 </div>
                 <div class="mesa-info">
                     <p class="capacidad-mesa"><i class="fa fa-users"></i> Capacidad: ${mesa.capacidad}</p>
-                    ${!esLibre ? `<p><i class="fa fa-receipt"></i> ${mesa.comanda.numero_comanda}</p>` : ''}
+                    ${numeroComandaHtml}
                 </div>
                 ${consumoHtml}
             </div>
@@ -448,24 +502,85 @@ function renderizarMesas(mesas) {
     // Actualizar contador total de comensales
     $('#total_comensales').text(totalComensales);
     $('#total_mesas_libres').text(totalLibres);
+    $('#total_mesas_reservadas').text(totalReservadas);
     $('#total_mesas_ocupadas').text(totalOcupadas);
     $('#total_mesas_pendientes_pago').text(totalPendientesPago);
     
     // Eventos para las mesas
     $('.mesa-card-comanda').on('click', function(e) {
         // Evitar abrir modal si se hizo clic en botones de comensales
-        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa, .btn-cocina-mesa').length > 0) {
+        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa, .btn-cocina-mesa, .btn-reservar-mesa, .btn-liberar-reserva').length > 0) {
             return;
         }
         
         const mesaId = $(this).data('mesa-id');
         const estado = $(this).data('estado');
+        const esReservaPropia = String($(this).data('reserva-propia')) === '1';
+        const reservadaPor = $(this).data('reservada-por');
         
-        if (estado !== 'libre') {
+        if (estado === 'ocupada' || estado === 'pendiente de pago') {
             verComanda(mesaId);
+        } else if (estado === 'reservada') {
+            if (esReservaPropia) {
+                iniciarComanda(mesaId);
+            } else {
+                Swal.fire('Mesa reservada', 'Esta mesa está reservada por ' + (reservadaPor || 'otro garzón'), 'info');
+            }
         } else {
             iniciarComanda(mesaId);
         }
+    });
+
+    $('.btn-reservar-mesa').on('click', function(e) {
+        e.stopPropagation();
+        const mesaId = $(this).data('mesa-id');
+
+        $.ajax({
+            url: '/restaurant/comandas/reservar-mesa/' + mesaId,
+            type: 'POST',
+            dataType: 'json',
+            data: { _token: $('#token').val() },
+            success: function(response) {
+                if (!response.success) {
+                    Swal.fire('Atención', response.message || 'No se pudo reservar la mesa', 'warning');
+                    return;
+                }
+                cargarMesas();
+            },
+            error: function(xhr) {
+                let mensaje = 'Error al reservar mesa';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    mensaje = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', mensaje, 'error');
+            }
+        });
+    });
+
+    $('.btn-liberar-reserva').on('click', function(e) {
+        e.stopPropagation();
+        const mesaId = $(this).data('mesa-id');
+
+        $.ajax({
+            url: '/restaurant/comandas/reservar-mesa/' + mesaId,
+            type: 'DELETE',
+            dataType: 'json',
+            data: { _token: $('#token').val() },
+            success: function(response) {
+                if (!response.success) {
+                    Swal.fire('Atención', response.message || 'No se pudo liberar la reserva', 'warning');
+                    return;
+                }
+                cargarMesas();
+            },
+            error: function(xhr) {
+                let mensaje = 'Error al liberar reserva';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    mensaje = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', mensaje, 'error');
+            }
+        });
     });
     
     // Eventos para botones de comensales
@@ -834,49 +949,38 @@ function agregarAlCarrito(productoUuid) {
     if (!producto) return;
 
     const itemExistente = posCarrito.find(item => item.uuid === producto.uuid);
-    const cantidadObjetivo = itemExistente ? (itemExistente.cantidad + 1) : 1;
 
-    verificarStockComanda(producto.uuid, cantidadObjetivo)
-        .done(function(resp) {
-            if (resp && resp.status === 'OK') {
-                if (itemExistente) {
-                    const nuevaCantidad = itemExistente.cantidad + 1;
-                    actualizarPrecioRangoComanda(itemExistente, nuevaCantidad)
-                        .then(function() {
-                            renderizarCarrito();
-                        })
-                        .catch(function() {
-                            Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
-                        });
-                } else {
-                    const nuevoItem = {
-                        id: producto.id,
-                        uuid: producto.uuid,
-                        origen: producto.origen || 'PRODUCTO',
-                        codigo: producto.codigo,
-                        descripcion: producto.descripcion,
-                        precio: parseFloat(producto.precio_venta),
-                        cantidad: 1,
-                        subtotal: parseFloat(producto.precio_venta),
-                        observaciones: ''
-                    };
+    if (itemExistente) {
+        const nuevaCantidad = itemExistente.cantidad + 1;
+        actualizarPrecioRangoComanda(itemExistente, nuevaCantidad)
+            .then(function() {
+                renderizarCarrito();
+            })
+            .catch(function() {
+                Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
+            });
+        return;
+    }
 
-                    posCarrito.push(nuevoItem);
-                    actualizarPrecioRangoComanda(nuevoItem, 1)
-                        .then(function() {
-                            renderizarCarrito();
-                        })
-                        .catch(function() {
-                            Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
-                        });
-                }
-                return;
-            }
+    const nuevoItem = {
+        id: producto.id,
+        uuid: producto.uuid,
+        origen: producto.origen || 'PRODUCTO',
+        codigo: producto.codigo,
+        descripcion: producto.descripcion,
+        precio: parseFloat(producto.precio_venta),
+        cantidad: 1,
+        subtotal: parseFloat(producto.precio_venta),
+        observaciones: ''
+    };
 
-            mostrarErrorStockComanda(resp, producto.descripcion);
+    posCarrito.push(nuevoItem);
+    actualizarPrecioRangoComanda(nuevoItem, 1)
+        .then(function() {
+            renderizarCarrito();
         })
-        .fail(function() {
-            Swal.fire('Error', 'No se pudo verificar stock del producto', 'error');
+        .catch(function() {
+            Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
         });
 }
 
@@ -1369,23 +1473,12 @@ $(document)
             return;
         }
 
-        verificarStockComanda(item.uuid, cantidadObjetivo)
-            .done(function(resp) {
-                if (resp && resp.status === 'OK') {
-                    actualizarPrecioRangoComanda(item, cantidadObjetivo)
-                        .then(function() {
-                            renderizarCarrito();
-                        })
-                        .catch(function() {
-                            Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
-                        });
-                    return;
-                }
-
-                mostrarErrorStockComanda(resp, item.descripcion);
+        actualizarPrecioRangoComanda(item, cantidadObjetivo)
+            .then(function() {
+                renderizarCarrito();
             })
-            .fail(function() {
-                Swal.fire('Error', 'No se pudo verificar stock para actualizar cantidad', 'error');
+            .catch(function() {
+                Swal.fire('Error', 'No se pudo aplicar precio por rango', 'error');
             });
     })
     .off('click' + POS_EVENT_NS, '.pos-qty-minus')

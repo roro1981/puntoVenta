@@ -60,6 +60,7 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 1, 'submenu_id' => 40, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 41, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 1, 'submenu_id' => 42, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 1, 'submenu_id' => 43, 'created_at' => Carbon::now()->toDateTimeString()],
             //usuario
             ['role_id' => 2, 'submenu_id' => 10, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 2, 'submenu_id' => 11, 'created_at' => Carbon::now()->toDateTimeString()],
@@ -114,6 +115,7 @@ class MenuRolesTableSeeder extends Seeder
             ['role_id' => 3, 'submenu_id' => 40, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 41, 'created_at' => Carbon::now()->toDateTimeString()],
             ['role_id' => 3, 'submenu_id' => 42, 'created_at' => Carbon::now()->toDateTimeString()],
+            ['role_id' => 3, 'submenu_id' => 43, 'created_at' => Carbon::now()->toDateTimeString()],
 
             //garzon
             ['role_id' => 5, 'submenu_id' => 14, 'created_at' => Carbon::now()->toDateTimeString()],

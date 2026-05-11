@@ -93,9 +93,10 @@ class ConfigurationController extends Controller
         $query->where('nom_var', '!=', 'SISTEMA_ACTIVO')
               ->where('nom_var', '!=', 'TIPO_NEGOCIO');
 
-        // Mostrar PORCENTAJE_PROPINA solo si TIPO_NEGOCIO es RESTAURANT
+        // Mostrar variables de restaurant solo si TIPO_NEGOCIO es RESTAURANT
         if ($tipoNegocio !== 'RESTAURANT') {
-            $query->where('nom_var', '!=', 'PORCENTAJE_PROPINA');
+            $query->where('nom_var', '!=', 'PORCENTAJE_PROPINA')
+                  ->where('nom_var', '!=', 'RESERVA_EXPIRACION_MESA_MINUTOS');
         }
         
         $globales = $query->get()
@@ -132,6 +133,10 @@ class ConfigurationController extends Controller
             }
 
             $global->updateVar($request);
+
+            if (in_array($global->nom_var, ['PORCENTAJE_PROPINA', 'RESERVA_EXPIRACION_MESA_MINUTOS'])) {
+                Cache::forget('global_' . $global->nom_var);
+            }
 
             $response = response()->json([
                 'error' => 200,
