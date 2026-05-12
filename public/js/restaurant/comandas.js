@@ -925,8 +925,10 @@ function renderizarProductos(productos) {
     let html = '';
     productos.forEach(function(producto) {
         const esReceta = producto.origen === 'RECETA';
-        const stockBajo = !esReceta && (producto.stock < 5);
-        const stockHtml = esReceta
+        const tipoProducto = String(producto.tipo || '').toUpperCase().trim();
+        const mostrarStock = !esReceta && tipoProducto !== 'S';
+        const stockBajo = mostrarStock && (producto.stock < 5);
+        const stockHtml = !mostrarStock
             ? ''
             : `<div class="pos-product-stock ${stockBajo ? 'stock-bajo' : ''}">Stock: ${producto.stock}</div>`;
         html += `

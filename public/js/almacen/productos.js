@@ -184,6 +184,7 @@ $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#producto_id').val('');
     $('#codigo_editar').val('');
     $('#descripcion_editar').val('');
+    $('#descrip_detallada_editar').val('');
     $('#precio_compra_neto_editar').val('');
     $('#precio_compra_bruto_editar').val('');
     $('#precio_venta_editar').val('');
@@ -215,6 +216,7 @@ $(document).on('click', '.editar_prod', function () {
             $('#producto_uuid').val(response.uuid);
             $('#codigo_editar').val(response.codigo);
             $('#descripcion_editar').val(response.descripcion);
+            $('#descrip_detallada_editar').val(response.descrip_detallada || '');
             $('#precio_compra_neto_editar').val(parseInt(response.precio_compra_neto));
             $('#impuesto_1_editar').val(response.impuesto1);
             $('#impuesto_2_editar').val(response.impuesto2);
@@ -230,6 +232,7 @@ $(document).on('click', '.editar_prod', function () {
 
             window.valoresOriginales = {
                 descripcion: response.descripcion,
+                descrip_detallada: response.descrip_detallada || '',
                 precio_compra_neto: parseInt(response.precio_compra_neto),
                 impuesto_1: response.impuesto1,
                 impuesto_2: response.impuesto2,
@@ -253,6 +256,7 @@ $('#guardarCambios').click(function (event) {
     var uuid = $('#producto_uuid').val();
     var datosProducto = {
         descripcion: $('#descripcion_editar').val(),
+        descrip_detallada: $('#descrip_detallada_editar').val(),
         precio_compra_neto: $('#precio_compra_neto_editar').val(),
         impuesto_1: $('#impuesto_1_editar').val(),
         impuesto_2: $('#impuesto_2_editar').val() == 0 ? null : $('#impuesto_2_editar').val(),

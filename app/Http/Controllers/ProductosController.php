@@ -29,6 +29,7 @@ class ProductosController extends Controller
     private const PRODUCT_IMPORT_HEADERS = [
         'codigo',
         'descripcion',
+        'descrip_detallada',
         'precio_compra_neto',
         'impuesto_1',
         'impuesto_2',
@@ -1267,6 +1268,7 @@ class ProductosController extends Controller
         return [
             'codigo' => trim((string) ($row['codigo'] ?? '')),
             'descripcion' => trim((string) ($row['descripcion'] ?? '')),
+            'descrip_detallada' => $this->normalizeOptionalString($row['descrip_detallada'] ?? null),
             'precio_compra_neto' => $precioCompraNeto,
             'impuesto_1' => $impuesto1,
             'impuesto_2' => $impuesto2,

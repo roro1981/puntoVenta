@@ -88,10 +88,16 @@ class ConfigurationController extends Controller
     {
         $query = Globales::select('globales.id', 'globales.nom_var', 'globales.valor_var', 'globales.descrip_var');
         $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $roleName = mb_strtolower(trim((string) optional(optional(auth()->user())->role)->role_name));
+        $isSuperAdmin = ($roleName === 'superadministrador');
         
-        // SISTEMA_ACTIVO y TIPO_NEGOCIO nunca se muestran en la UI (solo modificables por base de datos)
-        $query->where('nom_var', '!=', 'SISTEMA_ACTIVO')
-              ->where('nom_var', '!=', 'TIPO_NEGOCIO');
+        // SISTEMA_ACTIVO nunca se muestra en la UI.
+        // TIPO_NEGOCIO se muestra temporalmente solo a SuperAdministrador.
+        $query->where('nom_var', '!=', 'SISTEMA_ACTIVO');
+
+        if (!$isSuperAdmin) {
+            $query->where('nom_var', '!=', 'TIPO_NEGOCIO');
+        }
 
         // Mostrar variables de restaurant solo si TIPO_NEGOCIO es RESTAURANT
         if ($tipoNegocio !== 'RESTAURANT') {
@@ -123,18 +129,28 @@ class ConfigurationController extends Controller
         $validated = $request->validated();
         try{
             $global = Globales::findOrFail($id);
+            $roleName = mb_strtolower(trim((string) optional(optional(auth()->user())->role)->role_name));
+            $isSuperAdmin = ($roleName === 'superadministrador');
 
-            // SISTEMA_ACTIVO y TIPO_NEGOCIO solo son modificables directamente por base de datos
-            if (in_array($global->nom_var, ['SISTEMA_ACTIVO', 'TIPO_NEGOCIO'])) {
+            // SISTEMA_ACTIVO nunca se puede modificar desde la aplicación.
+            if ($global->nom_var === 'SISTEMA_ACTIVO') {
                 return response()->json([
                     'error' => 403,
                     'message' => 'Esta variable no puede modificarse desde la aplicacion'
                 ], 403);
             }
 
+            // TIPO_NEGOCIO queda habilitado temporalmente solo para SuperAdministrador.
+            if ($global->nom_var === 'TIPO_NEGOCIO' && !$isSuperAdmin) {
+                return response()->json([
+                    'error' => 403,
+                    'message' => 'Solo SuperAdministrador puede modificar esta variable'
+                ], 403);
+            }
+
             $global->updateVar($request);
 
-            if (in_array($global->nom_var, ['PORCENTAJE_PROPINA', 'RESERVA_EXPIRACION_MESA_MINUTOS'])) {
+            if (in_array($global->nom_var, ['PORCENTAJE_PROPINA', 'RESERVA_EXPIRACION_MESA_MINUTOS', 'TIPO_NEGOCIO'])) {
                 Cache::forget('global_' . $global->nom_var);
             }
 

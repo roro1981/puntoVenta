@@ -19,6 +19,7 @@ class Producto extends Model
         'id',
         'uuid',
         'descripcion',
+        'descrip_detallada',
         'codigo',
         'precio_compra_bruto',
         'precio_compra_neto',
@@ -96,6 +97,7 @@ class Producto extends Model
         $this->uuid = Str::uuid();
         $this->codigo = strtoupper($data['codigo']);
         $this->descripcion = strtoupper($data['descripcion']);
+        $this->descrip_detallada = $data['descrip_detallada'] ?? null;
         $this->precio_compra_neto = $data['precio_compra_neto'];
         $this->precio_compra_bruto = $data['precio_compra_bruto'];
         $this->precio_venta = $data['precio_venta'];
@@ -123,6 +125,7 @@ class Producto extends Model
     public function editarProducto(array $data)
     {
         $this->descripcion = strtoupper($data['descripcion']);
+        $this->descrip_detallada = $data['descrip_detallada'] ?? null;
         $anteriorCosto = (float) $this->precio_compra_neto;
         $anteriorVenta = (float) $this->precio_venta;
 

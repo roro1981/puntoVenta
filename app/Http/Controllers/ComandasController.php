@@ -886,7 +886,7 @@ class ComandasController extends Controller
                             $categoriaQuery->whereRaw("UPPER(TRIM(descripcion_categoria)) <> ?", ['INSUMOS']);
                         });
                 })
-                ->select('id', 'uuid', 'codigo', 'descripcion', 'precio_venta', 'stock');
+                ->select('id', 'uuid', 'codigo', 'descripcion', 'precio_venta', 'stock', 'tipo');
 
             $recetasQuery = Receta::where('estado', 'Activo')
                 ->select(
@@ -911,6 +911,7 @@ class ComandasController extends Controller
                             'descripcion' => $producto->descripcion,
                             'precio_venta' => (float) $producto->precio_venta,
                             'stock' => (float) $producto->stock,
+                            'tipo' => $producto->tipo,
                             'origen' => 'PRODUCTO',
                         ];
                     });
@@ -961,6 +962,7 @@ class ComandasController extends Controller
                             'descripcion' => $producto->descripcion,
                             'precio_venta' => (float) $producto->precio_venta,
                             'stock' => (float) $producto->stock,
+                            'tipo' => $producto->tipo,
                             'origen' => 'PRODUCTO',
                         ];
                     });
@@ -1004,6 +1006,7 @@ class ComandasController extends Controller
                     'descripcion' => $producto->descripcion,
                     'precio_venta' => (float) $producto->precio_venta,
                     'stock' => (float) $producto->stock,
+                    'tipo' => $producto->tipo,
                     'origen' => 'PRODUCTO',
                 ];
             });

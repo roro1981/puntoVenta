@@ -48,6 +48,10 @@
             <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="255">
           </div>
           <div class="form-group">
+            <label for="descrip_detallada">Descripción detallada</label>
+            <textarea class="form-control" id="descrip_detallada" name="descrip_detallada" rows="3" maxlength="2000" placeholder="Opcional"></textarea>
+          </div>
+          <div class="form-group">
             <label for="precio_compra_neto">Precio Compra Neto</label>
             <input type="number" class="form-control" oninput="calcula3();" id="precio_compra_neto" name="precio_compra_neto" step="0.01" >
           </div>
@@ -162,6 +166,10 @@
           <div class="form-group">
             <label for="descripcion_editar">Descripción</label>
             <input type="text" class="form-control" id="descripcion_editar" name="descripcion_editar" maxlength="255">
+          </div>
+          <div class="form-group">
+            <label for="descrip_detallada_editar">Descripción detallada (Menú QR)</label>
+            <textarea class="form-control" id="descrip_detallada_editar" name="descrip_detallada_editar" rows="3" maxlength="2000" placeholder="Opcional. Se mostrará en el menú QR para productos tipo P y S."></textarea>
           </div>
           <div class="form-group">
             <label for="precio_compra_neto_editar">Precio Compra Neto</label>

@@ -14,6 +14,7 @@ class ProductoRequest extends FormRequest
         $rules = [
             'codigo' => ['required', 'string', 'max:100'],
             'descripcion' => ['required', 'string', 'max:255'],
+            'descrip_detallada' => ['nullable', 'string', 'max:2000'],
             'precio_compra_neto' => ['required', 'integer', 'min:0'],
             'impuesto_1' => ['required', 'numeric', 'min:1', 'max:99.9'],
             'impuesto_2' => ['nullable', 'numeric', 'min:0', 'max:99.9'],

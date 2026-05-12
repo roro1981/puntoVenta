@@ -65,27 +65,18 @@
                                 <option value="">Seleccionar...</option>
                             </select>
                         </div>
-                        
-                        <div class="pos-comensales-control">
-                            <div class="pos-control-label">
-                                <i class="fa fa-users"></i> Comensales
-                            </div>
-                            <div class="pos-comensales-controls">
-                                <button type="button" class="pos-btn-comensales" id="pos_btn_menos_comensales">
-                                    <i class="fa fa-minus"></i>
-                                </button>
-                                <span class="pos-comensales-numero" id="pos_comensales_numero">0</span>
-                                <button type="button" class="pos-btn-comensales" id="pos_btn_mas_comensales">
-                                    <i class="fa fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
 
                     </div>
-                    
-                    <button type="button" class="pos-btn-cerrar" id="pos_btn_cerrar">
-                        <i class="fa fa-times"></i>
-                    </button>
+
+                    <div class="pos-header-actions">
+                        <button type="button" class="pos-btn-solicitar-cuenta" id="btn_solicitar_cuenta">
+                            <i class="fa fa-file-invoice-dollar"></i> Solicitar cuenta
+                        </button>
+
+                        <button type="button" class="pos-btn-cerrar" id="pos_btn_cerrar">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -113,18 +104,13 @@
 
                 <!-- Panel derecho: Pedido actual -->
                 <div class="pos-order-panel">
-                    <div class="pos-order-header">
-                        <h3><i class="fa fa-shopping-cart"></i> Pedido</h3>
-                        <button type="button" class="pos-btn-solicitar-cuenta" id="btn_solicitar_cuenta">
-                            <i class="fa fa-file-invoice-dollar"></i> Solicitar cuenta
-                        </button>
-                    </div>
-                    
                     <div class="pos-order-items" id="pos_order_items">
                         <!-- Items se cargarán aquí -->
                     </div>
+                </div>
 
-                    <div class="pos-order-footer">
+                <div class="pos-order-footer">
+                    <div class="pos-footer-top-row">
                         <div class="pos-obs-comanda-wrap">
                             <label class="pos-obs-comanda-label"><i class="fa fa-sticky-note-o"></i> Nota del pedido</label>
                             <input type="text" id="pos_obs_comanda" class="pos-obs-comanda-input"
@@ -138,7 +124,24 @@
                                 <span>Incluir propina {{ rtrim(rtrim(number_format($porcentajePropina ?? 10, 2, '.', ''), '0'), '.') }}%</span>
                             </label>
                         </div>
-                        
+                    </div>
+                    
+                    <div class="pos-summary-split">
+                        <div class="pos-comensales-summary">
+                            <div class="pos-control-label">
+                                <i class="fa fa-users"></i> Comensales
+                            </div>
+                            <div class="pos-comensales-controls">
+                                <button type="button" class="pos-btn-comensales" id="pos_btn_menos_comensales">
+                                    <i class="fa fa-minus"></i>
+                                </button>
+                                <span class="pos-comensales-numero" id="pos_comensales_numero">0</span>
+                                <button type="button" class="pos-btn-comensales" id="pos_btn_mas_comensales">
+                                    <i class="fa fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="pos-total-section">
                             <div class="pos-total-row">
                                 <span class="pos-total-label">Subtotal:</span>
@@ -153,21 +156,21 @@
                                 <span class="pos-total-value total-final-value">$<span id="pos_total">0</span></span>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="pos-action-buttons">
-                            <button type="button" class="pos-btn pos-btn-save" id="btn_guardar_pedido"
-                                title="Guardar pedido">
-                                <i class="fa fa-floppy-o"></i>
-                            </button>
-                            <button type="button" class="pos-btn pos-btn-print" id="btn_imprimir_comanda" disabled
-                                title="Imprimir comanda">
-                                <i class="fa fa-print"></i>
-                            </button>
-                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
-                                title="Enviar ticket a cocina">
-                                <i class="fa fa-bell"></i>
-                            </button>
-                        </div>
+                    <div class="pos-action-buttons">
+                        <button type="button" class="pos-btn pos-btn-save" id="btn_guardar_pedido"
+                            title="Guardar pedido">
+                            <i class="fa fa-floppy-o"></i>
+                        </button>
+                        <button type="button" class="pos-btn pos-btn-print" id="btn_imprimir_comanda" disabled
+                            title="Imprimir comanda">
+                            <i class="fa fa-print"></i>
+                        </button>
+                        <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
+                            title="Enviar ticket a cocina">
+                            <i class="fa fa-bell"></i>
+                        </button>
                     </div>
                 </div>
             </div>

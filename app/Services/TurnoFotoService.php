@@ -39,7 +39,12 @@ class TurnoFotoService
             ->where('estado', 'completada')
             ->pluck('id');
 
-        $totalVentas = (float) Venta::whereIn('id', $ventasIds)->sum('total');
+        $totalVentasBruto = (float) Venta::whereIn('id', $ventasIds)->sum('total');
+        $totalVentasReal = (float) DetalleVenta::whereIn('venta_id', $ventasIds)->sum('subtotal_linea');
+        $totalPropinasTurno = max(0.0, $totalVentasBruto - $totalVentasReal);
+        $retirosTurno = $this->retirosCajaTurno($caja->id);
+        $totalCajaTurnoBruto = (float) $caja->monto_inicial + $totalVentasReal + $totalPropinasTurno;
+        $totalCajaTurno = $totalCajaTurnoBruto - (float) ($retirosTurno['total'] ?? 0);
         $cantidadVentas = (int) Venta::whereIn('id', $ventasIds)->count();
 
         $desgloseFormas = $this->obtenerDesgloseRealFormasPago($ventasIds);
@@ -48,7 +53,7 @@ class TurnoFotoService
 
         $totalAyerMismoTipo = $this->totalAyerPorTipoCaja((string) $caja->tipo_caja, $fechaCierre);
         $variacionVsAyer = $totalAyerMismoTipo > 0
-            ? (($totalVentas - $totalAyerMismoTipo) / $totalAyerMismoTipo) * 100
+            ? (($totalVentasReal - $totalAyerMismoTipo) / $totalAyerMismoTipo) * 100
             : null;
 
         $corporateData = CorporateData::pluck('description_item', 'item')->toArray();
@@ -72,7 +77,12 @@ class TurnoFotoService
             'fecha_cierre' => $fechaCierre,
             'duracion' => $duracionFormato,
             'observaciones' => trim((string) ($caja->observaciones ?? '')),
-            'total_ventas' => $totalVentas,
+            'total_ventas' => $totalVentasReal,
+            'total_ventas_bruto' => $totalVentasBruto,
+            'total_propinas_turno' => $totalPropinasTurno,
+            'monto_caja_inicial' => (float) $caja->monto_inicial,
+            'total_caja_turno_bruto' => $totalCajaTurnoBruto,
+            'total_caja_turno' => $totalCajaTurno,
             'cantidad_ventas' => $cantidadVentas,
             'forma_dominante' => $formaDominante,
             'producto_estrella' => $productoEstrella,
@@ -82,11 +92,11 @@ class TurnoFotoService
             'diferencia' => (float) $caja->diferencia,
             'productos_resumen' => $this->productosVendidosResumen($ventasIds),
             'es_restaurant' => $esRestaurant,
-            'retiros' => $this->retirosCajaTurno($caja->id),
+            'retiros' => $retirosTurno,
         ];
 
         if ($esRestaurant) {
-            $data['restaurant'] = $this->resumenRestaurantTurno($fechaApertura, $fechaCierre, $totalVentas);
+            $data['restaurant'] = $this->resumenRestaurantTurno($fechaApertura, $fechaCierre, $totalVentasReal);
         }
 
         try {
@@ -130,10 +140,16 @@ class TurnoFotoService
             ->groupBy('forma_pago')
             ->pluck('total', 'forma_pago');
 
-        $mixto = FormaPagoVenta::whereIn('venta_id', $ventasIds)
-            ->selectRaw('forma_pago, SUM(monto) as total')
-            ->groupBy('forma_pago')
-            ->pluck('total', 'forma_pago');
+        $ventasMixtasIds = Venta::whereIn('id', $ventasIds)
+            ->where('forma_pago', 'MIXTO')
+            ->pluck('id');
+
+        $mixto = $ventasMixtasIds->isEmpty()
+            ? collect()
+            : FormaPagoVenta::whereIn('venta_id', $ventasMixtasIds)
+                ->selectRaw('forma_pago, SUM(monto) as total')
+                ->groupBy('forma_pago')
+                ->pluck('total', 'forma_pago');
 
         $formas = ['EFECTIVO', 'TARJETA_DEBITO', 'TARJETA_CREDITO', 'TRANSFERENCIA', 'CHEQUE'];
         $desglose = [];
@@ -187,11 +203,12 @@ class TurnoFotoService
         $ayer = $fechaCierre->copy()->subDay()->toDateString();
 
         return (float) Venta::query()
+            ->join('detalles_ventas', 'detalles_ventas.venta_id', '=', 'ventas.id')
             ->join('cajas', 'cajas.id', '=', 'ventas.caja_id')
             ->where('ventas.estado', 'completada')
             ->where('cajas.tipo_caja', strtoupper(trim($tipoCaja)))
             ->whereDate('ventas.fecha_venta', $ayer)
-            ->sum('ventas.total');
+            ->sum('detalles_ventas.subtotal_linea');
     }
 
     private function productosVendidosResumen($ventasIds, int $limit = 30): array

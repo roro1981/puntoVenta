@@ -15,12 +15,17 @@ class MenuQrConfiguration extends Model
         'public_token',
         'selected_categories',
         'selected_items',
+        'design_theme',
+        'design_tokens',
+        'design_options',
         'activo',
     ];
 
     protected $casts = [
         'selected_categories' => 'array',
         'selected_items' => 'array',
+        'design_tokens' => 'array',
+        'design_options' => 'array',
         'activo' => 'boolean',
     ];
 }

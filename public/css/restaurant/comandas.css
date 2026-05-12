@@ -420,6 +420,9 @@
     opacity: 0.9;
     display: flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
     gap: 5px;
 }
 
@@ -494,9 +497,9 @@
 }
 
 .pos-btn-cerrar {
-    background: rgba(244,67,54,0.9);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
+    background: rgba(244,67,54,0.9) !important;
+    border: 1px solid rgba(255,255,255,0.3) !important;
+    color: white !important;
     width: 36px;
     height: 36px;
     border-radius: 8px;
@@ -511,9 +514,99 @@
 }
 
 .pos-btn-cerrar:hover {
-    background: #f44336;
+    background: #f44336 !important;
+    color: white !important;
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(244,67,54,0.5);
+}
+
+.pos-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+/* Ajustes de escritorio para mantener header alineado y proporcionado */
+@media (min-width: 992px) {
+    .pos-header-row {
+        display: grid;
+        grid-template-columns: max-content minmax(280px, 360px) max-content;
+        justify-content: center;
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 0;
+        padding: 10px 16px;
+    }
+
+    .pos-mesa-info {
+        justify-self: end;
+        flex: 0 1 auto;
+        max-width: 220px;
+        min-width: 0;
+    }
+
+    .pos-mesa-info h2 {
+        font-size: 18px;
+    }
+
+    .pos-hora-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .pos-controles-grupo {
+        width: 100%;
+        max-width: 360px;
+        min-width: 280px;
+        justify-content: center;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+    .pos-garzon-control {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 6px 10px;
+        min-width: 0;
+        min-height: 70px;
+        flex: 1 1 260px;
+        max-width: 320px;
+    }
+
+    .pos-control-label {
+        margin-bottom: 4px;
+        line-height: 1;
+    }
+
+    .pos-select-garzon {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+        height: 32px;
+        padding: 0 8px;
+    }
+
+    .pos-header-actions {
+        margin-left: 0;
+        justify-self: start;
+        gap: 7px;
+        white-space: nowrap;
+        align-items: center;
+    }
+
+    .pos-btn-solicitar-cuenta {
+        font-size: 11px;
+        padding: 6px 10px;
+        white-space: nowrap;
+    }
+
+    .pos-btn-cerrar {
+        width: 34px;
+        height: 34px;
+    }
 }
 
 
@@ -541,7 +634,9 @@
 
 /* Cuerpo del POS - Layout de dos paneles */
 .pos-body {
-    display: flex;
+    display: grid;
+    grid-template-columns: 58% 42%;
+    grid-template-rows: 1fr auto;
     height: calc(100vh - 250px);
     overflow: hidden;
     background: #f5f7fa;
@@ -549,7 +644,8 @@
 
 /* Panel de productos (izquierda - 58%) */
 .pos-products-panel {
-    flex: 0 0 58%;
+    grid-column: 1;
+    grid-row: 1;
     padding: 15px;
     background: #f5f7fa;
     overflow-y: auto;
@@ -658,35 +754,19 @@
 
 /* Panel de pedido (derecha - 42%) */
 .pos-order-panel {
-    flex: 0 0 42%;
+    grid-column: 2;
+    grid-row: 1;
     display: flex;
     flex-direction: column;
     background: white;
     box-shadow: -2px 0 10px rgba(0,0,0,0.05);
-}
-
-.pos-order-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 15px;
-    background: linear-gradient(to right, #ecf0f1, #f8f9fa);
-    border-bottom: 1px solid #d0d0d0;
-}
-
-.pos-order-header h3 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: #2c3e50;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    min-height: 0;
 }
 
 /* Lista de items del pedido */
 .pos-order-items {
-    flex-grow: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding: 10px;
     background: #fafbfc;
@@ -808,19 +888,30 @@
 
 /* Total y botones de acción */
 .pos-order-footer {
+    grid-column: 1 / 3;
+    grid-row: 2;
     padding: 12px 15px;
     background: white;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid #d9d9d9;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+}
+
+.pos-footer-top-row {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 /* Sección de propina */
 .pos-propina-section {
-    margin-bottom: 10px;
+    margin-bottom: 0;
     padding: 8px 12px;
     background: #f8f9fa;
     border-radius: 6px;
     border: 1px solid #e0e0e0;
+    flex: 0 0 auto;
 }
 
 .pos-propina-checkbox {
@@ -843,12 +934,44 @@
     color: #2c3e50;
 }
 
+.pos-summary-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.pos-comensales-summary {
+    background: linear-gradient(135deg, #ecf0f1 0%, #f8f9fa 100%);
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+}
+
+.pos-comensales-summary .pos-control-label {
+    color: #6b7784;
+    margin-bottom: 8px;
+}
+
+.pos-comensales-summary .pos-comensales-controls {
+    justify-content: center;
+}
+
+.pos-comensales-summary .pos-comensales-numero {
+    color: #2c3e50;
+    text-shadow: none;
+}
+
 .pos-total-section {
     background: linear-gradient(135deg, #ecf0f1 0%, #f8f9fa 100%);
     padding: 10px 12px;
     border-radius: 6px;
     margin-bottom: 10px;
     border: 1px solid #d0d0d0;
+}
+
+.pos-summary-split .pos-total-section {
+    margin-bottom: 0;
 }
 
 .pos-total-row {
@@ -970,7 +1093,8 @@
 
 /* Nota general del pedido */
 .pos-obs-comanda-wrap {
-    margin-bottom: 10px;
+    margin-bottom: 0;
+    flex: 1 1 auto;
 }
 
 .pos-obs-comanda-label {
@@ -1237,6 +1361,7 @@
     }
 
     .pos-header-row {
+        display: flex;
         flex-wrap: wrap;
         gap: 8px;
         padding: 8px 12px;
@@ -1354,7 +1479,7 @@
 
     .pos-mesa-info {
         flex: 1 1 auto;
-        max-width: calc(100% - 48px);
+        max-width: calc(100% - 170px);
     }
 
     .pos-mesa-info h2 {
@@ -1367,10 +1492,21 @@
     }
 
     .pos-controles-grupo {
+        order: 3;
         width: 100%;
         max-width: 100%;
         gap: 6px;
         flex-wrap: wrap;
+    }
+
+    .pos-header-actions {
+        order: 2;
+        margin-left: auto;
+    }
+
+    .pos-btn-solicitar-cuenta {
+        font-size: 10px;
+        padding: 5px 8px;
     }
 
     .pos-garzon-control {
@@ -1439,24 +1575,36 @@
         height: auto;
         position: relative;
         overflow: hidden;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
     }
 
     .pos-products-panel {
-        flex: 0 0 100%;
+        grid-column: 1;
+        grid-row: 1;
         width: 100%;
         border-right: none;
         height: 100%;
+        padding: 10px;
     }
 
     .pos-order-panel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        grid-column: 1;
+        grid-row: 1;
+        position: relative;
         width: 100%;
-        flex: 0 0 100%;
+        height: 100%;
+        box-shadow: none;
+        border-left: none;
         display: none;
+    }
+
+    .pos-order-footer {
+        grid-column: 1;
+        grid-row: 2;
+        display: none;
+        border-top: 1px solid #e0e0e0;
     }
 
     .pos-body.show-order .pos-products-panel {
@@ -1467,11 +1615,68 @@
         display: flex;
     }
 
+    .pos-body.show-order .pos-order-footer {
+        display: block;
+    }
+
     /* Lista de items: ocupa todo el espacio disponible */
     .pos-order-items {
         flex: 1 1 0;
         min-height: 0;
+        padding: 4px 6px;
+    }
+
+    .pos-order-item {
         padding: 6px 8px;
+        margin-bottom: 5px;
+        border-radius: 5px;
+    }
+
+    .pos-item-header {
+        margin-bottom: 5px;
+    }
+
+    .pos-item-name {
+        font-size: 12px;
+        line-height: 1.2;
+        margin-right: 6px;
+    }
+
+    .pos-item-remove {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
+
+    .pos-item-body {
+        gap: 6px;
+    }
+
+    .pos-item-price {
+        font-size: 12px;
+    }
+
+    .pos-item-quantity {
+        gap: 4px;
+    }
+
+    .pos-qty-number {
+        font-size: 12px;
+        min-width: 22px;
+    }
+
+    .pos-item-obs-display {
+        font-size: 10px;
+        padding: 1px 0 2px 2px;
+    }
+
+    .pos-item-obs-wrap {
+        padding: 2px 0;
+    }
+
+    .pos-item-obs-input {
+        padding: 4px 6px;
+        font-size: 11px;
     }
 
     /* Compactar footer del pedido al máximo para dar más espacio al listado */
@@ -1483,8 +1688,18 @@
         margin-bottom: 4px;
     }
 
+    .pos-footer-top-row {
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
     .pos-obs-comanda-label {
-        display: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        margin-bottom: 3px;
     }
 
     .pos-obs-comanda-input {
@@ -1494,7 +1709,7 @@
 
     .pos-propina-section {
         padding: 3px 8px;
-        margin-bottom: 3px;
+        margin-bottom: 0;
     }
 
     .pos-propina-checkbox span {
@@ -1504,6 +1719,25 @@
     .pos-total-section {
         padding: 4px 8px;
         margin-bottom: 4px;
+    }
+
+    .pos-summary-split {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .pos-comensales-summary {
+        padding: 4px 8px;
+    }
+
+    .pos-comensales-summary .pos-control-label {
+        margin-bottom: 3px;
+        font-size: 10px;
+    }
+
+    .pos-comensales-summary .pos-comensales-controls {
+        justify-content: center;
     }
 
     .pos-total-row {
@@ -1569,8 +1803,15 @@
     }
 
     .pos-qty-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        min-width: 28px;
+        min-height: 28px;
+    }
+
+    .pos-item-remove {
+        min-width: 20px;
+        min-height: 20px;
     }
 }

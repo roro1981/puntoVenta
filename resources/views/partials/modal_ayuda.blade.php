@@ -416,6 +416,30 @@
             ],
         ],
 
+        'config_menu_qr' => [
+            'titulo' => 'Configurar Menú QR',
+            'icono'  => 'fa-qrcode',
+            'color'  => '#0f766e',
+            'pasos'  => [
+                ['icono' => 'fa-check-square-o', 'titulo' => 'Seleccionar categorías e ítems', 'desc' => 'Marca las categorías y los productos/recetas que quieres publicar en la carta digital. Solo lo seleccionado se mostrará en el menú QR público.'],
+                ['icono' => 'fa-paint-brush', 'titulo' => 'Elegir preset visual', 'desc' => 'En <strong>Preset visual del menú público</strong> selecciona una base de diseño (paleta sobria). Debajo puedes usar los paneles colapsables para ajustar <strong>colores</strong> y <strong>tipografía/estilo</strong>.'],
+                ['icono' => 'fa-eye', 'titulo' => 'Vista previa en vivo', 'desc' => 'La pantalla muestra previsualización inmediata del estilo: colores, tipografías, radios, sombras y una mini demo de animación. El indicador de contraste te avisa si la legibilidad es baja.'],
+                ['icono' => 'fa-undo', 'titulo' => 'Restablecer estilo', 'desc' => 'Si necesitas volver al diseño base, usa <strong>Restablecer colores del preset</strong> y <strong>Restablecer tipografía y estilo</strong> dentro de cada panel.'],
+                ['icono' => 'fa-save', 'titulo' => 'Guardar configuración', 'desc' => 'Haz clic en <strong>Guardar configuración</strong> para aplicar cambios. El enlace público y el QR usan esta selección inmediatamente después de guardar.'],
+                ['icono' => 'fa-mobile', 'titulo' => 'Visualizar menú público', 'desc' => 'Abre el enlace directo para revisar cómo lo verá el cliente. La vista prioriza móvil y disponibilidad en tiempo real.'],
+                ['icono' => 'fa-star', 'titulo' => 'Categoría automática Mas vendidos', 'desc' => 'El sistema crea automáticamente <strong>Mas vendidos</strong> en la vista pública cuando existen ventas válidas y marca los productos top como <strong>Mas popular</strong>.'],
+            ],
+            'tips' => [
+                'El ranking de Mas vendidos usa los 10 productos con mayor cantidad vendida en los últimos 30 días incluyendo hoy.',
+                'Mas vendidos es una categoría virtual del menú QR: no modifica la tabla de categorías del sistema.',
+                'Los productos siguen apareciendo en su categoría original y, adicionalmente, en Mas vendidos cuando corresponda.',
+                'Si un producto/receta queda inactivo o eliminado, desaparece automáticamente del menú público.',
+                'Los ajustes de estilo se aplican solo al menú QR público y no cambian el diseño de otros módulos del sistema.',
+                'Puedes dejar cerrados los paneles de estilo; el sistema conserva lo que ya guardaste aunque no estén desplegados.',
+                'Las animaciones configurables (Sin animación, Desvanecer, Escalonada) se aplican al abrir categorías en la vista pública.',
+            ],
+        ],
+
         'config_impuestos' => [
             'titulo' => 'Impuestos',
             'icono'  => 'fa-percent',
@@ -553,6 +577,12 @@
 
     $datos = $ayuda[$modulo] ?? null;
 @endphp
+
+<script>
+(function() {
+    document.querySelectorAll('[data-ayuda-flotante]').forEach(function(el) { el.remove(); });
+})();
+</script>
 
 @if($datos)
 {{-- Botón flotante ? --}}
