@@ -18,6 +18,13 @@ $(document).ready(function () {
         return Number(n).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     }
 
+    function fmtStock(n, esServicio) {
+        if (esServicio || n === null || n === undefined || Number.isNaN(Number(n))) {
+            return 'No aplica';
+        }
+        return num(n);
+    }
+
     // ---------------------------------------------------------------
     // Datepicker fechas
     // ---------------------------------------------------------------
@@ -95,12 +102,13 @@ $(document).ready(function () {
 
         var html = '<table><thead><tr><th>Código</th><th>Nombre</th><th>Stock</th></tr></thead><tbody>';
         items.forEach(function (item) {
+            var stockText = (item.stock === null || item.stock === undefined) ? 'No aplica' : num(item.stock);
             html += '<tr class="mv-sug-row"'
                   + ' data-uuid="' + esc(item.uuid) + '"'
                   + ' data-nombre="' + esc(item.descripcion) + '">'
                   + '<td>' + esc(item.codigo) + '</td>'
                   + '<td>' + esc(item.descripcion) + '</td>'
-                  + '<td class="text-right">' + num(item.stock) + '</td>'
+                + '<td class="text-right">' + stockText + '</td>'
                   + '</tr>';
         });
         html += '</tbody></table>';
@@ -203,7 +211,7 @@ $(document).ready(function () {
         $('#mv_nombre_producto')
             .html('<i class="fa fa-cube"></i> ' + esc(data.nombre) + ' <small>(' + esc(data.codigo) + ')</small>')
             .show();
-        $('#mv_kpi_stock').text(num(data.stock_actual));
+        $('#mv_kpi_stock').text(fmtStock(data.stock_actual, !!data.es_servicio));
         $('#mv_kpi_entradas').text(num(data.total_entradas));
         $('#mv_kpi_salidas').text(num(data.total_salidas));
 
@@ -231,7 +239,7 @@ $(document).ready(function () {
                 + '<td>' + esc(m.fecha) + '</td>'
                 + '<td>' + tipoBadge(m.tipo_mov) + '</td>'
                 + '<td class="text-center">' + cantHtml + '</td>'
-                + '<td class="text-right"><strong>' + num(m.stock) + '</strong></td>'
+                + '<td class="text-right"><strong>' + fmtStock(m.stock, !!data.es_servicio) + '</strong></td>'
                 + '<td>' + esc(m.obs) + '</td>'
                 + '</tr>'
             );

@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests\UserRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,142 @@ use function PHPUnit\Framework\throwException;
 
 class UsersController extends Controller
 {
+
+    public function requestPasswordRecovery(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+        ]);
+
+        $user = User::where('name', $validated['name'])
+            ->where('estado', 1)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No existe un usuario activo con ese nombre.'
+            ], 422);
+        }
+
+        if (empty($user->email)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tu usuario no tiene correo configurado. Contacta al administrador para habilitar la recuperación.'
+            ], 422);
+        }
+
+        DB::table('password_recovery_codes')
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->update(['used_at' => now()]);
+
+        $codigo = (string) random_int(100000, 999999);
+
+        DB::table('password_recovery_codes')->insert([
+            'user_id' => $user->id,
+            'code_hash' => Hash::make($codigo),
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+            'created_at' => now(),
+        ]);
+
+        $empresaNombre = CorporateData::where('item', 'NOMBRE_FANTASIA')->value('description_item')
+            ?: CorporateData::where('item', 'NOMBRE_EMPRESA')->value('description_item')
+            ?: 'PVenta';
+
+        Mail::send('emails.password_recovery_code', [
+            'usuario' => $user->name_complete ?: $user->name,
+            'codigo' => $codigo,
+            'expiraMinutos' => 10,
+            'empresaNombre' => $empresaNombre,
+            'fechaEnvio' => Carbon::now()->format('d/m/Y H:i'),
+        ], function ($message) use ($user) {
+            $message->to($user->email)
+                ->subject('Código de recuperación de contraseña');
+        });
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Te enviamos un código de recuperación a tu correo registrado.'
+        ]);
+    }
+
+    public function resetPasswordRecovery(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+            'code' => 'required|digits:6',
+            'password' => 'required|string|min:6|max:128|confirmed',
+        ]);
+
+        $user = User::where('name', $validated['name'])
+            ->where('estado', 1)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No existe un usuario activo con ese nombre.'
+            ], 422);
+        }
+
+        $recovery = DB::table('password_recovery_codes')
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$recovery) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No hay una solicitud activa. Primero solicita un código de recuperación.'
+            ], 422);
+        }
+
+        if ((int) $recovery->attempts >= 5) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Superaste el número de intentos permitidos. Solicita un nuevo código.'
+            ], 422);
+        }
+
+        if (Carbon::parse($recovery->expires_at)->isPast()) {
+            DB::table('password_recovery_codes')
+                ->where('id', $recovery->id)
+                ->update(['used_at' => now()]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'El código expiró. Solicita uno nuevo.'
+            ], 422);
+        }
+
+        if (!Hash::check($validated['code'], $recovery->code_hash)) {
+            DB::table('password_recovery_codes')
+                ->where('id', $recovery->id)
+                ->update(['attempts' => DB::raw('attempts + 1')]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'El código ingresado no es válido.'
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('password_recovery_codes')
+            ->where('id', $recovery->id)
+            ->update(['used_at' => now()]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.'
+        ]);
+    }
 
     public function login(UserRequest $request)
     {
@@ -50,7 +187,8 @@ class UsersController extends Controller
             return response()->json([
                 'authenticated' => true,
                 'redirectTo' => route('dashboard'),
-                'message' => '<strong>Inicio de sesión exitoso!</strong> Bienvenido, ' . $user->name_complete . '.',
+                'message' => 'Inicio de sesión exitoso.',
+                'userName' => $user->name_complete,
             ]);
         }
 

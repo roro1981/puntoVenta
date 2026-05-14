@@ -37,11 +37,16 @@ $(document).ready(function () {
             'Crítico':    'inv-estado-critico',
             'Agotado':    'inv-estado-agotado',
             'Sobrestock': 'inv-estado-sobrestock',
+            'No aplica':  'inv-estado-na',
         };
         return '<span class="inv-estado ' + (map[e] || '') + '">' + esc(e) + '</span>';
     }
 
     function stockBarHtml(stock, stockMin, estado) {
+        if (stock === null || stock === undefined || estado === 'No aplica') {
+            return '<span style="font-size:11px;color:#9aa0a6;">—</span>';
+        }
+
         var max   = Math.max(stock, stockMin * 2, 1);
         var pct   = Math.min(100, (stock / max) * 100);
         var color = estado === 'Normal'  ? '#27ae60' :
@@ -141,9 +146,16 @@ $(document).ready(function () {
         }
 
         productos.forEach(function (p) {
-            var dias = p.dias_cobertura !== null
+            var esNoAplica = p.estado === 'No aplica';
+            var dias = esNoAplica
+                ? '<span style="color:#aaa;">—</span>'
+                : (p.dias_cobertura !== null
                 ? numFmt(p.dias_cobertura) + ' días'
-                : '<span style="color:#aaa;">Sin rotación</span>';
+                : '<span style="color:#aaa;">Sin rotación</span>');
+
+            var stockMinHtml = (p.stock_minimo === null || p.stock_minimo === undefined || esNoAplica)
+                ? '<span style="color:#aaa;">—</span>'
+                : numFmt(p.stock_minimo, 1);
 
             $tbody.append(
                 '<tr>' +
@@ -151,7 +163,7 @@ $(document).ready(function () {
                     '<td>' + esc(p.nombre) + '</td>' +
                     '<td>' + esc(p.categoria) + '</td>' +
                     '<td>' + stockBarHtml(p.stock, p.stock_minimo, p.estado) + '</td>' +
-                    '<td class="text-right" style="font-size:11px;color:#888;">' + numFmt(p.stock_minimo, 1) + '</td>' +
+                    '<td class="text-right" style="font-size:11px;color:#888;">' + stockMinHtml + '</td>' +
                     '<td class="text-right">' + clp(p.valor_inventario) + '</td>' +
                     '<td class="text-right" style="font-size:11px;">' + numFmt(p.ventas_30d, 1) + '</td>' +
                     '<td class="text-right" style="font-size:11px;">' + dias + '</td>' +

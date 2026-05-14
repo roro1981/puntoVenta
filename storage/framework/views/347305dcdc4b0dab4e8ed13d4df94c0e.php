@@ -106,9 +106,9 @@
                         <th class="text-right" title="Porcentaje que representa este producto sobre el total de unidades vendidas en el período">Part. % <i class="fa fa-info-circle pmv-th-info"></i></th>
                         <th class="text-right" title="Variación de unidades vendidas respecto al período anterior de igual duración (ej: si eliges marzo, compara con febrero)">Var. % <i class="fa fa-info-circle pmv-th-info"></i></th>
                         <th class="text-center" title="Cambio de posición en el ranking comparado con el período anterior. ▲ subió puestos, ▼ bajó puestos, ★ Nuevo = no figuraba antes">Cambio rank. <i class="fa fa-info-circle pmv-th-info"></i></th>
-                        <th class="text-right">Stock</th>
-                        <th class="text-right">Días cob.</th>
-                        <th class="text-center">Estado</th>
+                        <th class="text-right" title="Stock actual del producto. Si el producto es tipo S (no afecto a stock), se muestra —.">Stock <i class="fa fa-info-circle pmv-th-info"></i></th>
+                        <th class="text-right" title="Días de cobertura según ventas del período. Para productos tipo S (no afecto a stock) se muestra —.">Días cob. <i class="fa fa-info-circle pmv-th-info"></i></th>
+                        <th class="text-center" title="Estado de stock (OK, Riesgo, Crítico). Para productos tipo S se muestra —.">Estado <i class="fa fa-info-circle pmv-th-info"></i></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -145,7 +145,7 @@
             <div class="pmv-panel-header">
                 <i class="fa fa-warning"></i> Stock en riesgo (Top 20)
                 <i class="fa fa-info-circle pmv-th-info"
-                   title="Muestra los productos del Top 20 en ventas que podrían quedarse sin stock. Crítico = menos de 3 días de cobertura o stock en 0. Riesgo = entre 3 y 7 días. Los días de cobertura se calculan como: (stock actual × días del período) ÷ unidades vendidas."></i>
+                         title="Muestra los productos del Top 20 en ventas que podrían quedarse sin stock. Crítico = menos de 3 días de cobertura o stock en 0. Riesgo = entre 3 y 7 días. Los días de cobertura se calculan como: (stock actual × días del período) ÷ unidades vendidas. Los productos tipo S (no afectos a stock) quedan fuera de este análisis."></i>
             </div>
             <div id="pmv_stock_critico_body">
                 <p class="pmv-empty-msg">Sin alertas de stock.</p>

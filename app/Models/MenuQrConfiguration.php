@@ -12,6 +12,7 @@ class MenuQrConfiguration extends Model
     protected $table = 'menu_qr_configurations';
 
     protected $fillable = [
+        'nombre',
         'public_token',
         'selected_categories',
         'selected_items',

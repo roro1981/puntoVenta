@@ -3,7 +3,9 @@ namespace App\Services;
 
 use Carbon\Carbon;
 use App\Models\Producto;
+use App\Models\Globales;
 use App\Models\HistorialMovimientos;
+use Illuminate\Support\Facades\DB;
 
 class ReportesService
 {
@@ -117,6 +119,11 @@ class ReportesService
     public function traerMovimientos($tipoMov, $uuidProducto, $desde, $hasta)
     {
         $producto = Producto::where('uuid', $uuidProducto)->firstOrFail();
+
+        if (strtoupper((string) $producto->tipo) === 'S') {
+            return $this->traerMovimientosServicio($producto, (int) $tipoMov, $desde, $hasta);
+        }
+
         $idProducto = $producto->id;
 
         $query = HistorialMovimientos::with('producto')
@@ -144,6 +151,41 @@ class ReportesService
         return $query->orderBy('fecha', 'asc')->get();
     }
 
+    private function traerMovimientosServicio(Producto $producto, int $tipoMov, string $desde, string $hasta)
+    {
+        // Para servicios (tipo S) solo aplican movimientos de venta en este reporte.
+        if (!in_array($tipoMov, [1, 2], true)) {
+            return collect();
+        }
+
+        $desdeDt = $desde . ' 00:00:00';
+        $hastaDt = $hasta . ' 23:59:59';
+        $tipoNegocio = strtoupper((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var'));
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            return DB::table('detalle_comandas as dc')
+                ->join('comandas as com', 'com.id', '=', 'dc.comanda_id')
+                ->where('dc.producto_id', $producto->id)
+                ->where('com.estado', 'CERRADA')
+                ->where('dc.estado', '!=', 'CANCELADO')
+                ->whereBetween('com.fecha_cierre', [$desdeDt, $hastaDt])
+                ->orderBy('com.fecha_cierre', 'asc')
+                ->selectRaw("com.fecha_cierre as fecha, dc.cantidad as cantidad, 'VENTA' as tipo_mov, NULL as stock, CONCAT('COMANDA ', com.id) as obs")
+                ->get();
+        }
+
+        return DB::table('detalles_ventas as dv')
+            ->join('ventas as v', 'v.id', '=', 'dv.venta_id')
+            ->join('cajas as ca', 'ca.id', '=', 'v.caja_id')
+            ->where('dv.producto_uuid', $producto->uuid)
+            ->where('ca.tipo_caja', 'ALMACEN')
+            ->where('v.estado', '!=', 'anulada')
+            ->whereBetween('v.fecha_venta', [$desdeDt, $hastaDt])
+            ->orderBy('v.fecha_venta', 'asc')
+            ->selectRaw("v.fecha_venta as fecha, dv.cantidad as cantidad, 'VENTA' as tipo_mov, NULL as stock, CONCAT('TICKET ', v.id) as obs")
+            ->get();
+    }
+
     /**
      * Devuelve movimientos como array para respuesta JSON.
      */
@@ -151,8 +193,10 @@ class ReportesService
     {
         $producto = Producto::where('uuid', $uuid)->first();
         if (!$producto) {
-            return ['movimientos' => [], 'nombre' => '', 'stock_actual' => 0];
+            return ['movimientos' => [], 'nombre' => '', 'stock_actual' => 0, 'es_servicio' => false];
         }
+
+        $esServicio = strtoupper((string) $producto->tipo) === 'S';
 
         $registros = $this->traerMovimientos((string) $tipoMov, $uuid, $desde, $hasta);
 
@@ -162,7 +206,7 @@ class ReportesService
         $totalEntradas = 0;
         $totalSalidas  = 0;
 
-        $movimientos = $registros->map(function ($m) use ($esEntrada, $esSalida, &$totalEntradas, &$totalSalidas) {
+        $movimientos = $registros->map(function ($m) use ($esEntrada, $esSalida, &$totalEntradas, &$totalSalidas, $esServicio) {
             $tipo = $m->tipo_mov;
             if ($esEntrada($tipo)) {
                 $signo = '+';
@@ -193,7 +237,7 @@ class ReportesService
                 'tipo_mov' => $tipo,
                 'signo'    => $signo,
                 'cantidad' => abs((float) $m->cantidad),
-                'stock'    => (float) $m->stock,
+                'stock'    => $esServicio ? null : (float) $m->stock,
                 'obs'      => $obs,
             ];
         })->values()->all();
@@ -201,7 +245,8 @@ class ReportesService
         return [
             'nombre'         => $producto->descripcion,
             'codigo'         => $producto->codigo ?? '',
-            'stock_actual'   => (float) $producto->stock,
+            'stock_actual'   => $esServicio ? null : (float) $producto->stock,
+            'es_servicio'    => $esServicio,
             'total_entradas' => $totalEntradas,
             'total_salidas'  => $totalSalidas,
             'variacion_neta' => $totalEntradas - $totalSalidas,
@@ -211,7 +256,7 @@ class ReportesService
                     'tipo_mov' => 'CREACIÓN',
                     'signo'    => '',
                     'cantidad' => 0,
-                    'stock'    => 0,
+                    'stock'    => $esServicio ? null : 0,
                     'obs'      => 'Alta del producto en el sistema',
                 ]],
                 $movimientos
@@ -225,19 +270,19 @@ class ReportesService
     public function buscarProductos(string $q): array
     {
         return Producto::where('estado', 'Activo')
-            ->where('tipo', '<>', 'S')
             ->where(function ($query) use ($q) {
                 $query->where('descripcion', 'like', "%{$q}%")
                       ->orWhere('codigo', 'like', "%{$q}%");
             })
             ->orderBy('descripcion')
             ->limit(12)
-            ->get(['id', 'uuid', 'codigo', 'descripcion', 'stock'])
+            ->get(['id', 'uuid', 'codigo', 'descripcion', 'stock', 'tipo'])
             ->map(fn ($p) => [
                 'uuid'        => $p->uuid,
                 'codigo'      => $p->codigo ?? '',
                 'descripcion' => $p->descripcion,
-                'stock'       => (float) $p->stock,
+                'tipo'        => $p->tipo,
+                'stock'       => strtoupper((string) $p->tipo) === 'S' ? null : (float) $p->stock,
             ])->all();
     }
 }

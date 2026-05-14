@@ -3,9 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Str;
@@ -21,6 +19,7 @@ class User extends Authenticatable
         'uuid',
         'name',
         'name_complete',
+        'email',
         'password',
         'role_id',
         'estado',
@@ -34,6 +33,7 @@ class User extends Authenticatable
             'uuid' => Str::uuid(),
             'name' => $userRequest['name'],
             'name_complete' => $userRequest['name_complete'],
+            'email' => $userRequest['email'],
             'password' => Hash::make($userRequest['password']),
             'role_id' => $userRequest['role_id'],
             'estado' => 1,
@@ -45,6 +45,7 @@ class User extends Authenticatable
     {
         $data = [
             'name_complete' => $userRequest['name_complete_edit'],
+            'email' => $userRequest['email_edit'],
             'role_id' => $userRequest['role_id_edit'],
             'updated_at' => now()
         ];

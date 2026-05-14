@@ -19,10 +19,35 @@ class MenuQrController extends Controller
 {
     private const TOP_SELLERS_CATEGORY_ID = 'top-sellers';
     private const TOP_SELLERS_OFF_MARKER = 'top-sellers:off';
+    private const MAX_MENU_QR_CONFIGS = 5;
 
-    public function index()
+    public function index(Request $request)
     {
-        $configuracion = $this->obtenerOCrearConfiguracion();
+        $configuracion = $this->obtenerOCrearConfiguracion($request->integer('config_id'));
+        $menuConfiguraciones = $this->listarConfiguracionesMenuQr()->map(function (MenuQrConfiguration $menuConfiguracion, int $index) use ($configuracion) {
+            $designTheme = $this->normalizarTemaQr($menuConfiguracion->design_theme);
+
+            return [
+                'id' => $menuConfiguracion->id,
+                'nombre' => $this->nombreConfiguracionMenuQr($menuConfiguracion, $index + 1),
+                'menu_url' => route('menu-qr.publico', ['token' => $menuConfiguracion->public_token]),
+                'pdf_url' => route('menu-qr.pdf', ['token' => $menuConfiguracion->public_token]),
+                'reload_url' => route('menu-qr.index', ['config_id' => $menuConfiguracion->id]),
+                'qr_image_url' => $this->qrImageUrl(route('menu-qr.publico', ['token' => $menuConfiguracion->public_token])),
+                'design_theme' => $designTheme,
+                'design_tokens' => $this->tokensTemaQr($designTheme, (array) ($menuConfiguracion->design_tokens ?? [])),
+                'design_options' => $this->sanitizarStyleOptionsQr((array) ($menuConfiguracion->design_options ?? [])),
+                'selected_categories' => collect($menuConfiguracion->selected_categories ?? [])->map(fn ($value) => (string) $value)->all(),
+                'selected_items' => collect($menuConfiguracion->selected_items ?? [])->map(fn ($value) => (string) $value)->all(),
+                'selected_categories_count' => collect($menuConfiguracion->selected_categories ?? [])
+                    ->filter(fn ($value) => $value !== null && $value !== '')
+                    ->count(),
+                'selected_items_count' => collect($menuConfiguracion->selected_items ?? [])
+                    ->filter(fn ($value) => $value !== null && $value !== '')
+                    ->count(),
+                'activo' => $menuConfiguracion->id === $configuracion->id,
+            ];
+        })->values();
         $designThemes = $this->qrDesignThemes();
         $selectedDesignTheme = $this->normalizarTemaQr($configuracion->design_theme);
         $selectedDesignTokens = $this->sanitizarTokensQr((array) ($configuracion->design_tokens ?? []));
@@ -33,14 +58,20 @@ class MenuQrController extends Controller
         $corporateData = $this->corporateDataMap();
         $categorias = $this->construirCatalogoConfiguracion($configuracion);
         $menuUrl = route('menu-qr.publico', ['token' => $configuracion->public_token]);
-        $qrDataUri = $this->qrDataUri($menuUrl);
+        $qrImageUrl = $this->qrImageUrl($menuUrl);
 
         return view('configuration.menu_qr', [
             'configuracion' => $configuracion,
+            'menuConfiguraciones' => $menuConfiguraciones,
+            'menuConfiguracionesCount' => $menuConfiguraciones->count(),
+            'maxMenuConfiguraciones' => self::MAX_MENU_QR_CONFIGS,
+            'activeMenuId' => $configuracion->id,
+            'currentMenuName' => $this->nombreConfiguracionMenuQr($configuracion, $menuConfiguraciones->search(fn ($menu) => $menu['id'] === $configuracion->id) + 1),
             'corporateData' => $corporateData,
             'categorias' => $categorias,
             'menuUrl' => $menuUrl,
-            'qrDataUri' => $qrDataUri,
+            'qrImageUrl' => $qrImageUrl,
+            'menuReloadUrl' => route('menu-qr.index', ['config_id' => $configuracion->id]),
             'designThemes' => $designThemes,
             'selectedDesignTheme' => $selectedDesignTheme,
             'designTokenMeta' => $this->qrTokenCustomizables(),
@@ -59,6 +90,9 @@ class MenuQrController extends Controller
         $themeKeys = array_keys($this->qrDesignThemes());
 
         $validated = $request->validate([
+            'config_id' => ['nullable', 'integer'],
+            'create_new' => ['nullable', 'boolean'],
+            'nombre' => ['nullable', 'string', 'max:120'],
             'selected_categories' => ['nullable', 'array'],
             'selected_categories.*' => ['string'],
             'selected_items' => ['nullable', 'array'],
@@ -107,22 +141,90 @@ class MenuQrController extends Controller
             fn ($item) => in_array($item, $itemsPermitidos, true)
         ));
 
-        $configuracion = $this->obtenerOCrearConfiguracion();
-        $designTheme = $this->normalizarTemaQr($validated['design_theme'] ?? $configuracion->design_theme);
+        $nombre = trim((string) ($validated['nombre'] ?? ''));
+        $configuracionId = $request->integer('config_id');
+        $createNew = $request->boolean('create_new');
+
+        $designTheme = $this->normalizarTemaQr($validated['design_theme'] ?? null);
         $designTokens = $this->sanitizarTokensQr((array) ($validated['design_tokens'] ?? []));
         $designOptions = $this->sanitizarStyleOptionsQr((array) ($validated['design_options'] ?? []));
-        $configuracion->selected_categories = $selectedCategories;
-        $configuracion->selected_items = $selectedItems;
-        $configuracion->design_theme = $designTheme;
-        $configuracion->design_tokens = $designTokens;
-        $configuracion->design_options = $designOptions;
-        $configuracion->activo = true;
-        $configuracion->save();
+
+        if ($createNew) {
+            if ($this->listarConfiguracionesMenuQr()->count() >= self::MAX_MENU_QR_CONFIGS) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya alcanzaste el máximo de 5 menús QR.',
+                ], 422);
+            }
+
+            $configuracion = $this->crearConfiguracionMenuQr([
+                'nombre' => $nombre !== '' ? $nombre : null,
+                'selected_categories' => $selectedCategories,
+                'selected_items' => $selectedItems,
+                'design_theme' => $designTheme,
+                'design_tokens' => $designTokens,
+                'design_options' => $designOptions,
+                'activo' => true,
+            ]);
+        } else {
+            $configuracion = $this->obtenerOCrearConfiguracion($configuracionId);
+            $configuracion->nombre = $nombre !== '' ? $nombre : $configuracion->nombre;
+            $configuracion->selected_categories = $selectedCategories;
+            $configuracion->selected_items = $selectedItems;
+            $configuracion->design_theme = $designTheme;
+            $configuracion->design_tokens = $designTokens;
+            $configuracion->design_options = $designOptions;
+            $configuracion->activo = true;
+            $configuracion->save();
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Configuración del menú QR guardada correctamente.',
+            'message' => $createNew ? 'Menú QR duplicado correctamente.' : 'Configuración del menú QR guardada correctamente.',
             'menu_url' => route('menu-qr.publico', ['token' => $configuracion->public_token]),
+            'reload_url' => route('menu-qr.index', ['config_id' => $configuracion->id]),
+            'config_id' => $configuracion->id,
+        ]);
+    }
+
+    public function eliminar(Request $request)
+    {
+        $validated = $request->validate([
+            'config_id' => ['required', 'integer'],
+        ]);
+
+        $total = MenuQrConfiguration::query()->count();
+        if ($total <= 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe existir al menos un menú QR configurado.',
+            ], 422);
+        }
+
+        $configuracion = MenuQrConfiguration::query()->find($validated['config_id']);
+        if (!$configuracion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el menú QR a eliminar.',
+            ], 404);
+        }
+
+        $configuracion->delete();
+
+        $siguienteConfiguracion = MenuQrConfiguration::query()
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first();
+
+        if (!$siguienteConfiguracion) {
+            $siguienteConfiguracion = $this->crearConfiguracionMenuQr();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Menú QR eliminado correctamente.',
+            'reload_url' => route('menu-qr.index', ['config_id' => $siguienteConfiguracion->id]),
+            'config_id' => $siguienteConfiguracion->id,
         ]);
     }
 
@@ -176,14 +278,53 @@ class MenuQrController extends Controller
         return $pdf->stream('menu-qr-' . $configuracion->public_token . '.pdf');
     }
 
-    private function obtenerOCrearConfiguracion(): MenuQrConfiguration
+    private function obtenerOCrearConfiguracion(?int $configuracionId = null): MenuQrConfiguration
     {
-        $configuracion = MenuQrConfiguration::query()->first();
+        if ($configuracionId) {
+            $configuracion = MenuQrConfiguration::query()->find($configuracionId);
+
+            if ($configuracion) {
+                return $configuracion;
+            }
+        }
+
+        $configuracion = MenuQrConfiguration::query()->orderBy('created_at')->orderBy('id')->first();
 
         if ($configuracion) {
             return $configuracion;
         }
 
+        return $this->crearConfiguracionMenuQr();
+    }
+
+    private function listarConfiguracionesMenuQr()
+    {
+        return MenuQrConfiguration::query()
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function crearConfiguracionMenuQr(array $data = []): MenuQrConfiguration
+    {
+        [$selectedCategories, $selectedItems] = $this->seleccionPorDefectoMenuQr();
+
+        return MenuQrConfiguration::create([
+            'nombre' => trim((string) ($data['nombre'] ?? '')) !== ''
+                ? trim((string) $data['nombre'])
+                : $this->nombreMenuQrPorDefecto(MenuQrConfiguration::query()->count() + 1),
+            'public_token' => (string) Str::uuid(),
+            'selected_categories' => $data['selected_categories'] ?? $selectedCategories,
+            'selected_items' => $data['selected_items'] ?? $selectedItems,
+            'design_theme' => $this->normalizarTemaQr($data['design_theme'] ?? 'clasico_sobrio'),
+            'design_tokens' => $this->sanitizarTokensQr((array) ($data['design_tokens'] ?? [])),
+            'design_options' => $this->sanitizarStyleOptionsQr((array) ($data['design_options'] ?? $this->qrStyleOptionDefaults())),
+            'activo' => (bool) ($data['activo'] ?? true),
+        ]);
+    }
+
+    private function seleccionPorDefectoMenuQr(): array
+    {
         $categorias = $this->catalogoCategoriasMenu();
         $selectedCategories = $categorias->pluck('id')->map(fn ($value) => (int) $value)->all();
         $selectedItems = [];
@@ -200,15 +341,19 @@ class MenuQrController extends Controller
 
         $selectedCategories[] = self::TOP_SELLERS_CATEGORY_ID;
 
-        return MenuQrConfiguration::create([
-            'public_token' => (string) Str::uuid(),
-            'selected_categories' => $selectedCategories,
-            'selected_items' => $selectedItems,
-            'design_theme' => 'clasico_sobrio',
-            'design_tokens' => [],
-            'design_options' => $this->qrStyleOptionDefaults(),
-            'activo' => true,
-        ]);
+        return [$selectedCategories, $selectedItems];
+    }
+
+    private function nombreMenuQrPorDefecto(int $numero): string
+    {
+        return 'Menu QR ' . max(1, $numero);
+    }
+
+    private function nombreConfiguracionMenuQr(MenuQrConfiguration $configuracion, int $fallbackNumero = 1): string
+    {
+        $nombre = trim((string) ($configuracion->nombre ?? ''));
+
+        return $nombre !== '' ? $nombre : $this->nombreMenuQrPorDefecto($fallbackNumero);
     }
 
     private function qrStyleOptionDefaults(): array

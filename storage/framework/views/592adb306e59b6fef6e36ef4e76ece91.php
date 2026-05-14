@@ -3,7 +3,7 @@
     <script type="text/javascript" src="js/reportes/movimientos_productos.js"></script>
  </head>
 
-{{-- ── Toolbar ─────────────────────────────────────────────── --}}
+
 <div class="mv-toolbar">
 
     <div class="mv-toolbar-group mv-search-wrap">
@@ -61,18 +61,18 @@
 
 </div>
 
-{{-- ── Loader ───────────────────────────────────────────────── --}}
+
 <div id="mv_loader" class="mv-loader-wrap" style="display:none;">
     <i class="fa fa-spinner fa-spin fa-2x"></i>
 </div>
 
-{{-- ── Nombre producto ──────────────────────────────────────── --}}
+
 <div id="mv_nombre_producto" class="mv-nombre-producto" style="display:none;"></div>
 
-{{-- ── Resultado ────────────────────────────────────────────── --}}
+
 <div id="mv_resultado" style="display:none;">
 
-    {{-- KPI bar --}}
+    
     <div class="mv-kpi-bar">
         <div class="mv-kpi-item">
             <span class="mv-kpi-label"><i class="fa fa-cubes"></i> Stock actual</span>
@@ -92,7 +92,7 @@
         </div>
     </div>
 
-    {{-- Tabla --}}
+    
     <div class="mv-panel">
         <div class="table-responsive">
         <table id="tbl_movis" class="table table-hover mv-tabla">
@@ -107,9 +107,10 @@
             </thead>
             <tbody></tbody>
         </table>
-        </div>{{-- /table-responsive --}}
+        </div>
     </div>
 
 </div>
 
-@include('partials.modal_ayuda', ['modulo' => 'reporte_movimientos_productos'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'reporte_movimientos_productos'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/reportes/movimientos_productos.blade.php ENDPATH**/ ?>

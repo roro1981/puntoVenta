@@ -15,8 +15,11 @@ class UserRequest extends FormRequest
                 'password' => "required|string|min:6|max:128"
             ];
         } elseif ($this->isMethod('PUT')) {
+            $userUuid = (string) $this->route('uuid');
+
             return [
                 'name_complete_edit' => "required|string|max:255",
+                'email_edit' => "required|email|max:255|unique:users,email," . $userUuid . ",uuid",
                 'password_edit' => "nullable|string|min:6|max:128",
                 'role_id_edit' => "required|integer"
             ];
@@ -24,6 +27,7 @@ class UserRequest extends FormRequest
             return [
                 'name' => 'required|string|max:50|unique:users' ,
                 'name_complete' => "required|string|max:255|unique:users",
+                'email' => "required|email|max:255|unique:users,email",
                 'password' => "required|string|min:6|max:128",
                 'role_id' => "required|integer"
             ];

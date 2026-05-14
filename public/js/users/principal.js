@@ -122,6 +122,7 @@ $('#createUserForm').submit(function (event) {
     var formData = {
         'name': $('#name').val(),
         'name_complete': $('#name_complete').val(),
+        'email': $('#email').val(),
         'password': $('#password').val(),
         'role_id': $('#role_id').val()
     };
@@ -162,6 +163,7 @@ $('#editUserForm').submit(function (event) {
 
     var formData = {
         'name_complete_edit': $('#name_complete_edit').val(),
+        'email_edit': $('#email_edit').val(),
         'password_edit': $('#password_edit').val(),
         'role_id_edit': $('#role_id_edit').val()
     };
@@ -209,6 +211,7 @@ $('#editUserModal').on('show.bs.modal', function (event) {
         success: function (data) {
             modal.find('#name_edit').val(data.name);
             modal.find('#name_complete_edit').val(data.name_complete);
+            modal.find('#email_edit').val(data.email || '');
             modal.find('#role_id_edit').val(data.role_id);
             modal.find('#user_uuid').val(uuid);
         }

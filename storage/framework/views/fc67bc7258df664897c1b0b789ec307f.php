@@ -1,6 +1,12 @@
 
 
 <?php
+    $tipoNegocioActual = strtoupper(trim((string) (
+        \App\Models\Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')
+        ?? ''
+    )));
+    $esRestaurant = $tipoNegocioActual === 'RESTAURANT';
+
     $minutosExpiracionMesa = (int) (
         \App\Models\Globales::where('nom_var', 'RESERVA_EXPIRACION_MESA_MINUTOS')->value('valor_var')
         ?? 15
@@ -417,15 +423,20 @@
             'icono'  => 'fa-qrcode',
             'color'  => '#0f766e',
             'pasos'  => [
+                ['icono' => 'fa-clone', 'titulo' => 'Crear hasta 5 menús QR', 'desc' => 'Puedes trabajar con múltiples menús QR independientes. Usa <strong>Duplicar como nuevo</strong> para clonar la configuración actual y ajustarla para otro escenario (ej: carta noche, promociones o eventos).'],
+                ['icono' => 'fa-th-large', 'titulo' => 'Seleccionar menú por tarjeta', 'desc' => 'En la bandeja superior verás las tarjetas de menús creados. Haz clic sobre una tarjeta para cargar ese menú en el editor inferior sin recargar toda la vista.'],
                 ['icono' => 'fa-check-square-o', 'titulo' => 'Seleccionar categorías e ítems', 'desc' => 'Marca las categorías y los productos/recetas que quieres publicar en la carta digital. Solo lo seleccionado se mostrará en el menú QR público.'],
                 ['icono' => 'fa-paint-brush', 'titulo' => 'Elegir preset visual', 'desc' => 'En <strong>Preset visual del menú público</strong> selecciona una base de diseño (paleta sobria). Debajo puedes usar los paneles colapsables para ajustar <strong>colores</strong> y <strong>tipografía/estilo</strong>.'],
                 ['icono' => 'fa-eye', 'titulo' => 'Vista previa en vivo', 'desc' => 'La pantalla muestra previsualización inmediata del estilo: colores, tipografías, radios, sombras y una mini demo de animación. El indicador de contraste te avisa si la legibilidad es baja.'],
                 ['icono' => 'fa-undo', 'titulo' => 'Restablecer estilo', 'desc' => 'Si necesitas volver al diseño base, usa <strong>Restablecer colores del preset</strong> y <strong>Restablecer tipografía y estilo</strong> dentro de cada panel.'],
                 ['icono' => 'fa-save', 'titulo' => 'Guardar configuración', 'desc' => 'Haz clic en <strong>Guardar configuración</strong> para aplicar cambios. El enlace público y el QR usan esta selección inmediatamente después de guardar.'],
+                ['icono' => 'fa-trash', 'titulo' => 'Eliminar un menú QR', 'desc' => 'Cada tarjeta incluye un ícono de basurero para eliminar ese menú específico. El sistema solicita confirmación antes de borrar y mantiene siempre al menos un menú QR activo.'],
                 ['icono' => 'fa-mobile', 'titulo' => 'Visualizar menú público', 'desc' => 'Abre el enlace directo para revisar cómo lo verá el cliente. La vista prioriza móvil y disponibilidad en tiempo real.'],
                 ['icono' => 'fa-star', 'titulo' => 'Categoría automática Mas vendidos', 'desc' => 'El sistema crea automáticamente <strong>Mas vendidos</strong> en la vista pública cuando existen ventas válidas y marca los productos top como <strong>Mas popular</strong>.'],
             ],
             'tips' => [
+                'Cada menú QR tiene su propio enlace y su propio código QR público.',
+                'El botón de PDF de la cabecera genera el QR del menú que esté seleccionado en ese momento.',
                 'El ranking de Mas vendidos usa los 10 productos con mayor cantidad vendida en los últimos 30 días incluyendo hoy.',
                 'Mas vendidos es una categoría virtual del menú QR: no modifica la tabla de categorías del sistema.',
                 'Los productos siguen apareciendo en su categoría original y, adicionalmente, en Mas vendidos cuando corresponda.',
@@ -433,6 +444,7 @@
                 'Los ajustes de estilo se aplican solo al menú QR público y no cambian el diseño de otros módulos del sistema.',
                 'Puedes dejar cerrados los paneles de estilo; el sistema conserva lo que ya guardaste aunque no estén desplegados.',
                 'Las animaciones configurables (Sin animación, Desvanecer, Escalonada) se aplican al abrir categorías en la vista pública.',
+                'Si solo existe un menú QR, la eliminación queda bloqueada para evitar quedarte sin configuración.',
             ],
         ],
 
@@ -536,6 +548,48 @@
             'tips' => [
                 'Al reactivar un proveedor, su historial de compras previas se mantiene intacto.',
                 'Solo reactiva proveedores que realmente vayan a volver a ser usados para evitar confusiones en el selector de compras.',
+            ],
+        ],
+
+        'reporte_movimientos_productos' => [
+            'titulo' => 'Reporte: Movimientos de productos',
+            'icono'  => 'fa-exchange',
+            'color'  => '#0d6efd',
+            'pasos'  => [
+                ['icono' => 'fa-search',      'titulo' => 'Elegir producto y fechas',     'desc' => 'Primero busca el producto por código o nombre. Luego selecciona desde cuándo y hasta cuándo quieres revisar su historial.'],
+                ['icono' => 'fa-filter',      'titulo' => 'Filtrar por tipo de movimiento','desc' => 'Puedes ver todo junto o filtrar solo ventas, entradas, salidas, mermas o compras. Así entiendes rápidamente por qué subió o bajó el stock.'],
+                ['icono' => 'fa-table',       'titulo' => 'Leer la tabla',                 'desc' => 'Cada fila muestra un movimiento real del producto: fecha, tipo, cantidad y el stock que quedó después de ese movimiento.'],
+                ['icono' => 'fa-line-chart',  'titulo' => 'Revisar resumen rápido',        'desc' => 'En la parte superior verás indicadores simples: stock actual, entradas del período, salidas del período y variación neta.'],
+                ['icono' => 'fa-info-circle', 'titulo' => 'Caso especial: productos tipo S', 'desc' => 'Si el producto es tipo <strong>S</strong> (servicio), no maneja stock. En ese caso verás valores como <strong>No aplica</strong> en stock actual, stock resultante y variación.'],
+                ['icono' => 'fa-file-excel-o','titulo' => 'Exportar a Excel',              'desc' => 'Si necesitas compartir o respaldar la información, usa el botón Exportar y el sistema descarga el reporte con los filtros que elegiste.'],
+            ],
+            'tips' => [
+                'Este reporte responde la pregunta: <strong>qué pasó con el stock de este producto y cuándo pasó</strong>.',
+                'Si ves una baja inesperada, revisa primero movimientos tipo <strong>Merma</strong> o <strong>Salida</strong>.',
+                'En productos tipo <strong>S</strong> (no afectos a stock), es normal que el reporte muestre <strong>No aplica</strong> en campos de stock.',
+                'Si el stock no cuadra, compara las fechas del reporte con compras recientes y anulaciones.',
+                'Mientras más acotado sea el rango de fechas, más fácil será encontrar el movimiento exacto.',
+            ],
+        ],
+
+        'reporte_historial_precio' => [
+            'titulo' => 'Reporte: Historial precio producto',
+            'icono'  => 'fa-line-chart',
+            'color'  => '#6f42c1',
+            'pasos'  => [
+                ['icono' => 'fa-search',      'titulo' => $esRestaurant ? 'Buscar producto o receta' : 'Buscar producto o promoción', 'desc' => $esRestaurant
+                    ? 'En tipo de negocio Restaurant, busca un producto o una receta por código o nombre. El sistema te mostrará el historial de precios de la entidad elegida.'
+                    : 'En tipo de negocio Almacén y Almacén Preventa, busca un producto o una promoción por código o nombre. El sistema te mostrará el historial de precios de la entidad elegida.'],
+                ['icono' => 'fa-history',     'titulo' => 'Ver cambios en el tiempo',            'desc' => 'La tabla muestra cada cambio: precio anterior, precio nuevo, variación, fecha y usuario que hizo el cambio.'],
+                ['icono' => 'fa-area-chart',  'titulo' => 'Mirar la evolución en gráfico',       'desc' => 'El gráfico te ayuda a entender de forma visual si el precio fue subiendo, bajando o se mantuvo estable.'],
+                ['icono' => 'fa-shopping-cart','titulo' => 'Comparar con compras (producto)',    'desc' => 'En productos, también puedes ver el historial de compras (facturas y boletas) para comparar el costo real con el precio de venta.'],
+                ['icono' => 'fa-file-excel-o','titulo' => 'Exportar a Excel',                    'desc' => 'Si necesitas análisis externo o enviar el reporte, exporta el historial con un clic.'],
+            ],
+            'tips' => [
+                'Este reporte sirve para explicar <strong>cuándo y por qué cambió un precio</strong>.',
+                'Si notas una variación muy alta, revisa quién hizo el cambio y en qué fecha.',
+                'Comparar precio de venta versus compras ayuda a detectar márgenes muy bajos o muy altos.',
+                'Es ideal para auditoría interna y para justificar ajustes de precio frente al equipo.',
             ],
         ],
 

@@ -42,6 +42,10 @@
                       <label for="name_complete">Nombre completo</label>
                       <input type="text" class="form-control" id="name_complete" name="name_complete" autocomplete="off" autocorrect="off" required>
                   </div>
+                    <div class="form-group">
+                      <label for="email">Correo de recuperación</label>
+                      <input type="email" class="form-control" id="email" name="email" autocomplete="off" required>
+                    </div>
                   <div class="form-group">
                     <label for="password">Contraseña</label>
                     <input type="password" class="form-control" id="password" name="password" autocomplete="off" autocorrect="off" required>
@@ -92,6 +96,10 @@
                   <div class="form-group">
                       <label for="name_complete_edit">Nombre</label>
                       <input type="text" class="form-control" id="name_complete_edit" name="name_complete_edit" autocomplete="off" autocorrect="off" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="email_edit">Correo de recuperación</label>
+                    <input type="email" class="form-control" id="email_edit" name="email_edit" autocomplete="off" required>
                   </div>
                   <div class="form-group">
                     <label for="password_edit">Contraseña</label>

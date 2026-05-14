@@ -40,7 +40,8 @@ class ProductosMasVendidosExport implements FromCollection, WithHeadings, WithTi
 
         $result = [];
         foreach ($rows as $i => $r) {
-            $tieneStock = (bool) ($r->tiene_stock ?? true);
+            $esServicio = strtoupper((string) ($r->tipo_producto ?? '')) === 'S';
+            $tieneStock = !$esServicio && (bool) ($r->tiene_stock ?? true);
             $stock      = $tieneStock ? (float) ($r->stock ?? 0) : null;
             $unidades   = (float) $r->unidades;
 
@@ -99,8 +100,9 @@ class ProductosMasVendidosExport implements FromCollection, WithHeadings, WithTi
                     MAX(COALESCE(p.descripcion, r.nombre, 'Sin nombre')) as nombre,
                     MAX(COALESCE(p.codigo, r.codigo, '')) as codigo,
                     MAX(COALESCE(cat.descripcion_categoria, 'Sin categoría')) as categoria,
-                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN p.stock ELSE NULL END) as stock,
-                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL AND p.tipo <> 'S' THEN p.stock ELSE NULL END) as stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL AND p.tipo <> 'S' THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN p.tipo ELSE NULL END) as tipo_producto,
                     SUM(dc.cantidad) as unidades
                 ")
                 ->groupBy('dc.producto_id', 'dc.receta_id')
@@ -121,8 +123,9 @@ class ProductosMasVendidosExport implements FromCollection, WithHeadings, WithTi
                     MAX(COALESCE(p.descripcion, dv.descripcion_producto, 'Sin nombre')) as nombre,
                     MAX(COALESCE(p.codigo, '')) as codigo,
                     MAX(COALESCE(cat.descripcion_categoria, 'Sin categoría')) as categoria,
-                    MAX(p.stock) as stock,
-                    MAX(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN p.id IS NOT NULL AND p.tipo <> 'S' THEN p.stock ELSE NULL END) as stock,
+                    MAX(CASE WHEN p.id IS NOT NULL AND p.tipo <> 'S' THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN p.id IS NOT NULL THEN p.tipo ELSE NULL END) as tipo_producto,
                     SUM(dv.cantidad) as unidades
                 ")
                 ->groupBy(DB::raw('COALESCE(dv.producto_uuid, dv.descripcion_producto)'))

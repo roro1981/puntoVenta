@@ -2,7 +2,7 @@
     <link rel="stylesheet" href="/css/reportes/historial_precio.css" />
 </head>
 
-<input type="hidden" id="tipo_negocio" value="{{ $tipoNegocio }}" />
+<input type="hidden" id="tipo_negocio" value="<?php echo e($tipoNegocio); ?>" />
 
 <!-- ===== TOOLBAR ===== -->
 <div class="hp-toolbar">
@@ -11,11 +11,11 @@
         <label>Tipo</label>
         <select id="hp_tipo" class="form-control input-sm">
             <option value="PRODUCTO">Producto</option>
-            @if($tipoNegocio === 'RESTAURANT')
+            <?php if($tipoNegocio === 'RESTAURANT'): ?>
             <option value="RECETA">Receta</option>
-            @else
+            <?php else: ?>
             <option value="PROMOCION">Promoción</option>
-            @endif
+            <?php endif; ?>
         </select>
     </div>
 
@@ -96,7 +96,7 @@
     <!-- ── PANEL COMPRAS ── -->
     <div id="hp_pane_compras" style="display:none;">
 
-        {{-- Sección: cambios en precio de compra (historial_precios) --}}
+        
         <div id="hp_pane_costos">
             <div class="hp-section-title">
                 <i class="fa fa-tag"></i> Historial de cambios &mdash; Precio de compra neto
@@ -122,7 +122,7 @@
             </div>
         </div>
 
-        {{-- Sección: facturas y boletas de compra (solo PRODUCTO) --}}
+        
         <div id="hp_pane_docs_compra">
             <div class="hp-section-title">
                 <i class="fa fa-shopping-basket"></i> Compras registradas (facturas / boletas)
@@ -153,6 +153,7 @@
 
 </div><!-- fin #hp_resultado -->
 
-@include('partials.modal_ayuda', ['modulo' => 'reporte_historial_precio'])
+<?php echo $__env->make('partials.modal_ayuda', ['modulo' => 'reporte_historial_precio'], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
 
 <script src="/js/reportes/historial_precio.js"></script>
+<?php /**PATH C:\xampp\htdocs\pventa-app\resources\views/reportes/historial_precio.blade.php ENDPATH**/ ?>

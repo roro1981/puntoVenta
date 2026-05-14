@@ -61,6 +61,13 @@
             line-height: 1.3;
         }
 
+        .brand .menu-name {
+            margin-top: 4px;
+            font-size: 10px;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
         .qr {
             width: 56mm;
             height: 56mm;
@@ -83,6 +90,8 @@
     @php
         $indices = range(1, $copias);
         $bloques = array_chunk($indices, 4);
+        $menuNombre = trim((string) ($configuracion->nombre ?? ''));
+        $menuNombre = $menuNombre !== '' ? $menuNombre : 'Menú QR';
     @endphp
 
     @foreach($bloques as $bloque)
@@ -96,6 +105,7 @@
                                     <div class="brand">
                                         <h1>{{ $corporateData['fantasy_name_enterprise'] ?? ($corporateData['name_enterprise'] ?? 'Menú QR') }}</h1>
                                         <p>{{ trim(($corporateData['address_enterprise'] ?? '') . ' ' . ($corporateData['comuna_enterprise'] ?? '')) }}</p>
+                                        <p class="menu-name">{{ $menuNombre }}</p>
                                     </div>
                                     <img class="qr" src="{{ $qrDataUri }}" alt="QR menú">
                                 </div>
@@ -113,6 +123,7 @@
                                     <div class="brand">
                                         <h1>{{ $corporateData['fantasy_name_enterprise'] ?? ($corporateData['name_enterprise'] ?? 'Menú QR') }}</h1>
                                         <p>{{ trim(($corporateData['address_enterprise'] ?? '') . ' ' . ($corporateData['comuna_enterprise'] ?? '')) }}</p>
+                                        <p class="menu-name">{{ $menuNombre }}</p>
                                     </div>
                                     <img class="qr" src="{{ $qrDataUri }}" alt="QR menú">
                                 </div>

@@ -1024,7 +1024,8 @@ class ReportesController extends Controller
                 : null;
             $rankPrev   = $prev ? $prev['rank'] : null;
             $cambio     = $rankPrev !== null ? $rankPrev - $rankAct : null;
-            $tieneStock = (bool) ($r->tiene_stock ?? true);
+            $esServicio = strtoupper((string) ($r->tipo_producto ?? '')) === 'S';
+            $tieneStock = !$esServicio && (bool) ($r->tiene_stock ?? true);
             $stock      = $tieneStock ? (float) ($r->stock ?? 0) : null;
 
             if (!$tieneStock || $stock === null) {
@@ -1170,8 +1171,9 @@ class ReportesController extends Controller
                     MAX(COALESCE(p.descripcion, r.nombre, 'Sin nombre')) as nombre,
                     MAX(COALESCE(p.codigo, r.codigo, '')) as codigo,
                     MAX(COALESCE(cat.descripcion_categoria, 'Sin categoría')) as categoria,
-                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN p.stock ELSE NULL END) as stock,
-                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL AND p.tipo <> 'S' THEN p.stock ELSE NULL END) as stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL AND p.tipo <> 'S' THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN dc.producto_id IS NOT NULL THEN p.tipo ELSE NULL END) as tipo_producto,
                     SUM(dc.cantidad) as unidades
                 ")
                 ->groupBy('dc.producto_id', 'dc.receta_id')
@@ -1195,8 +1197,9 @@ class ReportesController extends Controller
                     MAX(COALESCE(p.descripcion, dv.descripcion_producto, 'Sin nombre')) as nombre,
                     MAX(COALESCE(p.codigo, '')) as codigo,
                     MAX(COALESCE(cat.descripcion_categoria, 'Sin categoría')) as categoria,
-                    MAX(p.stock) as stock,
-                    MAX(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN p.id IS NOT NULL AND p.tipo <> 'S' THEN p.stock ELSE NULL END) as stock,
+                    MAX(CASE WHEN p.id IS NOT NULL AND p.tipo <> 'S' THEN 1 ELSE 0 END) as tiene_stock,
+                    MAX(CASE WHEN p.id IS NOT NULL THEN p.tipo ELSE NULL END) as tipo_producto,
                     SUM(dv.cantidad) as unidades
                 ")
                 ->groupBy('dv.producto_uuid')->get();
@@ -1219,6 +1222,7 @@ class ReportesController extends Controller
                     MAX(COALESCE(cat.descripcion_categoria, 'Sin categoría')) as categoria,
                     NULL as stock,
                     0 as tiene_stock,
+                    NULL as tipo_producto,
                     SUM(dv.cantidad) as unidades
                 ")
                 ->groupBy('dv.promo_id', 'promo.id')
@@ -2139,8 +2143,9 @@ class ReportesController extends Controller
         $totalValor = 0;
 
         foreach ($productos as $p) {
-            $stock    = (float) $p->stock;
-            $stockMin = (float) $p->stock_minimo;
+            $esServicio = strtoupper((string) ($p->tipo ?? '')) === 'S';
+            $stock      = $esServicio ? null : (float) $p->stock;
+            $stockMin   = $esServicio ? null : (float) $p->stock_minimo;
             $valor    = (float) $p->valor_inventario;
             $totalValor += $valor;
 
@@ -2151,12 +2156,14 @@ class ReportesController extends Controller
 
             // Días cobertura
             $diasCobertura = null;
-            if ($vendido30 > 0 && $stock > 0) {
+            if (!$esServicio && $vendido30 > 0 && $stock > 0) {
                 $diasCobertura = (int) round($stock / ($vendido30 / 30));
             }
 
             // Estado
-            if ($stock <= 0) {
+            if ($esServicio) {
+                $estado = 'No aplica';
+            } elseif ($stock <= 0) {
                 $estado = 'Agotado';
                 $agotados++;
             } elseif ($stock <= $stockMin) {
@@ -2386,6 +2393,7 @@ class ReportesController extends Controller
     {
         $tipo = strtoupper($request->input('tipo', 'PRODUCTO'));
         $term = $request->input('q', '');
+        $tipoNegocio = $this->tipoNegocio();
 
         if ($tipo === 'RECETA') {
             $data = Receta::where('estado', 'Activo')
@@ -2401,24 +2409,18 @@ class ReportesController extends Controller
                 'descripcion' => $r->nombre,
             ]));
         }
-        
-                if ($tipoNegocio === 'RESTAURANT') {
-                    abort(403, 'Este modulo no esta disponible para negocios tipo restaurant.');
-                }
 
         if ($tipo === 'PROMOCION') {
+            if ($tipoNegocio === 'RESTAURANT') {
+                return response()->json([
+                    'message' => 'Este modulo no esta disponible para negocios tipo restaurant.'
+                ], 403);
+            }
+
             $data = Promocion::where('estado', 'Activo')
                 ->where(function ($q) use ($term) {
                     $q->where('codigo', 'like', "%{$term}%")
                       ->orWhere('nombre', 'like', "%{$term}%");
-                $tipoNegocio = $this->tipoNegocio();
-
-                if ($tipoNegocio === 'RESTAURANT') {
-                    return response()->json([
-                        'message' => 'Este modulo no esta disponible para negocios tipo restaurant.'
-                    ], 403);
-                }
-
                 })
                 ->limit(10)
                 ->get(['id', 'codigo', 'nombre']);

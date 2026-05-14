@@ -85,12 +85,12 @@
                         <th>Código</th>
                         <th>Producto</th>
                         <th>Categoría</th>
-                        <th title="Stock actual vs stock mínimo">Stock actual</th>
-                        <th class="text-right" title="Stock mínimo configurado">Mín. <i class="fa fa-info-circle inv-th-info"></i></th>
+                        <th title="Stock actual vs stock mínimo. En productos tipo S (no afectos a stock) se muestra —.">Stock actual</th>
+                        <th class="text-right" title="Stock mínimo configurado. En productos tipo S (no afectos a stock) se muestra —.">Mín. <i class="fa fa-info-circle inv-th-info"></i></th>
                         <th class="text-right">Valor inv.</th>
                         <th class="text-right" title="Unidades vendidas en los últimos 30 días">Vtas 30d <i class="fa fa-info-circle inv-th-info"></i></th>
-                        <th class="text-right" title="Días estimados hasta agotar stock al ritmo actual de ventas">Cob. <i class="fa fa-info-circle inv-th-info"></i></th>
-                        <th class="text-center">Estado</th>
+                        <th class="text-right" title="Días estimados hasta agotar stock al ritmo actual de ventas. En productos tipo S se muestra —.">Cob. <i class="fa fa-info-circle inv-th-info"></i></th>
+                        <th class="text-center" title="Estado de stock. En productos tipo S se muestra No aplica.">Estado</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -104,11 +104,11 @@
     </div>
     <div class="inv-row-alertas">
         <div class="inv-panel inv-panel-alerta">
-            <h4><i class="fa fa-ban" style="color:#e74c3c;margin-right:5px;"></i> Productos agotados</h4>
+            <h4><i class="fa fa-ban" style="color:#e74c3c;margin-right:5px;"></i> Productos agotados (excluye tipo S)</h4>
             <div id="inv_alertas_agotados"></div>
         </div>
         <div class="inv-panel inv-panel-alerta">
-            <h4><i class="fa fa-warning" style="color:#f39c12;margin-right:5px;"></i> Stock crítico (bajo el mínimo)</h4>
+            <h4><i class="fa fa-warning" style="color:#f39c12;margin-right:5px;"></i> Stock crítico (bajo el mínimo, excluye tipo S)</h4>
             <div id="inv_alertas_criticos"></div>
         </div>
     </div>

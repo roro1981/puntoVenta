@@ -65,19 +65,22 @@ class InventarioExport implements FromCollection, WithHeadings, WithTitle, Shoul
 
         $result = [];
         foreach ($productos as $i => $p) {
-            $stock    = (float) $p->stock;
-            $stockMin = (float) $p->stock_minimo;
+            $esServicio = strtoupper((string) ($p->tipo ?? '')) === 'S';
+            $stock      = $esServicio ? null : (float) $p->stock;
+            $stockMin   = $esServicio ? null : (float) $p->stock_minimo;
 
             $v30Row    = $tipoNegocio === 'RESTAURANT'
                 ? ($ventas30[$p->id]   ?? null)
                 : ($ventas30[$p->uuid] ?? null);
             $vendido30 = $v30Row ? (float) $v30Row->vendido : 0;
 
-            $diasCobertura = ($vendido30 > 0 && $stock > 0)
+            $diasCobertura = (!$esServicio && $vendido30 > 0 && $stock > 0)
                 ? (int) round($stock / ($vendido30 / 30))
                 : null;
 
-            if ($stock <= 0) {
+            if ($esServicio) {
+                $estado = 'No aplica';
+            } elseif ($stock <= 0) {
                 $estado = 'Agotado';
             } elseif ($stock <= $stockMin) {
                 $estado = 'Crítico';
@@ -94,13 +97,13 @@ class InventarioExport implements FromCollection, WithHeadings, WithTitle, Shoul
                 $p->categoria,
                 $p->tipo,
                 $p->unidad_medida,
-                $stock,
-                $stockMin,
+                $stock ?? '—',
+                $stockMin ?? '—',
                 (float) $p->precio_compra_neto,
                 (float) $p->precio_venta,
                 round((float) $p->valor_inventario),
                 $vendido30,
-                $diasCobertura ?? 'Sin rotación',
+                $esServicio ? '—' : ($diasCobertura ?? 'Sin rotación'),
                 $estado,
             ];
         }

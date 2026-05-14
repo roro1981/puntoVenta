@@ -61,6 +61,13 @@
             line-height: 1.3;
         }
 
+        .brand .menu-name {
+            margin-top: 4px;
+            font-size: 10px;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
         .qr {
             width: 56mm;
             height: 56mm;
@@ -83,6 +90,8 @@
     <?php
         $indices = range(1, $copias);
         $bloques = array_chunk($indices, 4);
+        $menuNombre = trim((string) ($configuracion->nombre ?? ''));
+        $menuNombre = $menuNombre !== '' ? $menuNombre : 'Menú QR';
     ?>
 
     <?php $__currentLoopData = $bloques; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bloque): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -96,6 +105,7 @@
                                     <div class="brand">
                                         <h1><?php echo e($corporateData['fantasy_name_enterprise'] ?? ($corporateData['name_enterprise'] ?? 'Menú QR')); ?></h1>
                                         <p><?php echo e(trim(($corporateData['address_enterprise'] ?? '') . ' ' . ($corporateData['comuna_enterprise'] ?? ''))); ?></p>
+                                        <p class="menu-name"><?php echo e($menuNombre); ?></p>
                                     </div>
                                     <img class="qr" src="<?php echo e($qrDataUri); ?>" alt="QR menú">
                                 </div>
@@ -113,6 +123,7 @@
                                     <div class="brand">
                                         <h1><?php echo e($corporateData['fantasy_name_enterprise'] ?? ($corporateData['name_enterprise'] ?? 'Menú QR')); ?></h1>
                                         <p><?php echo e(trim(($corporateData['address_enterprise'] ?? '') . ' ' . ($corporateData['comuna_enterprise'] ?? ''))); ?></p>
+                                        <p class="menu-name"><?php echo e($menuNombre); ?></p>
                                     </div>
                                     <img class="qr" src="<?php echo e($qrDataUri); ?>" alt="QR menú">
                                 </div>

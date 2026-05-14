@@ -275,6 +275,7 @@ Route::get('/configuracion/impuestos-table', [ConfigurationController::class, 'i
 Route::put('/configuracion/update-impuesto/{id}', [ConfigurationController::class, 'updateImpuesto']);
 Route::get('/configuracion/restaurant/config-menu-qr', [MenuQrController::class, 'index'])->name('menu-qr.index');
 Route::post('/configuracion/restaurant/config-menu-qr', [MenuQrController::class, 'guardar'])->name('menu-qr.guardar');
+Route::post('/configuracion/restaurant/config-menu-qr/eliminar', [MenuQrController::class, 'eliminar'])->name('menu-qr.eliminar');
 Route::get('/configuracion/restaurant/config-menu-qr/pdf/{token}', [MenuQrController::class, 'pdf'])->name('menu-qr.pdf');
 
 Route::get('/dashboard', [UsersController::class, 'dashboard'])->name('dashboard');
@@ -285,4 +286,6 @@ Route::get('/dashboard/preventas-pendientes', [UsersController::class, 'preventa
 Route::get('/menu-qr/{token}', [MenuQrController::class, 'publico'])->name('menu-qr.publico');
 
 Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:10,1')->name('login');
+Route::post('/password/recovery/request', [UsersController::class, 'requestPasswordRecovery'])->middleware('throttle:5,1')->name('password.recovery.request');
+Route::post('/password/recovery/reset', [UsersController::class, 'resetPasswordRecovery'])->middleware('throttle:5,1')->name('password.recovery.reset');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');

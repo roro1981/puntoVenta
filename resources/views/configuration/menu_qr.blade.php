@@ -14,6 +14,155 @@
         border-radius: 18px;
         padding: 18px;
     }
+    .menu-qr-collection {
+        margin-bottom: 16px;
+    }
+    .menu-qr-collection-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+    .menu-qr-collection-head h3 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+    }
+    .menu-qr-collection-head p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+    }
+    .menu-qr-collection-count {
+        min-width: 72px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        font-weight: 800;
+        text-align: center;
+    }
+    .menu-qr-collection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+    .menu-qr-menu-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 8px 22px rgba(60, 47, 35, .05);
+        padding: 14px;
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .menu-qr-menu-card:hover {
+        transform: translateY(-2px);
+        border-color: #cfbea9;
+        box-shadow: 0 12px 26px rgba(60, 47, 35, .09);
+    }
+    .menu-qr-menu-card.is-active {
+        border-color: rgba(180, 95, 45, .35);
+        box-shadow: 0 12px 28px rgba(180, 95, 45, .10);
+    }
+    .menu-qr-menu-card-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .menu-qr-menu-card-head-left {
+        min-width: 0;
+    }
+    .menu-qr-menu-card-head strong {
+        font-size: 15px;
+        line-height: 1.25;
+    }
+    .menu-qr-menu-card-tools {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .menu-qr-menu-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #f4e7df;
+        color: #8a4a25;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+    .menu-qr-menu-badge.is-hidden {
+        display: none;
+    }
+    .menu-qr-menu-delete-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid #e2cbc4;
+        background: #fff8f6;
+        color: #a63d40;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+    }
+    .menu-qr-menu-delete-btn:hover {
+        background: #fde9e5;
+        border-color: #d9a79a;
+    }
+    .menu-qr-menu-delete-btn:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+    }
+    .menu-qr-menu-delete-btn svg {
+        width: 15px;
+        height: 15px;
+    }
+    .menu-qr-menu-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+        margin-bottom: 8px;
+    }
+    .menu-qr-menu-card-note {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+    .menu-qr-name-control {
+        margin-top: 14px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+    }
+    .menu-qr-name-control label {
+        display: block;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+    .menu-qr-name-control input {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        box-sizing: border-box;
+    }
+    .menu-qr-name-control .hint {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+    }
     .menu-qr-hero {
         display: grid;
         grid-template-columns: 1.5fr 1fr;
@@ -773,12 +922,68 @@
 
 <div class="menu-qr-page">
     <input type="hidden" id="token" value="{{ csrf_token() }}">
+    <input type="hidden" id="menu_qr_current_config_id" value="{{ $activeMenuId }}">
     <input type="hidden" id="menu_qr_save_url" value="{{ route('menu-qr.guardar') }}">
+    <input type="hidden" id="menu_qr_delete_url" value="{{ route('menu-qr.eliminar') }}">
     <input type="hidden" id="menu_qr_pdf_url" value="{{ route('menu-qr.pdf', ['token' => $configuracion->public_token]) }}">
     <input type="hidden" id="menu_qr_public_url" value="{{ $menuUrl }}">
-    <input type="hidden" id="menu_qr_reload_url" value="{{ route('menu-qr.index') }}">
+    <input type="hidden" id="menu_qr_reload_url" value="{{ $menuReloadUrl }}">
     <script type="application/json" id="menu_qr_themes_json">{!! json_encode(collect($designThemes)->mapWithKeys(fn ($themeData, $themeKey) => [$themeKey => $themeData['tokens']])->all(), JSON_UNESCAPED_UNICODE) !!}</script>
     <script type="application/json" id="menu_qr_style_defaults_json">{!! json_encode($styleOptionDefaults, JSON_UNESCAPED_UNICODE) !!}</script>
+    <script type="application/json" id="menu_qr_configs_json">{!! json_encode($menuConfiguraciones->values()->all(), JSON_UNESCAPED_UNICODE) !!}</script>
+
+    <div class="menu-qr-collection">
+        <div class="menu-qr-collection-head">
+            <div>
+                <h3>Menús QR creados</h3>
+                <p>Replica esta configuración hasta {{ $maxMenuConfiguraciones }} veces sin salir de esta pantalla.</p>
+            </div>
+            <div class="menu-qr-collection-count">{{ $menuConfiguracionesCount }}/{{ $maxMenuConfiguraciones }}</div>
+        </div>
+
+        <div class="menu-qr-collection-grid">
+            @foreach($menuConfiguraciones as $menuConfiguracion)
+                <div
+                    class="menu-qr-menu-card {{ $menuConfiguracion['activo'] ? 'is-active' : '' }}"
+                    data-config-id="{{ $menuConfiguracion['id'] }}"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Seleccionar {{ $menuConfiguracion['nombre'] }}"
+                >
+                    <div class="menu-qr-menu-card-head">
+                        <div class="menu-qr-menu-card-head-left">
+                            <strong>{{ $menuConfiguracion['nombre'] }}</strong>
+                        </div>
+                        <div class="menu-qr-menu-card-tools">
+                            <span class="menu-qr-menu-badge {{ $menuConfiguracion['activo'] ? '' : 'is-hidden' }}">Actual</span>
+                            <button
+                                type="button"
+                                class="menu-qr-menu-delete-btn"
+                                data-delete-config-id="{{ $menuConfiguracion['id'] }}"
+                                data-delete-config-name="{{ $menuConfiguracion['nombre'] }}"
+                                title="Eliminar este menú QR"
+                                aria-label="Eliminar {{ $menuConfiguracion['nombre'] }}"
+                                {{ $menuConfiguracionesCount <= 1 ? 'disabled' : '' }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M4 7H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M9 7V5.8C9 5.08 9.58 4.5 10.3 4.5H13.7C14.42 4.5 15 5.08 15 5.8V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M18 7L17.3 18.2C17.24 19.16 16.45 19.9 15.49 19.9H8.51C7.55 19.9 6.76 19.16 6.7 18.2L6 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M10 10.2V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M14 10.2V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="menu-qr-menu-card-meta">
+                        <span>{{ $menuConfiguracion['selected_categories_count'] }} categorías</span>
+                        <span>{{ $menuConfiguracion['selected_items_count'] }} ítems</span>
+                    </div>
+                    <div class="menu-qr-menu-card-note">Haz click para cargar este menú en el editor de abajo.</div>
+                </div>
+            @endforeach
+        </div>
+    </div>
 
     <div class="menu-qr-hero">
         <div class="menu-qr-card">
@@ -794,10 +999,18 @@
                     <input type="text" id="menu_qr_link" value="{{ $menuUrl }}" readonly>
                     <button type="button" id="btnCopyMenuQrLink">Copiar link</button>
                 </div>
+                <div class="menu-qr-name-control">
+                    <label for="menu_qr_name">Nombre del menú</label>
+                    <input type="text" id="menu_qr_name" value="{{ $currentMenuName }}" maxlength="120">
+                    <div class="hint">Usa un nombre claro para identificar cada menú QR cuando tengas varios creados.</div>
+                </div>
                 <div class="menu-qr-actions">
                     <input type="number" class="copies-input" id="menu_qr_copias" min="1" max="50" value="1">
                     <button type="button" class="btn-pdf" id="btnPrintMenuQrPdf">Imprimir QR en PDF</button>
                     <button type="button" class="btn-save" id="btnSaveMenuQr">Guardar configuración</button>
+                    @if($menuConfiguracionesCount < $maxMenuConfiguraciones)
+                        <button type="button" class="btn-save" id="btnDuplicateMenuQr">Duplicar como nuevo</button>
+                    @endif
                 </div>
                 <div class="menu-qr-helper menu-qr-company-grid" style="margin-top:10px;">
                     <div><strong>Empresa:</strong> {{ $corporateData['fantasy_name_enterprise'] ?? ($corporateData['name_enterprise'] ?? 'Sin datos') }}</div>
@@ -923,7 +1136,7 @@
         <div class="menu-qr-card">
             <div class="card-head">
                 <div class="menu-qr-qrbox">
-                        <img src="{{ $qrDataUri }}" alt="QR del menú">
+                        <img id="menu_qr_preview_image" src="{{ $qrImageUrl }}" alt="QR del menú">
                     <div>
                         <h3 style="margin:0 0 10px;font-size:20px;font-weight:800;">Enlace directo</h3>
                         <div class="menu-qr-helper">Este enlace abre la vista pública del menú QR. El código se actualiza automáticamente al guardar cambios.</div>

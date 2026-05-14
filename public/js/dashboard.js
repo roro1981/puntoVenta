@@ -17,6 +17,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // Actualizar el reloj cada segundo
     setInterval(updateClock, 1000);
 
+    function limpiarAyudaFlotante() {
+        var $modalAyuda = $('#modalAyudaModulo');
+        if ($modalAyuda.length) {
+            try {
+                $modalAyuda.modal('hide');
+            } catch (e) {
+                // noop
+            }
+        }
+
+        // Remueve botón y modal de ayuda previamente inyectados al body.
+        $('[data-ayuda-flotante], #btnAyudaModulo, #modalAyudaModulo').remove();
+    }
+
     $.ajax({
         url: '/users/menus',
         method: 'GET',
@@ -50,6 +64,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var iconClass = $(this).closest('ul.treeview-menu').closest('li').find('i.fa').first().attr('class');
 
             $("#titulo").html(menu_nombre + ' <i style="color:black;font-size:20px" class="' + iconClass + '"></i>');
+            limpiarAyudaFlotante();
             $('#contenido').load(ruta, function (response, status, xhr) {
                 if (status == "error") {
                     var errorHtml = `
