@@ -1427,6 +1427,20 @@ class UsersController extends Controller
             ];
         }
 
+        if ($tipoNegocio === 'RESTAURANT' && in_array($roleName, ['administrador', 'gerencia', 'superadministrador'], true) && isset($menus[4])) {
+            $existeReporte = collect($menus[4]['submenus'])->contains(function ($submenu) {
+                return strtolower(trim((string) ($submenu['route'] ?? ''))) === '/anulaciones_comandas';
+            });
+
+            if (!$existeReporte) {
+                $menus[4]['submenus'][] = [
+                    'id' => 'virtual-anulaciones-comandas',
+                    'name' => 'Anulaciones de comandas',
+                    'route' => '/anulaciones_comandas',
+                ];
+            }
+        }
+
         ksort($menus);
         return array_values($menus);
     }
@@ -1453,6 +1467,7 @@ class UsersController extends Controller
             return in_array($ruta, [
                 '/generar_comandas',
                 '/cerrar_comandas',
+                '/anulaciones_comandas',
                 '/control_propinas',
                 '/restaurant/config-mesas',
                 '/restaurant/config-menu-qr',
@@ -1472,6 +1487,7 @@ class UsersController extends Controller
                 '/generar_ventas',
                 '/generar_comandas',
                 '/cerrar_comandas',
+                '/anulaciones_comandas',
                 '/control_propinas',
                 '/restaurant/config-mesas',
                 '/restaurant/config-menu-qr',

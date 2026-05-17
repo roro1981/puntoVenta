@@ -1372,13 +1372,24 @@ class VentasController extends Controller
                 'cheque' => 0,
                 'mixto' => 0,
             ];
+
+            $desgloseMixto = [
+                'efectivo' => 0,
+                'tarjeta_debito' => 0,
+                'tarjeta_credito' => 0,
+                'transferencia' => 0,
+                'cheque' => 0,
+            ];
             
             foreach ($caja->ventas as $venta) {
                 if ($venta->forma_pago === 'MIXTO') {
                     foreach ($venta->formasPago as $formaPago) {
-                        $tipo = strtolower($formaPago->tipo_forma_pago);
+                        $tipo = strtolower($formaPago->forma_pago);
                         if (isset($desglose[$tipo])) {
                             $desglose[$tipo] += $formaPago->monto;
+                        }
+                        if (isset($desgloseMixto[$tipo])) {
+                            $desgloseMixto[$tipo] += $formaPago->monto;
                         }
                     }
                     $desglose['mixto'] += $venta->total;
@@ -1407,6 +1418,7 @@ class VentasController extends Controller
                     'cantidad_ventas' => $cantidadVentas
                 ],
                 'desglose' => $desglose,
+                'desglose_mixto' => $desgloseMixto,
                 'retiros' => $retiros->map(fn($r) => [
                     'motivo'     => $r->motivo,
                     'monto'      => (float) $r->monto,
@@ -1456,7 +1468,7 @@ class VentasController extends Controller
                 $esTicketPago = true;
 
                 $pdf = Pdf::loadView('restaurant.ticket_comanda', compact('comanda', 'corporateData', 'venta', 'esTicketPago', 'porcentajePropinaGlobal'));
-                $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+                $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
 
                 return $pdf->stream('ticket-comanda-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
             }

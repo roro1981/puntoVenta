@@ -96,7 +96,8 @@ class ConfigurationController extends Controller
         $query->where('nom_var', '!=', 'SISTEMA_ACTIVO');
 
         if (!$isSuperAdmin) {
-            $query->where('nom_var', '!=', 'TIPO_NEGOCIO');
+            $query->where('nom_var', '!=', 'TIPO_NEGOCIO')
+                  ->where('nom_var', '!=', 'IMPRESION_SEPARADA');
         }
 
         // Mostrar variables de restaurant solo si TIPO_NEGOCIO es RESTAURANT
@@ -148,9 +149,16 @@ class ConfigurationController extends Controller
                 ], 403);
             }
 
+            if ($global->nom_var === 'IMPRESION_SEPARADA' && !$isSuperAdmin) {
+                return response()->json([
+                    'error' => 403,
+                    'message' => 'Solo SuperAdministrador puede modificar esta variable'
+                ], 403);
+            }
+
             $global->updateVar($request);
 
-            if (in_array($global->nom_var, ['PORCENTAJE_PROPINA', 'RESERVA_EXPIRACION_MESA_MINUTOS', 'TIPO_NEGOCIO'])) {
+            if (in_array($global->nom_var, ['PORCENTAJE_PROPINA', 'RESERVA_EXPIRACION_MESA_MINUTOS', 'TIPO_NEGOCIO', 'IMPRESION_SEPARADA'])) {
                 Cache::forget('global_' . $global->nom_var);
             }
 

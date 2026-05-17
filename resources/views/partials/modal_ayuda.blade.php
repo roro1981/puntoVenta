@@ -16,6 +16,11 @@
         ?? 15
     );
 
+    $impresionSeparada = (int) (
+        \App\Models\Globales::where('nom_var', 'IMPRESION_SEPARADA')->value('valor_var')
+        ?? 0
+    );
+
     $ayuda = [
         'ventas' => [
             'titulo' => 'Generar Venta',
@@ -602,15 +607,20 @@
             'icono'  => 'fa-utensils',
             'color'  => '#d97706',
             'pasos'  => [
-                ['icono' => 'fa-map',           'titulo' => 'Ver y organizar el plano',   'desc' => 'Usa <strong>Ver plano de mesas</strong> para ver la distribución del local. Las mesas muestran su estado: <span style="color:#28a745">●</span> Libre, <span style="color:#7c3aed">●</span> Reservada, <span style="color:#e67e22">●</span> Ocupada y <span style="color:#c0392b">●</span> Pendiente de pago. Puedes arrastrar las mesas para reubicarlas y luego guardar el layout con <strong>Guardar layout</strong>.'],
+                ['icono' => 'fa-map',           'titulo' => 'Ver y organizar el plano',   'desc' => 'Usa <strong>Ver plano de mesas</strong> para visualizar el esquema de distribución del local. El plano solo organiza la ubicación de las mesas; no muestra estados. Puedes arrastrar las mesas para reubicarlas y luego guardar el layout con <strong>Guardar layout</strong>.'],
                 ['icono' => 'fa-bookmark',      'titulo' => 'Reservar una mesa',          'desc' => 'En una mesa libre puedes usar el botón <strong>Reservar</strong>. La reserva queda visible para todos los garzones y muestra quién la tomó. Mientras esté reservada, otro garzón no podrá abrirla ni usarla como destino en <strong>Cambiar mesa</strong>.'],
                 ['icono' => 'fa-hourglass-half','titulo' => 'Expiración automática',      'desc' => 'Si una mesa reservada no tiene actividad, la reserva vence automáticamente después de <strong>' . $minutosExpiracionMesa . ' minutos</strong>. Al vencer, vuelve a estado libre sin intervención manual.'],
                 ['icono' => 'fa-hand-pointer-o','titulo' => 'Abrir una mesa',             'desc' => 'Haz clic en una mesa libre para iniciar una nueva comanda. Si la reserva es tuya, también puedes abrirla normalmente. Si la mesa ya está ocupada, al hacer clic se reabre su pedido en el panel POS donde puedes agregar productos, asignar un garzón y registrar el número de comensales.'],
                 ['icono' => 'fa-unlock',        'titulo' => 'Liberar reserva',            'desc' => 'El mismo garzón que reservó puede usar <strong>Liberar</strong> para soltar la mesa manualmente. Además, cuando ese garzón empieza a usarla y guarda o actualiza la comanda, la reserva se elimina automáticamente.'],
                 ['icono' => 'fa-plus',          'titulo' => 'Agregar productos y notas',  'desc' => 'Busca el producto por nombre o código en el panel POS. Puedes ajustar la cantidad con los controles +/−. Para agregar una indicación especial (ej. "sin cebolla"), usa el ícono <i class="fa fa-comment-o"></i> junto al ítem para escribir una <strong>nota al plato</strong>.'],
+                ['icono' => 'fa-trash',         'titulo' => 'Eliminar producto ya guardado', 'desc' => 'Para quitar un producto que ya fue <strong>guardado</strong> en la comanda debes presionar el botón eliminar <i class="fa fa-trash"></i> junto al ítem. El sistema pedirá: <br><strong>1)</strong> La <strong>contraseña</strong> de un usuario autorizado para realizar anulaciones. <br><strong>2)</strong> La <strong>cantidad</strong> a eliminar (puede ser parcial si el ítem tiene más de una unidad). <br><strong>3)</strong> Un <strong>motivo</strong> de la eliminación (ej. "Error de pedido", "Cliente cambió de opinión"). <br>Una vez confirmado, el ítem se descuenta de la comanda y queda registrado en el historial de anulaciones.'],
                 ['icono' => 'fa-print',         'titulo' => 'Ticket de preventa',         'desc' => 'Usa el botón <strong>Imprimir Comanda</strong> (panel POS, pie del formulario) para generar el ticket de preventa con los productos, precios y total. Queda disponible para el cliente o para uso interno. Puedes imprimirlo cuantas veces necesites.'],
-                ['icono' => 'fa-bell',          'titulo' => 'Ticket de cocina',           'desc' => 'Usa el botón <strong>Ticket Cocina</strong> (panel POS, pie del formulario) para enviar un ticket simplificado a la cocina, solo con los platos a preparar, sin precios. Ambos botones (preventa y cocina) se activan una vez que el pedido tiene productos guardados.'],
-                ['icono' => 'fa-th-large',      'titulo' => 'Botones rápidos en la tarjeta','desc' => 'Cada tarjeta de mesa ocupada muestra dos botones de acceso rápido: <strong>Preventa</strong> <i class="fa fa-print"></i> (genera el ticket de preventa) y <strong>Cocina</strong> <i class="fa fa-bell"></i> (genera el ticket de cocina). Puedes usarlos directamente desde la grilla sin necesidad de abrir el panel POS.'],
+                $impresionSeparada === 1
+                    ? ['icono' => 'fa-cutlery',     'titulo' => 'Tickets por sección (Cocina / Barra)',  'desc' => 'Con impresión separada activada, el panel POS muestra tres botones de ticket de preparación: <strong>Cocina</strong> <i class="fa fa-cutlery"></i> (solo los platos de cocina), <strong>Barra</strong> <i class="fa fa-glass"></i> (solo las bebidas y preparaciones de barra) y <strong>Cocina y Barra</strong> <i class="fa fa-clone"></i> (imprime ambos a la vez). Cada botón se activa al tener productos guardados.']
+                    : ['icono' => 'fa-bell',         'titulo' => 'Ticket de preparación',               'desc' => 'Usa el botón <strong>Ticket Preparación</strong> <i class="fa fa-bell"></i> (panel POS, pie del formulario) para enviar un ticket simplificado al área de preparación, solo con los platos a preparar, sin precios. El botón se activa una vez que el pedido tiene productos guardados.'],
+                $impresionSeparada === 1
+                    ? ['icono' => 'fa-th-large',     'titulo' => 'Botones rápidos en la tarjeta',        'desc' => 'Cada tarjeta de mesa ocupada muestra botones de acceso rápido: <strong>Preventa</strong> <i class="fa fa-print"></i>, <strong>Cocina</strong> <i class="fa fa-cutlery"></i> y <strong>Barra</strong> <i class="fa fa-glass"></i>. Puedes usarlos directamente desde la grilla sin necesidad de abrir el panel POS.']
+                    : ['icono' => 'fa-th-large',     'titulo' => 'Botones rápidos en la tarjeta',        'desc' => 'Cada tarjeta de mesa ocupada muestra dos botones de acceso rápido: <strong>Preventa</strong> <i class="fa fa-print"></i> (genera el ticket de preventa) y <strong>Preparación</strong> <i class="fa fa-bell"></i> (genera el ticket de preparación). Puedes usarlos directamente desde la grilla sin necesidad de abrir el panel POS.'],
                 ['icono' => 'fa-money',         'titulo' => 'Cobrar la mesa',             'desc' => 'Cuando el cliente pide la cuenta, usa <strong>Solicitar Cuenta</strong> en el panel POS. La mesa pasará a estado "Pendiente de pago". Luego ve al módulo <strong>Cerrar Comandas</strong> para procesar el cobro y cerrar la comanda.'],
             ],
             'tips' => [
@@ -622,8 +632,10 @@
                 'Las mesas reservadas no aparecen como destino disponible al usar <strong>Cambiar mesa</strong>.',
                 'El botón <strong>Actualizar</strong> refresca el estado de todas las mesas. Útil si hay varios meseros trabajando simultáneamente.',
                 'Los productos marcados como receta verifican además el stock de los ingredientes antes de agregarlos al pedido.',
-                'El <strong>ticket de cocina</strong> y el <strong>ticket de preventa</strong> son documentos distintos: la preventa incluye precios y totales; el de cocina solo muestra los platos para facilitar la preparación.',
-                'Los botones <strong>Preventa</strong> y <strong>Cocina</strong> en las tarjetas de mesa permiten generar los tickets sin tener que abrir el modal de pedido.',
+                $impresionSeparada === 1
+                    ? 'Con <strong>impresión separada</strong> activa, el ticket de cocina y el de barra se generan por separado. El botón <i class="fa fa-clone"></i> imprime ambos de una sola vez para mayor comodidad.'
+                    : 'El <strong>ticket de preparación</strong> y el <strong>ticket de preventa</strong> son documentos distintos: la preventa incluye precios y totales; el de preparación solo muestra los platos para facilitar el trabajo en cocina.',
+                'Los botones de impresión en las tarjetas de mesa permiten generar los tickets sin tener que abrir el panel POS.',
                 'Puedes agregar una <strong>nota al plato</strong> a cada producto individualmente para indicar preparaciones especiales (ej. "3/4 cocción", "sin sal").',
             ],
         ],

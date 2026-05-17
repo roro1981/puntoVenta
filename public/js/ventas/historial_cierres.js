@@ -255,8 +255,7 @@ function mostrarDetalleCierre(data) {
                             ${desglose.tarjeta_credito > 0 ? `<tr><td>💳 Tarjeta Crédito</td><td>$${formatNumber(desglose.tarjeta_credito)}</td></tr>` : ''}
                             ${desglose.transferencia > 0 ? `<tr><td>🔄 Transferencia</td><td>$${formatNumber(desglose.transferencia)}</td></tr>` : ''}
                             ${desglose.cheque > 0 ? `<tr><td>📋 Cheque</td><td>$${formatNumber(desglose.cheque)}</td></tr>` : ''}
-                            ${desglose.mixto > 0 ? `<tr><td>🔀 Mixto</td><td>$${formatNumber(desglose.mixto)}</td></tr>` : ''}
-                            ${!desglose.efectivo && !desglose.tarjeta_debito && !desglose.tarjeta_credito && !desglose.transferencia && !desglose.cheque && !desglose.mixto ? '<tr><td colspan="2" style="text-align: center; color: #999;">Sin ventas registradas</td></tr>' : ''}
+                            ${!desglose.efectivo && !desglose.tarjeta_debito && !desglose.tarjeta_credito && !desglose.transferencia && !desglose.cheque ? '<tr><td colspan="2" style="text-align: center; color: #999;">Sin ventas registradas</td></tr>' : ''}
                         </table>
                     </div>
                 </div>
@@ -464,8 +463,7 @@ function mostrarConsolidado(data) {
         tarjeta_debito: '🏦 Tarjeta Débito',
         tarjeta_credito: '💳 Tarjeta Crédito',
         transferencia: '🔄 Transferencia',
-        cheque: '📋 Cheque',
-        mixto: '🔀 Mixto'
+        cheque: '📋 Cheque'
     };
 
     var filasDesglose = '';

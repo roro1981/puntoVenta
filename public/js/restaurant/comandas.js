@@ -1,4 +1,4 @@
-// ==================== VARIABLES GLOBALES ====================
+﻿// ==================== VARIABLES GLOBALES ====================
 var posProductos = window.posProductos || [];
 var posCarrito = window.posCarrito || [];
 var posMesaActual = window.posMesaActual || null;
@@ -17,6 +17,8 @@ var posSearchTimer = window.posSearchTimer || null;
 var posLayoutMesasActual = window.posLayoutMesasActual || null;
 var posLayoutDragState = window.posLayoutDragState || null;
 var posReservaExpiracionMinutos = typeof window.posReservaExpiracionMinutos !== 'undefined' ? parseInt(window.posReservaExpiracionMinutos, 10) : 15;
+var posImpresionSeparada = typeof window.posImpresionSeparada !== 'undefined' ? parseInt(window.posImpresionSeparada, 10) : 0;
+var POS_LAYOUT_MESA_FONT_SIZE_PX = typeof window.POS_LAYOUT_MESA_FONT_SIZE_PX !== 'undefined' ? parseInt(window.POS_LAYOUT_MESA_FONT_SIZE_PX, 10) : 18;
 var _garzonesCache = null;
 
 window.posProductos = posProductos;
@@ -37,6 +39,8 @@ window.posSearchTimer = posSearchTimer;
 window.posLayoutMesasActual = posLayoutMesasActual;
 window.posLayoutDragState = posLayoutDragState;
 window.posReservaExpiracionMinutos = posReservaExpiracionMinutos;
+window.posImpresionSeparada = posImpresionSeparada;
+window.POS_LAYOUT_MESA_FONT_SIZE_PX = POS_LAYOUT_MESA_FONT_SIZE_PX;
 
 if (window.comandasRefreshInterval) {
     clearInterval(window.comandasRefreshInterval);
@@ -86,43 +90,485 @@ $(document).ready(function() {
 
     $('#btn_ver_plano_mesas').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
         $('#modalPlanoMesas').modal('show');
-        cargarLayoutMesasJson();
     });
+
+    $('#modalPlanoMesas')
+        .off('shown.bs.modal' + POS_EVENT_NS)
+        .on('shown.bs.modal' + POS_EVENT_NS, function() {
+            if (posLayoutMesasActual) {
+                renderizarPreviewLayoutMesas(posLayoutMesasActual);
+                return;
+            }
+            cargarLayoutMesasJson();
+        });
+
+    $(window)
+        .off('resize' + POS_EVENT_NS)
+        .on('resize' + POS_EVENT_NS, function() {
+            if ($('#modalPlanoMesas').is(':visible') && posLayoutMesasActual) {
+                renderizarPreviewLayoutMesas(posLayoutMesasActual);
+            }
+        });
 
     $('#btn_cargar_layout_json').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
         cargarLayoutMesasJson();
     });
 
+
+    $('#btn_agregar_texto_layout').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
+        if (!posLayoutMesasActual) {
+            cargarLayoutMesasJson();
+            return;
+        }
+        abrirDialogoTextoLayout();
+    });
+
+    $('#btn_guardar_texto_layout_modal').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
+        if (!posLayoutMesasActual) {
+            return;
+        }
+
+        const texto = $.trim($('#layout_text_input').val() || '');
+        const color = normalizarColorHexLayout($('#layout_text_bg_color').val(), '#fff7d6');
+        const rawIndex = $.trim($('#layout_text_edit_index').val() || '');
+        const editando = rawIndex !== '' && !Number.isNaN(parseInt(rawIndex, 10));
+        const indice = editando ? parseInt(rawIndex, 10) : -1;
+
+        if (!texto) {
+            Swal.fire('Atención', 'Debes ingresar un texto', 'warning');
+            return;
+        }
+
+        if (!Array.isArray(posLayoutMesasActual.labels)) {
+            posLayoutMesasActual.labels = [];
+        }
+
+        if (editando && posLayoutMesasActual.labels[indice]) {
+            posLayoutMesasActual.labels[indice].text = texto;
+            posLayoutMesasActual.labels[indice].width = calcularAnchoLabelLayout(texto);
+            posLayoutMesasActual.labels[indice].bgColor = color;
+        } else {
+            const canvasHeight = parseInt(posLayoutMesasActual.canvas && posLayoutMesasActual.canvas.height, 10) || 700;
+            posLayoutMesasActual.labels.push({
+                id: crearIdTemporalLayout('label'),
+                text: texto,
+                x: 50,
+                y: Math.min(Math.max(40, 44 + (posLayoutMesasActual.labels.length * 42)), canvasHeight - 60),
+                width: calcularAnchoLabelLayout(texto),
+                height: 34,
+                fontSize: 18,
+                bgColor: color
+            });
+        }
+
+        $('#modalTextoLayout').modal('hide');
+        actualizarTextoLayoutMesas();
+        renderizarPreviewLayoutMesas(posLayoutMesasActual);
+    });
+
+    $('#modalTextoLayout').off('shown.bs.modal' + POS_EVENT_NS).on('shown.bs.modal' + POS_EVENT_NS, function() {
+        $('#layout_text_input').trigger('focus');
+    });
+
+    $(document)
+        .off('click' + POS_EVENT_NS, '.layout-color-swatch')
+        .on('click' + POS_EVENT_NS, '.layout-color-swatch', function() {
+            const color = normalizarColorHexLayout($(this).attr('data-color'), '#fff7d6');
+            $('#layout_text_bg_color').val(color).trigger('change');
+        });
+
     $('#btn_guardar_layout_json').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
         guardarLayoutMesasJson();
     });
+
+    $('#btn_agregar_linea_layout').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
+        abrirDialogoLineaLayout(null);
+    });
+
+    $('#btn_uniformizar_mesas_layout').off('click' + POS_EVENT_NS).on('click' + POS_EVENT_NS, function() {
+        if (!posLayoutMesasActual || !Array.isArray(posLayoutMesasActual.mesas) || posLayoutMesasActual.mesas.length === 0) {
+            return;
+        }
+        var totalW = 0, totalH = 0;
+        posLayoutMesasActual.mesas.forEach(function(m) { totalW += parseFloat(m.width) || 108; totalH += parseFloat(m.height) || 72; });
+        var avgW = Math.round(totalW / posLayoutMesasActual.mesas.length);
+        var avgH = Math.round(totalH / posLayoutMesasActual.mesas.length);
+        Swal.fire({
+            title: 'Uniformizar tamaños',
+            html: '<p style="margin-bottom:10px">Define el tamaño para <strong>todas</strong> las mesas:<br><small style="color:#6b7280">Promedio actual: ' + avgW + ' × ' + avgH + ' px</small></p>' +
+                  '<div style="display:flex;gap:12px;justify-content:center;align-items:center">' +
+                  '<label style="margin:0">Ancho:<br><input id="swal_mesa_w" type="number" min="60" max="400" value="' + avgW + '" style="width:90px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:15px"></label>' +
+                  '<label style="margin:0">Alto:<br><input id="swal_mesa_h" type="number" min="40" max="300" value="' + avgH + '" style="width:90px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:15px"></label>' +
+                  '</div>',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa fa-check"></i> Aplicar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#f59e0b',
+            preConfirm: function() {
+                var w = parseInt(document.getElementById('swal_mesa_w').value, 10);
+                var h = parseInt(document.getElementById('swal_mesa_h').value, 10);
+                if (!w || w < 60 || !h || h < 40) {
+                    Swal.showValidationMessage('Ingresa valores válidos (ancho mín 60, alto mín 40)');
+                    return false;
+                }
+                return { w: w, h: h };
+            }
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            posLayoutMesasActual.mesas = posLayoutMesasActual.mesas.map(function(m) {
+                return $.extend({}, m, { width: result.value.w, height: result.value.h });
+            });
+            renderizarPreviewLayoutMesas(posLayoutMesasActual);
+        });
+    });
 });
+
+function crearIdTemporalLayout(prefix) {
+    return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+}
+
+function calcularAnchoLabelLayout(texto) {
+    const largo = $.trim(texto || '').length;
+    return Math.max(120, Math.min(260, 28 + (largo * 10)));
+}
+
+function normalizarColorHexLayout(color, fallback) {
+    const valor = $.trim((color || '').toString());
+    const porDefecto = fallback || '#fff7d6';
+
+    if (!valor) {
+        return porDefecto;
+    }
+
+    if (/^#[0-9a-fA-F]{6}$/.test(valor)) {
+        return valor.toLowerCase();
+    }
+
+    if (/^#[0-9a-fA-F]{3}$/.test(valor)) {
+        return ('#' + valor[1] + valor[1] + valor[2] + valor[2] + valor[3] + valor[3]).toLowerCase();
+    }
+
+    return porDefecto;
+}
+
+function obtenerEstiloLabelLayout(bgColor) {
+    const bg = normalizarColorHexLayout(bgColor, '#fff7d6');
+    const hex = bg.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminancia = (0.299 * r) + (0.587 * g) + (0.114 * b);
+    const textoOscuro = luminancia > 162;
+
+    return {
+        bg: bg,
+        text: textoOscuro ? '#3b2f1d' : '#f8fafc',
+        border: textoOscuro ? 'rgba(120, 53, 15, 0.55)' : 'rgba(248, 250, 252, 0.60)',
+        remove: textoOscuro ? '#9a3412' : '#fef3c7'
+    };
+}
 
 function normalizarLayoutMesas(layout) {
     const safe = (layout && typeof layout === 'object') ? layout : {};
+    const versionActual = parseInt(safe.version || 1, 10) || 1;
+
     if (!safe.canvas || typeof safe.canvas !== 'object') {
         safe.canvas = { width: 1200, height: 700, grid: 20 };
     }
     if (!Array.isArray(safe.mesas)) {
         safe.mesas = [];
     }
+    if (!Array.isArray(safe.labels)) {
+        safe.labels = [];
+    }
+
+    safe.mesas = safe.mesas.map(function(mesa, index) {
+        let width = parseFloat(mesa.width);
+        let height = parseFloat(mesa.height);
+
+        width = Number.isFinite(width) && width > 0 ? width : 108;
+        height = Number.isFinite(height) && height > 0 ? height : 72;
+
+        if (versionActual < 2) {
+            if (width >= 120) {
+                width = Math.round(width * 0.84);
+            }
+            if (height >= 84) {
+                height = Math.round(height * 0.84);
+            }
+        }
+
+        return {
+            mesa_id: mesa.mesa_id || mesa.id || (index + 1),
+            nombre: mesa.nombre || ('Mesa ' + (mesa.mesa_id || index + 1)),
+            capacidad: mesa.capacidad || 0,
+            x: parseInt(mesa.x, 10) || 0,
+            y: parseInt(mesa.y, 10) || 0,
+            width: Math.max(88, Math.round(width)),
+            height: Math.max(58, Math.round(height)),
+            shape: mesa.shape === 'circle' ? 'circle' : 'rect',
+            rotation: parseFloat(mesa.rotation) || 0
+        };
+    });
+
+    safe.labels = safe.labels.map(function(label, index) {
+        const texto = $.trim(label.text || label.nombre || ('Texto ' + (index + 1)));
+        return {
+            id: label.id || crearIdTemporalLayout('label'),
+            text: texto,
+            x: parseInt(label.x, 10) || 0,
+            y: parseInt(label.y, 10) || 0,
+            width: Math.max(120, parseInt(label.width, 10) || calcularAnchoLabelLayout(texto)),
+            height: Math.max(32, parseInt(label.height, 10) || 34),
+            fontSize: Math.max(14, parseInt(label.fontSize, 10) || 18),
+            bgColor: normalizarColorHexLayout(label.bgColor || label.backgroundColor || '#fff7d6', '#fff7d6')
+        };
+    });
+
+
+    safe.lines = Array.isArray(layout.lines) ? layout.lines.map(function(line, index) {
+        var orientacion = (line.orientacion === 'horizontal' || line.orientacion === 'vertical') ? line.orientacion : 'horizontal';
+        var largo = Math.max(40, parseInt(line.largo, 10) || (orientacion === 'horizontal' ? 200 : 200));
+        var grosor = Math.max(1, Math.min(20, parseInt(line.grosor, 10) || 3));
+        return {
+            id: line.id || crearIdTemporalLayout('line'),
+            orientacion: orientacion,
+            x: parseInt(line.x, 10) || 0,
+            y: parseInt(line.y, 10) || 0,
+            largo: largo,
+            grosor: grosor,
+            color: normalizarColorHexLayout(line.color, '#374151')
+        };
+    }) : [];
+
+    safe.version = 2;
     return safe;
 }
 
 function actualizarTextoLayoutMesas() {
-    return;
+    const $summary = $('#layout_text_summary');
+    if (!$summary.length) {
+        return;
+    }
+
+    const totalMesas = posLayoutMesasActual && Array.isArray(posLayoutMesasActual.mesas)
+        ? posLayoutMesasActual.mesas.length
+        : 0;
+    const totalTextos = posLayoutMesasActual && Array.isArray(posLayoutMesasActual.labels)
+        ? posLayoutMesasActual.labels.length
+        : 0;
+
+    const totalLineas = posLayoutMesasActual && Array.isArray(posLayoutMesasActual.lines)
+        ? posLayoutMesasActual.lines.length
+        : 0;
+
+    $summary.text('Mesas: ' + totalMesas + ' | Textos: ' + totalTextos + ' | Líneas: ' + totalLineas);
+}
+
+function obtenerConfigElementoLayout($element) {
+    if (!posLayoutMesasActual) {
+        return null;
+    }
+
+    const tipo = $element.attr('data-layout-type') ||
+        ($element.hasClass('pos-layout-label') ? 'label' : ($element.hasClass('pos-layout-line') ? 'line' : 'mesa'));
+    const attrIndice = tipo === 'label' ? 'data-label-index' : (tipo === 'line' ? 'data-line-index' : 'data-mesa-index');
+    const indice = parseInt($element.attr(attrIndice), 10);
+
+    if (Number.isNaN(indice)) {
+        return null;
+    }
+
+    const collection = tipo === 'label' ? posLayoutMesasActual.labels
+        : (tipo === 'line' ? posLayoutMesasActual.lines : posLayoutMesasActual.mesas);
+    if (!Array.isArray(collection) || !collection[indice]) {
+        return null;
+    }
+
+    const isLine = tipo === 'line';
+    const lineItem = isLine ? collection[indice] : null;
+    const isH = isLine && lineItem && lineItem.orientacion === 'horizontal';
+    return {
+        tipo: tipo,
+        indice: indice,
+        collection: collection,
+        item: collection[indice],
+        defaultWidth: tipo === 'label' ? 160 : (isLine ? (isH ? (lineItem.largo || 200) : (lineItem.grosor || 3)) : 108),
+        defaultHeight: tipo === 'label' ? 34 : (isLine ? (isH ? (lineItem.grosor || 3) : (lineItem.largo || 200)) : 72)
+    };
+}
+
+function abrirDialogoTextoLayout(indiceLabel) {
+    const editando = Number.isInteger(indiceLabel);
+    const labelActual = editando && posLayoutMesasActual && posLayoutMesasActual.labels
+        ? posLayoutMesasActual.labels[indiceLabel]
+        : null;
+
+    if (!posLayoutMesasActual) {
+        return;
+    }
+
+    $('#layout_text_edit_index').val(editando ? indiceLabel : '');
+    $('#layout_text_input').val(labelActual ? (labelActual.text || '') : '');
+    $('#layout_text_bg_color').val(normalizarColorHexLayout(labelActual ? labelActual.bgColor : '#fff7d6', '#fff7d6'));
+    $('#modalTextoLayout').modal('show');
+}
+
+function abrirDialogoLineaLayout(indiceLinea) {
+    if (!posLayoutMesasActual) {
+        return;
+    }
+
+    var modalConstructor = $.fn.modal && $.fn.modal.Constructor ? $.fn.modal.Constructor : null;
+    var enforceFocusOriginal = null;
+    if (modalConstructor && modalConstructor.prototype && typeof modalConstructor.prototype.enforceFocus === 'function') {
+        enforceFocusOriginal = modalConstructor.prototype.enforceFocus;
+        // Bootstrap 3 roba el foco cuando hay un modal abierto; esto bloquea inputs de SweetAlert.
+        modalConstructor.prototype.enforceFocus = function() {};
+    }
+
+    var editando = Number.isInteger(indiceLinea) && Array.isArray(posLayoutMesasActual.lines) && !!posLayoutMesasActual.lines[indiceLinea];
+    var lineaActual = editando ? posLayoutMesasActual.lines[indiceLinea] : null;
+    var orientacion = lineaActual && lineaActual.orientacion === 'vertical' ? 'vertical' : 'horizontal';
+    var largo = Math.max(40, parseInt(lineaActual && lineaActual.largo, 10) || 300);
+    var grosor = Math.max(1, parseInt(lineaActual && lineaActual.grosor, 10) || 3);
+    var color = normalizarColorHexLayout(lineaActual && lineaActual.color, '#374151');
+
+    Swal.fire({
+        title: editando ? 'Editar línea' : 'Agregar línea',
+        target: document.getElementById('modalPlanoMesas') || document.body,
+        heightAuto: false,
+        html:
+            '<div style="display:flex;flex-direction:column;gap:14px;text-align:left">' +
+            '<div><label style="font-weight:600;margin-bottom:4px;display:block">Orientación</label>' +
+            '<div style="display:flex;gap:10px">' +
+            '<label style="cursor:pointer"><input type="radio" name="swal_linea_ori" value="horizontal" ' + (orientacion === 'horizontal' ? 'checked' : '') + ' style="margin-right:4px">Horizontal</label>' +
+            '<label style="cursor:pointer"><input type="radio" name="swal_linea_ori" value="vertical" ' + (orientacion === 'vertical' ? 'checked' : '') + ' style="margin-right:4px">Vertical</label>' +
+            '</div></div>' +
+            '<div style="display:flex;gap:12px">' +
+            '<label style="flex:1;font-weight:600">Largo (px lógicos)<br><input id="swal_linea_largo" type="tel" inputmode="numeric" autocomplete="off" value="' + largo + '" style="width:100%;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:15px"></label>' +
+            '<label style="width:80px;font-weight:600">Grosor<br><input id="swal_linea_grosor" type="tel" inputmode="numeric" autocomplete="off" value="' + grosor + '" style="width:100%;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:15px"></label>' +
+            '</div>' +
+            '<label style="font-weight:600">Color<br>' +
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px">' +
+            '<input type="color" id="swal_linea_color" value="' + color + '" style="width:42px;height:34px;padding:2px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer">' +
+            ['#374151', '#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#000000'].map(function(c) {
+                return '<span data-lcolor="' + c + '" style="display:inline-block;width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;border:2px solid #e5e7eb" title="' + c + '"></span>';
+            }).join('') +
+            '</div></label>' +
+            '</div>',
+        didOpen: function() {
+            $(document).on('click.swalline', '[data-lcolor]', function() {
+                document.getElementById('swal_linea_color').value = $(this).data('lcolor');
+            });
+
+            var $largoInput = $('#swal_linea_largo');
+            var $grosorInput = $('#swal_linea_grosor');
+
+            $largoInput.prop('readonly', false).prop('disabled', false);
+            $grosorInput.prop('readonly', false).prop('disabled', false);
+
+            function limpiarNumerico($el) {
+                var limpio = String($el.val() || '').replace(/[^0-9]/g, '');
+                $el.val(limpio);
+            }
+
+            $largoInput.on('input', function() { limpiarNumerico($largoInput); });
+            $grosorInput.on('input', function() { limpiarNumerico($grosorInput); });
+
+            $largoInput.add($grosorInput).on('keydown keypress keyup click mousedown', function(e) {
+                e.stopPropagation();
+            });
+
+            $largoInput.trigger('focus');
+            try {
+                if ($largoInput[0] && typeof $largoInput[0].setSelectionRange === 'function') {
+                    $largoInput[0].setSelectionRange(0, String($largoInput.val() || '').length);
+                }
+            } catch (err) {
+                // Sin acción: algunos navegadores restringen setSelectionRange en ciertos modos.
+            }
+        },
+        willClose: function() {
+            $(document).off('click.swalline');
+            if (enforceFocusOriginal && modalConstructor && modalConstructor.prototype) {
+                modalConstructor.prototype.enforceFocus = enforceFocusOriginal;
+            }
+        },
+        showCancelButton: true,
+        showDenyButton: editando,
+        confirmButtonText: editando ? '<i class="fa fa-save"></i> Guardar' : '<i class="fa fa-plus"></i> Agregar',
+        denyButtonText: '<i class="fa fa-trash"></i> Eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#6b7280',
+        denyButtonColor: '#dc2626',
+        preConfirm: function() {
+            var ori = $('input[name="swal_linea_ori"]:checked').val() || 'horizontal';
+            var valorLargo = parseInt(document.getElementById('swal_linea_largo').value, 10);
+            var valorGrosor = parseInt(document.getElementById('swal_linea_grosor').value, 10);
+            var valorColor = document.getElementById('swal_linea_color').value || '#374151';
+            if (!valorLargo || valorLargo < 40) {
+                Swal.showValidationMessage('Largo mínimo: 40');
+                return false;
+            }
+            if (!valorGrosor || valorGrosor < 1) {
+                Swal.showValidationMessage('Grosor mínimo: 1');
+                return false;
+            }
+            return { ori: ori, largo: valorLargo, grosor: valorGrosor, color: valorColor };
+        }
+    }).then(function(result) {
+        if (result.isDenied) {
+            if (editando && Array.isArray(posLayoutMesasActual.lines) && posLayoutMesasActual.lines[indiceLinea]) {
+                posLayoutMesasActual.lines.splice(indiceLinea, 1);
+                actualizarTextoLayoutMesas();
+                renderizarPreviewLayoutMesas(posLayoutMesasActual);
+            }
+            return;
+        }
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        if (!Array.isArray(posLayoutMesasActual.lines)) {
+            posLayoutMesasActual.lines = [];
+        }
+
+        if (editando) {
+            posLayoutMesasActual.lines[indiceLinea] = $.extend({}, posLayoutMesasActual.lines[indiceLinea], {
+                orientacion: result.value.ori,
+                largo: result.value.largo,
+                grosor: result.value.grosor,
+                color: result.value.color
+            });
+        } else {
+            posLayoutMesasActual.lines.push({
+                id: crearIdTemporalLayout('line'),
+                orientacion: result.value.ori,
+                x: 100,
+                y: 100,
+                largo: result.value.largo,
+                grosor: result.value.grosor,
+                color: result.value.color
+            });
+        }
+
+        actualizarTextoLayoutMesas();
+        renderizarPreviewLayoutMesas(posLayoutMesasActual);
+    });
 }
 
 function inicializarEventosDragLayoutMesas() {
     $('#layout_preview_canvas')
-        .off('mousedown' + POS_EVENT_NS, '.pos-layout-mesa')
-        .on('mousedown' + POS_EVENT_NS, '.pos-layout-mesa', function(e) {
-            if (e.which !== 1 || !posLayoutMesasActual) {
+        .off('mousedown' + POS_EVENT_NS, '.pos-layout-mesa, .pos-layout-label, .pos-layout-line')
+        .on('mousedown' + POS_EVENT_NS, '.pos-layout-mesa, .pos-layout-label, .pos-layout-line', function(e) {
+            if (e.which !== 1 || !posLayoutMesasActual || $(e.target).closest('.pos-layout-label-remove').length) {
                 return;
             }
 
-            const indiceMesa = parseInt($(this).attr('data-mesa-index'), 10);
-            if (Number.isNaN(indiceMesa) || !posLayoutMesasActual.mesas[indiceMesa]) {
+            const config = obtenerConfigElementoLayout($(this));
+            if (!config) {
                 return;
             }
 
@@ -133,20 +579,60 @@ function inicializarEventosDragLayoutMesas() {
             const grid = parseFloat($inner.attr('data-grid')) || 0;
 
             posLayoutDragState = {
-                indiceMesa,
+                tipo: config.tipo,
+                indice: config.indice,
                 startMouseX: e.pageX,
                 startMouseY: e.pageY,
                 startLeftPx: parseFloat($(this).css('left')) || 0,
                 startTopPx: parseFloat($(this).css('top')) || 0,
-                scale,
-                canvasWidth,
-                canvasHeight,
-                grid,
-                $element: $(this)
+                scale: scale,
+                canvasWidth: canvasWidth,
+                canvasHeight: canvasHeight,
+                grid: grid,
+                $element: $(this),
+                defaultWidth: config.defaultWidth,
+                defaultHeight: config.defaultHeight,
+                hasMoved: false
             };
 
             $('body').css('user-select', 'none');
             e.preventDefault();
+        })
+        .off('dblclick' + POS_EVENT_NS, '.pos-layout-label')
+        .on('dblclick' + POS_EVENT_NS, '.pos-layout-label', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const indice = parseInt($(this).attr('data-label-index'), 10);
+            if (!Number.isNaN(indice)) {
+                abrirDialogoTextoLayout(indice);
+            }
+        })
+        .off('dblclick' + POS_EVENT_NS, '.pos-layout-line')
+        .on('dblclick' + POS_EVENT_NS, '.pos-layout-line', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const indice = parseInt($(this).attr('data-line-index'), 10);
+            if (!Number.isNaN(indice)) {
+                abrirDialogoLineaLayout(indice);
+            }
+        })
+        .off('click' + POS_EVENT_NS, '.pos-layout-label-remove')
+        .on('click' + POS_EVENT_NS, '.pos-layout-label-remove', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!posLayoutMesasActual || !Array.isArray(posLayoutMesasActual.labels)) {
+                return;
+            }
+
+            const indice = parseInt($(this).closest('.pos-layout-label').attr('data-label-index'), 10);
+            if (Number.isNaN(indice)) {
+                return;
+            }
+
+            posLayoutMesasActual.labels.splice(indice, 1);
+            actualizarTextoLayoutMesas();
+            renderizarPreviewLayoutMesas(posLayoutMesasActual);
         });
 
     $(document)
@@ -156,18 +642,25 @@ function inicializarEventosDragLayoutMesas() {
                 return;
             }
 
-            const mesa = posLayoutMesasActual.mesas[posLayoutDragState.indiceMesa];
-            if (!mesa) {
+            const collection = posLayoutDragState.tipo === 'label'
+                ? posLayoutMesasActual.labels
+                : (posLayoutDragState.tipo === 'line' ? posLayoutMesasActual.lines : posLayoutMesasActual.mesas);
+            const item = Array.isArray(collection) ? collection[posLayoutDragState.indice] : null;
+
+            if (!item) {
                 return;
             }
 
-            const mesaWidth = parseFloat(mesa.width) || 130;
-            const mesaHeight = parseFloat(mesa.height) || 90;
-            const maxX = Math.max(0, posLayoutDragState.canvasWidth - mesaWidth);
-            const maxY = Math.max(0, posLayoutDragState.canvasHeight - mesaHeight);
-
+            const itemWidth = parseFloat(item.width) || posLayoutDragState.defaultWidth;
+            const itemHeight = parseFloat(item.height) || posLayoutDragState.defaultHeight;
+            const maxX = Math.max(0, posLayoutDragState.canvasWidth - itemWidth);
+            const maxY = Math.max(0, posLayoutDragState.canvasHeight - itemHeight);
             const deltaXPx = e.pageX - posLayoutDragState.startMouseX;
             const deltaYPx = e.pageY - posLayoutDragState.startMouseY;
+
+            if (!posLayoutDragState.hasMoved && (Math.abs(deltaXPx) > 2 || Math.abs(deltaYPx) > 2)) {
+                posLayoutDragState.hasMoved = true;
+            }
 
             let nextX = (posLayoutDragState.startLeftPx + deltaXPx) / posLayoutDragState.scale;
             let nextY = (posLayoutDragState.startTopPx + deltaYPx) / posLayoutDragState.scale;
@@ -182,12 +675,12 @@ function inicializarEventosDragLayoutMesas() {
                 nextY = Math.max(0, Math.min(maxY, nextY));
             }
 
-            mesa.x = Math.round(nextX);
-            mesa.y = Math.round(nextY);
+            item.x = Math.round(nextX);
+            item.y = Math.round(nextY);
 
             posLayoutDragState.$element.css({
-                left: Math.round(mesa.x * posLayoutDragState.scale) + 'px',
-                top: Math.round(mesa.y * posLayoutDragState.scale) + 'px'
+                left: Math.round(item.x * posLayoutDragState.scale) + 'px',
+                top: Math.round(item.y * posLayoutDragState.scale) + 'px'
             });
         })
         .off('mouseup' + POS_EVENT_NS)
@@ -196,10 +689,14 @@ function inicializarEventosDragLayoutMesas() {
                 return;
             }
 
+            const shouldRerender = !!posLayoutDragState.hasMoved;
             posLayoutDragState = null;
             $('body').css('user-select', '');
-            actualizarTextoLayoutMesas();
-            renderizarPreviewLayoutMesas(posLayoutMesasActual);
+
+            if (shouldRerender) {
+                actualizarTextoLayoutMesas();
+                renderizarPreviewLayoutMesas(posLayoutMesasActual);
+            }
         });
 }
 
@@ -275,11 +772,21 @@ function renderizarPreviewLayoutMesas(layout) {
     const grid = parseInt(safe.canvas.grid || 0, 10);
     const canvasWrapWidth = Math.max(380, ($('#layout_preview_canvas').innerWidth() || 420) - 20);
     const scale = Math.min(1, canvasWrapWidth / Math.max(width, 1));
+    const esTabletPlano = window.matchMedia('(max-width: 991px)').matches;
+    const esMovilPlano = window.matchMedia('(max-width: 767px)').matches;
+    const viewportHeight = window.innerHeight || 800;
+    let canvasHeight = 620;
+
+    if (window.matchMedia('(max-width: 767px)').matches) {
+        canvasHeight = Math.max(280, Math.round(viewportHeight * 0.50));
+    } else if (window.matchMedia('(max-width: 991px)').matches) {
+        canvasHeight = Math.max(320, Math.round(viewportHeight * 0.54));
+    }
 
     $canvas.empty();
     $canvas.css({
         width: '100%',
-        height: '620px',
+        height: canvasHeight + 'px',
         overflow: 'auto'
     });
 
@@ -301,12 +808,14 @@ function renderizarPreviewLayoutMesas(layout) {
     safe.mesas.forEach(function(mesa, index) {
         const x = Math.round((parseFloat(mesa.x) || 0) * scale);
         const y = Math.round((parseFloat(mesa.y) || 0) * scale);
-        const w = Math.max(40, Math.round((parseFloat(mesa.width) || 130) * scale));
-        const h = Math.max(30, Math.round((parseFloat(mesa.height) || 90) * scale));
+        const w = Math.max(36, Math.round((parseFloat(mesa.width) || 108) * scale));
+        const h = Math.max(26, Math.round((parseFloat(mesa.height) || 72) * scale));
         const nombre = mesa.nombre || ('Mesa ' + (mesa.mesa_id || ''));
+        const mesaFontSize = Math.max(9, Math.round((POS_LAYOUT_MESA_FONT_SIZE_PX || 12) * Math.max(0.85, scale)));
 
         const $mesa = $('<div></div>');
         $mesa.addClass('pos-layout-mesa');
+        $mesa.attr('data-layout-type', 'mesa');
         $mesa.attr('data-mesa-index', index);
         $mesa.css({
             position: 'absolute',
@@ -318,18 +827,143 @@ function renderizarPreviewLayoutMesas(layout) {
             borderRadius: (mesa.shape === 'circle') ? '999px' : '6px',
             background: '#eef2ff',
             color: '#3730a3',
-            fontSize: '11px',
-            fontWeight: '600',
+            fontSize: mesaFontSize + 'px',
+            fontWeight: '700',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
+            lineHeight: '1.1',
             padding: '2px',
             cursor: 'move',
-            userSelect: 'none'
+            userSelect: 'none',
+            zIndex: 2,
+            boxShadow: '0 1px 2px rgba(79, 70, 229, 0.18)'
         });
         $mesa.text(nombre);
         inner.append($mesa);
+    });
+
+    safe.lines.forEach(function(line, index) {
+        var isH = line.orientacion === 'horizontal';
+        var x = Math.round((parseFloat(line.x) || 0) * scale);
+        var y = Math.round((parseFloat(line.y) || 0) * scale);
+        var largo = Math.max(20, Math.round((parseFloat(line.largo) || 200) * scale));
+        var grosor = Math.max(1, Math.round((parseFloat(line.grosor) || 3) * scale));
+        var color = line.color || '#374151';
+        var hitPadding = 8;
+        var boxWidth = isH ? largo : Math.max(grosor, 8);
+        var boxHeight = isH ? Math.max(grosor, 8) : largo;
+
+        var $line = $('<div></div>');
+        $line.addClass('pos-layout-line');
+        $line.attr('data-layout-type', 'line');
+        $line.attr('data-line-index', index);
+        $line.css({
+            position: 'absolute',
+            left: x + 'px',
+            top: y + 'px',
+            width: boxWidth + 'px',
+            height: boxHeight + 'px',
+            background: 'transparent',
+            borderRadius: '4px',
+            cursor: 'move',
+            userSelect: 'none',
+            zIndex: 3,
+            boxSizing: 'border-box',
+            outline: '1px dashed rgba(148, 163, 184, 0.35)',
+            outlineOffset: '4px'
+        });
+
+        var $stroke = $('<div></div>');
+        $stroke.addClass('pos-layout-line-stroke');
+        $stroke.css({
+            position: 'absolute',
+            left: isH ? '0' : '50%',
+            top: isH ? '50%' : '0',
+            width: isH ? boxWidth + 'px' : grosor + 'px',
+            height: isH ? grosor + 'px' : boxHeight + 'px',
+            marginLeft: isH ? '0' : (-Math.round(grosor / 2)) + 'px',
+            marginTop: isH ? (-Math.round(grosor / 2)) + 'px' : '0',
+            background: color,
+            borderRadius: '999px',
+            boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.12)',
+            pointerEvents: 'none'
+        });
+
+        $line.append($stroke);
+        inner.append($line);
+    });
+
+    safe.labels.forEach(function(label, index) {
+        const x = Math.round((parseFloat(label.x) || 0) * scale);
+        const y = Math.round((parseFloat(label.y) || 0) * scale);
+        const maxLabelWidth = esMovilPlano
+            ? Math.max(120, Math.round(canvasWrapWidth * 0.72))
+            : (esTabletPlano ? Math.max(140, Math.round(canvasWrapWidth * 0.54)) : Math.round(width * scale));
+        const w = Math.min(maxLabelWidth, Math.max(esMovilPlano ? 78 : 90, Math.round((parseFloat(label.width) || 160) * scale)));
+        const h = Math.max(24, Math.round((parseFloat(label.height) || 34) * scale));
+        const fontSize = Math.max(esMovilPlano ? 9 : 11, Math.round((parseFloat(label.fontSize) || 18) * scale));
+        const estiloColor = obtenerEstiloLabelLayout(label.bgColor);
+        const labelPadY = esMovilPlano ? 5 : 6;
+        const labelPadLeft = esMovilPlano ? 8 : 10;
+        const labelPadRight = esMovilPlano ? 22 : 26;
+
+        const $label = $('<div></div>');
+        $label.addClass('pos-layout-label');
+        $label.attr('data-layout-type', 'label');
+        $label.attr('data-label-index', index);
+        $label.css({
+            position: 'absolute',
+            left: x + 'px',
+            top: y + 'px',
+            width: w + 'px',
+            minHeight: h + 'px',
+            maxWidth: maxLabelWidth + 'px',
+            padding: labelPadY + 'px ' + labelPadRight + 'px ' + labelPadY + 'px ' + labelPadLeft + 'px',
+            borderRadius: '8px',
+            background: estiloColor.bg,
+            border: '1px dashed ' + estiloColor.border,
+            color: estiloColor.text,
+            fontSize: fontSize + 'px',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            cursor: 'move',
+            userSelect: 'none',
+            zIndex: 4,
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+            lineHeight: '1.15'
+        });
+
+        const $labelText = $('<span></span>').text(label.text || 'Texto');
+        $labelText.css({
+            display: 'block',
+            width: '100%',
+            textAlign: 'center',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere'
+        });
+        const $remove = $('<button type="button" class="pos-layout-label-remove" aria-label="Eliminar texto">×</button>');
+        $remove.css({
+            position: 'absolute',
+            top: '2px',
+            right: '4px',
+            border: 'none',
+            background: 'transparent',
+            color: estiloColor.remove,
+            fontSize: '16px',
+            lineHeight: '1',
+            fontWeight: '700',
+            padding: '0 2px',
+            cursor: 'pointer'
+        });
+
+        $label.append($labelText).append($remove);
+        inner.append($label);
     });
 
     $canvas.append(inner);
@@ -413,6 +1047,7 @@ function renderizarMesas(mesas) {
         
         if (!esLibre && mesa.comanda) {
             const comensales = mesa.comanda.comensales || 0;
+            const impresionSeparada = parseInt(window.posImpresionSeparada || 0, 10) === 1;
             
             comensalesControl = `
                 <div class="comensales-control">
@@ -443,12 +1078,22 @@ function renderizarMesas(mesas) {
                 <div class="mesa-acciones-comanda">
                     <button type="button" class="btn-imprimir-preventa" data-comanda-id="${mesa.comanda.id}"
                         title="Imprimir preventa">
-                        <i class="fa fa-print"></i> Preventa
+                        <i class="fa fa-print"></i>
                     </button>
                     <button type="button" class="btn-cocina-mesa" data-comanda-id="${mesa.comanda.id}"
-                        title="Enviar ticket a cocina">
-                        <i class="fa fa-bell"></i> Cocina
+                        title="Imprimir ticket de ${impresionSeparada ? 'cocina' : 'preparacion'}">
+                        <i class="fa ${impresionSeparada ? 'fa-cutlery' : 'fa-bell'}"></i>
                     </button>
+                    ${impresionSeparada ? `
+                    <button type="button" class="btn-barra-mesa" data-comanda-id="${mesa.comanda.id}"
+                        title="Imprimir ticket de barra">
+                        <i class="fa fa-glass"></i>
+                    </button>
+                    <button type="button" class="btn-ambos-mesa" data-comanda-id="${mesa.comanda.id}"
+                        title="Imprimir tickets de cocina y barra">
+                        <i class="fa fa-clone"></i>
+                    </button>
+                    ` : ''}
                 </div>
             `;
         } else if (esReservada) {
@@ -509,7 +1154,7 @@ function renderizarMesas(mesas) {
     // Eventos para las mesas
     $('.mesa-card-comanda').on('click', function(e) {
         // Evitar abrir modal si se hizo clic en botones de comensales
-        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa, .btn-cocina-mesa, .btn-reservar-mesa, .btn-liberar-reserva').length > 0) {
+        if ($(e.target).closest('.comensales-control, .btn-imprimir-preventa, .btn-cocina-mesa, .btn-barra-mesa, .btn-ambos-mesa, .btn-reservar-mesa, .btn-liberar-reserva').length > 0) {
             return;
         }
         
@@ -613,6 +1258,18 @@ function renderizarMesas(mesas) {
         const comandaId = $(this).data('comanda-id');
         abrirTicketCocina(comandaId);
     });
+
+    $('.btn-barra-mesa').on('click', function(e) {
+        e.stopPropagation();
+        const comandaId = $(this).data('comanda-id');
+        abrirTicketBarra(comandaId);
+    });
+
+    $('.btn-ambos-mesa').on('click', function(e) {
+        e.stopPropagation();
+        const comandaId = $(this).data('comanda-id');
+        imprimirTicketsPreparacion(comandaId);
+    });
 }
 
 function verComanda(mesaId) {
@@ -662,6 +1319,7 @@ function abrirModalPOSConComanda(mesaId, comanda, mesaData) {
         $('#pos_mesa_nombre').text(mesa.nombre);
         $('#pos_comensales_numero').text(comanda.comensales || mesa.capacidad);
         $('#pos_mesa_id').val(mesa.id);
+        $('#pos_comanda_id').val(comanda.id);
         $('#pos_capacidad_original').val(mesa.capacidad);
 
         let fechaHoraApertura;
@@ -778,6 +1436,7 @@ function abrirModalPOS(mesaId) {
                     $('#pos_mesa_nombre').text(mesa.nombre);
                     $('#pos_comensales_numero').text(mesa.capacidad);
                     $('#pos_mesa_id').val(mesa.id);
+                    $('#pos_comanda_id').val('');
                     $('#pos_capacidad_original').val(mesa.capacidad);
                     
                     // Mostrar fecha y hora actual en formato dd-mm-yyyy hh:mm (esta será la fecha de apertura)
@@ -1069,6 +1728,8 @@ function actualizarTotales() {
     $('#btn_guardar_pedido').prop('disabled', !hayProductos);
     $('#btn_imprimir_comanda').prop('disabled', !hayProductos);
     $('#btn_ticket_cocina').prop('disabled', !hayProductos);
+    $('#btn_ticket_barra').prop('disabled', !hayProductos);
+    $('#btn_ticket_ambos').prop('disabled', !hayProductos);
 }
 
 function formatearPrecio(valor) {
@@ -1504,8 +2165,22 @@ $(document)
     .on('click' + POS_EVENT_NS, '.pos-item-remove', function() {
         const index = $(this).data('index');
         if (typeof index === 'undefined') return;
-        posCarrito.splice(index, 1);
-        renderizarCarrito();
+        const comandaId = $('#pos_comanda_id').val();
+        if (comandaId && comandaId !== '') {
+            const item = posCarrito[index];
+            const cantidadMaxima = item.cantidad || 1;
+            $('#anular_producto_index').val(index);
+            $('#anular_cantidad').val(cantidadMaxima);
+            $('#anular_cantidad').attr('max', cantidadMaxima);
+            $('#anular_cantidad_max').text(cantidadMaxima);
+            $('#anular_password').val('');
+            $('#anular_motivo').val('');
+            $('#anular_error').hide();
+            $('#modalAnularProductoComanda').modal('show');
+        } else {
+            posCarrito.splice(index, 1);
+            renderizarCarrito();
+        }
     })
     .off('click' + POS_EVENT_NS, '.pos-item-nota-btn')
     .on('click' + POS_EVENT_NS, '.pos-item-nota-btn', function(e) {
@@ -1534,6 +2209,76 @@ $(document)
         posCarrito[index].observaciones = $(this).val().trim();
         renderizarCarrito();
     });
+
+// Confirmar anulación de producto en comanda
+$(document).off('click' + POS_EVENT_NS, '#btnConfirmarAnularProducto').on('click' + POS_EVENT_NS, '#btnConfirmarAnularProducto', function() {
+    const index = parseInt($('#anular_producto_index').val());
+    const cantidad = parseInt($('#anular_cantidad').val());
+    const cantidadMaxima = parseInt($('#anular_cantidad').attr('max'));
+    const password = $('#anular_password').val();
+    const motivo = $('#anular_motivo').val().trim();
+    const comandaId = $('#pos_comanda_id').val();
+    if (isNaN(index) || !posCarrito[index]) return;
+    const productoId = posCarrito[index].id;
+    if (!password || !motivo || isNaN(cantidad) || cantidad <= 0) {
+        $('#anular_error').text('Todos los campos son obligatorios.').show();
+        return;
+    }
+    if (cantidad > cantidadMaxima) {
+        $('#anular_error').text(`No puedes eliminar más de ${cantidadMaxima} unidades.`).show();
+        return;
+    }
+    $('#anular_error').hide();
+    $('#btnConfirmarAnularProducto').prop('disabled', true);
+    $.ajax({
+        url: '/restaurant/comandas/anular-producto',
+        method: 'POST',
+        data: {
+            _token: $('#token').val(),
+            comanda_id: comandaId,
+            producto_id: productoId,
+            cantidad: cantidad,
+            password: password,
+            motivo: motivo
+        },
+        success: function(resp) {
+            if (resp.success) {
+                // Restar la cantidad del carrito
+                posCarrito[index].cantidad -= cantidad;
+                if (posCarrito[index].cantidad <= 0) {
+                    posCarrito.splice(index, 1);
+                }
+                renderizarCarrito();
+                $('#modalAnularProductoComanda').modal('hide');
+                
+                // Si el carrito quedó vacío, la comanda se cerró automáticamente
+                if (posCarrito.length === 0) {
+                    setTimeout(function() {
+                        $('#modalTomarPedido').modal('hide');
+                        cargarMesas();
+                        Swal.fire('Éxito', 'Producto anulado. La comanda se cerró automáticamente y la mesa está disponible.', 'success');
+                    }, 500);
+                } else {
+                    Swal.fire('Éxito', 'Producto anulado correctamente', 'success');
+                }
+            } else {
+                $('#anular_error').text(resp.message || 'Error al anular producto.').show();
+            }
+        },
+        error: function(xhr) {
+            let msg = 'Error al anular producto.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                msg = xhr.responseJSON.message;
+            } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                msg = Object.values(xhr.responseJSON.errors).join(' ');
+            }
+            $('#anular_error').text(msg).show();
+        },
+        complete: function() {
+            $('#btnConfirmarAnularProducto').prop('disabled', false);
+        }
+    });
+});
 
 function actualizarPrecioRangoComanda(item, cantidad) {
     const cantidadNumerica = parseFloat(cantidad);
@@ -1736,6 +2481,47 @@ $('#btn_ticket_cocina').on('click', function() {
     abrirTicketCocina(posComandaActual);
 });
 
+// Ticket barra (solo visible cuando IMPRESION_SEPARADA = 1)
+$('#btn_ticket_barra').on('click', function() {
+    if (!posComandaActual) {
+        Swal.fire('Atención', 'Debe guardar el pedido primero', 'warning');
+        return;
+    }
+
+    abrirTicketBarra(posComandaActual);
+});
+
+// Imprimir ambos tickets (solo cuando IMPRESION_SEPARADA = 1)
+$('#btn_ticket_ambos').on('click', function() {
+    if (!posComandaActual) {
+        Swal.fire('Atención', 'Debe guardar el pedido primero', 'warning');
+        return;
+    }
+
+    imprimirTicketsPreparacion(posComandaActual);
+});
+
+function imprimirTicketsPreparacion(comandaId) {
+    if (!comandaId) {
+        Swal.fire('Atención', 'No se encontró la comanda para imprimir', 'warning');
+        return;
+    }
+
+    if (parseInt(window.posImpresionSeparada || 0, 10) !== 1) {
+        abrirTicketCocina(comandaId);
+        return;
+    }
+
+    $('#modalTicketAmbos').off('hidden.bs.modal.ticketAmbos').on('hidden.bs.modal.ticketAmbos', function() {
+        $('#ticketFrameAmbosCocina').attr('src', 'about:blank');
+        $('#ticketFrameAmbosBarra').attr('src', 'about:blank');
+    });
+
+    $('#ticketFrameAmbosCocina').attr('src', '/restaurant/comandas/ticket-cocina/' + comandaId);
+    $('#ticketFrameAmbosBarra').attr('src', '/restaurant/comandas/ticket-barra/' + comandaId);
+    $('#modalTicketAmbos').modal('show');
+}
+
 function abrirTicketCocina(comandaId) {
     if (!comandaId) {
         Swal.fire('Atención', 'No se encontró la comanda para imprimir', 'warning');
@@ -1746,8 +2532,27 @@ function abrirTicketCocina(comandaId) {
         $('#ticketFrameCocina').attr('src', 'about:blank');
     });
 
+    const tituloModal = parseInt(window.posImpresionSeparada || 0, 10) === 1
+        ? '<i class="fa fa-cutlery"></i> Ticket Cocina'
+        : '<i class="fa fa-bell"></i> Ticket Preparacion';
+    $('#tituloTicketCocina').html(tituloModal);
+
     $('#ticketFrameCocina').attr('src', '/restaurant/comandas/ticket-cocina/' + comandaId);
     $('#modalTicketCocina').modal('show');
+}
+
+function abrirTicketBarra(comandaId) {
+    if (!comandaId) {
+        Swal.fire('Atención', 'No se encontró la comanda para imprimir', 'warning');
+        return;
+    }
+
+    $('#modalTicketBarra').off('hidden.bs.modal.ticketBarra').on('hidden.bs.modal.ticketBarra', function() {
+        $('#ticketFrameBarra').attr('src', 'about:blank');
+    });
+
+    $('#ticketFrameBarra').attr('src', '/restaurant/comandas/ticket-barra/' + comandaId);
+    $('#modalTicketBarra').modal('show');
 }
 
 function abrirTicketComanda(comandaId) {
@@ -1783,3 +2588,6 @@ function actualizarComensales(comandaId, nuevoValor) {
         }
     });
 }
+
+
+

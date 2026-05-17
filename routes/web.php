@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
@@ -36,6 +36,7 @@ Route::get('/almacen/productos', [ProductosController::class, 'index']);
 Route::get('/almacen/productosCarga', [ProductosController::class, 'listProducts']);
 Route::get('/almacen/productos/plantilla-xlsx', [ProductosController::class, 'downloadProductsXlsxTemplate'])->name('productos.plantilla.xlsx');
 Route::post('/almacen/productos/importar-xlsx', [ProductosController::class, 'importProductsXlsx'])->name('productos.importar.xlsx');
+Route::get('/almacen/productos/importar-xlsx/progreso', [ProductosController::class, 'importProductsXlsxProgress'])->name('productos.importar.xlsx.progreso');
 Route::get('/almacen/productos/{uuid}/editar', [ProductosController::class, 'showProduct'])->name('productos.editar');
 Route::put('/almacen/productos/{uuid}/actualizar', [ProductosController::class, 'updateProduct'])->name('productos.actualizar');
 Route::delete('/almacen/productos/{prod}/delete', [ProductosController::class, 'deleteProd']);
@@ -206,6 +207,9 @@ Route::get('/reportes/hist_precio_prod/data', [ReportesController::class, 'dataH
 Route::get('/reportes/hist_precio_prod/compras', [ReportesController::class, 'dataHistorialCompras']);
 Route::get('/reportes/hist_precio_prod/exportar', [ReportesController::class, 'exportarHistorialPrecio']);
 Route::get('/reportes/hist_precio_prod/search', [ReportesController::class, 'searchEntidadPrecio']);
+Route::get('/reportes/anulaciones_comandas', [ReportesController::class, 'indexAnulacionesComanda']);
+Route::get('/reportes/anulaciones_comandas/data', [ReportesController::class, 'dataAnulacionesComanda']);
+Route::get('/reportes/anulaciones_comandas/exportar', [ReportesController::class, 'exportarAnulacionesComanda']);
 
 //menu usuarios
 Route::get('/usuarios/usuarios', [UsersController::class, 'getRoles'])->name('users.getRoles');
@@ -259,6 +263,8 @@ Route::put('/restaurant/comandas/actualizar-producto/{detalleId}', [ComandasCont
 Route::delete('/restaurant/comandas/eliminar-producto/{detalleId}', [ComandasController::class, 'eliminarProducto']);
 Route::get('/restaurant/comandas/imprimir/{comandaId}', [ComandasController::class, 'imprimirComanda']);
 Route::get('/restaurant/comandas/ticket-cocina/{comandaId}', [ComandasController::class, 'imprimirTicketCocina']);
+Route::get('/restaurant/comandas/ticket-barra/{comandaId}', [ComandasController::class, 'imprimirTicketBarra']);
+Route::get('/restaurant/comandas/ticket-preparacion-ambos/{comandaId}', [ComandasController::class, 'imprimirTicketPreparacionAmbos']);
 Route::get('/restaurant/comandas/ticket-pago/{comandaId}/{ventaId}', [ComandasController::class, 'imprimirTicketPagoComanda']);
 Route::get('/restaurant/comandas/layout-json', [ComandasController::class, 'obtenerLayoutMesas']);
 Route::post('/restaurant/comandas/layout-json', [ComandasController::class, 'guardarLayoutMesas']);
@@ -289,3 +295,7 @@ Route::post('/login', [UsersController::class, 'login'])->middleware('throttle:1
 Route::post('/password/recovery/request', [UsersController::class, 'requestPasswordRecovery'])->middleware('throttle:5,1')->name('password.recovery.request');
 Route::post('/password/recovery/reset', [UsersController::class, 'resetPasswordRecovery'])->middleware('throttle:5,1')->name('password.recovery.reset');
 Route::post('/logout', [UsersController::class, 'logout'])->name('logout');
+
+// Anulación de producto en comanda
+Route::post('/restaurant/comandas/anular-producto', [\App\Http\Controllers\ComandasAnulacionController::class, 'anularProducto'])->middleware('throttle:20,1');
+

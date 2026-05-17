@@ -15,6 +15,7 @@ use App\Models\RangoPrecio;
 use App\Models\Receta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -39,15 +40,23 @@ class ProductosController extends Controller
         'categoria',
         'unidad_medida',
         'tipo',
+        'sector_impresion',
         'nom_foto',
     ];
+
+    private function impresionSeparadaActiva(): bool
+    {
+        $valor = Cache::remember('global_IMPRESION_SEPARADA', 300, fn () => Globales::where('nom_var', 'IMPRESION_SEPARADA')->value('valor_var'));
+        return (string) $valor === '1';
+    }
 
     public function index()
     {
         $impuesto_iva = Impuestos::where('id', 1)->get();
         $impuesto_ad = Impuestos::where('id', '!=', 1)->get();
         $categorias = Categoria::where('estado_categoria', 1)->get();
-        return view('almacen.productos', compact("impuesto_iva", "impuesto_ad", "categorias"));
+        $impresionSeparadaActiva = $this->impresionSeparadaActiva();
+        return view('almacen.productos', compact("impuesto_iva", "impuesto_ad", "categorias", "impresionSeparadaActiva"));
     }
     public function listProducts()
     {
@@ -142,6 +151,8 @@ class ProductosController extends Controller
 
     public function importProductsXlsx(Request $request)
     {
+        $progressToken = trim((string) $request->input('progress_token', ''));
+
         $request->validate([
             'archivo_excel' => ['required', 'file', 'mimes:xlsx'],
         ], [
@@ -158,92 +169,309 @@ class ProductosController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Error al leer Excel de productos: ' . $e->getMessage());
+            Log::error('Error al leer Excel de productos en línea ' . $e->getLine() . ': ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            $mensaje = 'No se pudo procesar el archivo Excel.';
+            if (config('app.debug')) {
+                $mensaje .= ' Error: ' . $e->getMessage();
+            }
 
             return response()->json([
                 'error' => 500,
-                'message' => 'No se pudo procesar el archivo Excel.',
+                'message' => $mensaje,
             ], 500);
         }
 
         if (empty($parsedWorkbook['rows'])) {
+            $this->markImportProgressFailed($progressToken, 'La hoja Productos no contiene filas para importar.');
+
             return response()->json([
                 'error' => 422,
                 'message' => 'La hoja Productos no contiene filas para importar.',
             ], 422);
         }
 
+        $totalRows = count($parsedWorkbook['rows']);
+
+        if ($request->boolean('solo_conteo')) {
+            return response()->json([
+                'error' => 200,
+                'message' => 'Se encontraron ' . $totalRows . ' productos para procesar.',
+                'total_productos' => $totalRows,
+            ]);
+        }
+
+        $this->initImportProgress($progressToken, $totalRows);
+
         $errors = [];
+        $incidencias = [];
         $rowsToInsert = [];
         $codesInFile = [];
         $descriptionsInFile = [];
+        $processedRows = 0;
 
-        foreach ($parsedWorkbook['rows'] as $item) {
-            $rowNumber = $item['row_number'];
-            $row = $this->normalizeImportedProductRow($item['data']);
+        try {
+            foreach ($parsedWorkbook['rows'] as $item) {
+                $rowNumber = $item['row_number'];
+                $row = $this->normalizeImportedProductRow($item['data']);
+                $sectorInformado = strtoupper(trim((string) ($item['data']['sector_impresion'] ?? '')));
 
-            $validator = Validator::make(
-                $row,
-                ProductoRequest::buildRules(false),
-                ProductoRequest::buildMessages()
-            );
-
-            ProductoRequest::applyCrossEntityValidation($validator, $row, true);
-
-            $normalizedCode = strtoupper(trim((string) ($row['codigo'] ?? '')));
-            $normalizedDescription = strtoupper(trim((string) ($row['descripcion'] ?? '')));
-
-            if ($normalizedCode !== '') {
-                if (isset($codesInFile[$normalizedCode])) {
-                    $validator->errors()->add('codigo', 'El código está repetido dentro del archivo Excel.');
-                } else {
-                    $codesInFile[$normalizedCode] = $rowNumber;
+                if (($row['tipo'] ?? null) === 'I' && $sectorInformado !== '') {
+                    $incidencias[] = 'Fila ' . $rowNumber . ': sector_impresion informado para INSUMO fue ignorado.';
                 }
-            }
 
-            if ($normalizedDescription !== '') {
-                if (isset($descriptionsInFile[$normalizedDescription])) {
-                    $validator->errors()->add('descripcion', 'La descripción está repetida dentro del archivo Excel.');
-                } else {
-                    $descriptionsInFile[$normalizedDescription] = $rowNumber;
-                }
-            }
+                // Usar buildRules(true) para evitar la validación unique automática de Laravel
+                // y hacer validación manual con mejor información de errores
+                $validator = Validator::make(
+                    $row,
+                    ProductoRequest::buildRules(true), // true = update mode (sin reglas unique)
+                    ProductoRequest::buildMessages()
+                );
 
-            if ($validator->fails()) {
-                $messages = [];
+                ProductoRequest::applyCrossEntityValidation($validator, $row, true);
 
-                foreach ($validator->errors()->messages() as $fieldMessages) {
-                    foreach ($fieldMessages as $message) {
-                        $messages[] = $message;
+                // IMPORTANTE: Llamar $validator->errors() AQUÍ para que passes() se ejecute UNA SOLA VEZ
+                // y poblar $this->messages. Después de esto, agregar errores con ->add() y
+                // comprobar con ->isNotEmpty() en lugar de ->fails() (que re-ejecuta passes()
+                // reinicializando el MessageBag y borrando los errores agregados manualmente).
+                $validatorMessages = $validator->errors();
+
+                $normalizedCode = strtoupper(trim((string) ($row['codigo'] ?? '')));
+                $normalizedDescription = strtoupper(trim((string) ($row['descripcion'] ?? '')));
+
+                // Validar código
+                if ($normalizedCode !== '') {
+                    if (isset($codesInFile[$normalizedCode])) {
+                        $previousRow = $codesInFile[$normalizedCode];
+                        $validatorMessages->add('codigo', "El código '{$normalizedCode}' está repetido: ya aparece en la fila {$previousRow}.");
+                    } else {
+                        $codesInFile[$normalizedCode] = $rowNumber;
+                    }
+
+                    if ($this->existsExactInTable('productos', 'codigo', $normalizedCode)
+                        || $this->existsExactInTable('recetas', 'codigo', $normalizedCode)
+                        || $this->existsExactInTable('promociones', 'codigo', $normalizedCode)) {
+                        $validatorMessages->add('codigo', "El código '{$normalizedCode}' ya existe en la base de datos (productos, recetas o promociones).");
                     }
                 }
 
-                $errors[] = 'Fila ' . $rowNumber . ': ' . implode(' | ', $messages);
-                continue;
+                // Validar descripción
+                if ($normalizedDescription !== '') {
+                    if (isset($descriptionsInFile[$normalizedDescription])) {
+                        $previousRow = $descriptionsInFile[$normalizedDescription];
+                        $validatorMessages->add('descripcion', "La descripción '{$normalizedDescription}' está repetida: ya aparece en la fila {$previousRow}.");
+                    } else {
+                        $descriptionsInFile[$normalizedDescription] = $rowNumber;
+                    }
+
+                    if ($this->existsExactInTable('productos', 'descripcion', $normalizedDescription)
+                        || $this->existsExactInTable('recetas', 'nombre', $normalizedDescription)
+                        || $this->existsExactInTable('promociones', 'nombre', $normalizedDescription)) {
+                        $validatorMessages->add('descripcion', "La descripción '{$normalizedDescription}' ya existe en la base de datos (productos, recetas o promociones).");
+                    }
+                }
+
+                // Usar isNotEmpty() en lugar de fails() para no re-ejecutar passes() y perder los errores manuales
+                if ($validatorMessages->isNotEmpty()) {
+                    $messages = [];
+
+                    foreach ($validatorMessages->messages() as $fieldMessages) {
+                        foreach ($fieldMessages as $message) {
+                            $messages[] = $message;
+                        }
+                    }
+
+                    $errors[] = 'Fila ' . $rowNumber . ': ' . implode(' | ', $messages);
+                    $processedRows++;
+                    $this->updateImportProgress($progressToken, $processedRows, 'Procesando productos...');
+                    continue;
+                }
+
+                $rowsToInsert[] = $row;
+                $processedRows++;
+                $this->updateImportProgress($progressToken, $processedRows, 'Procesando productos...');
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error al procesar fila en importación: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            $mensaje = 'Error al procesar el archivo Excel.';
+            if (config('app.debug')) {
+                $mensaje .= ' Error: ' . $e->getMessage();
             }
 
-            $rowsToInsert[] = $row;
+            $this->markImportProgressFailed($progressToken, $mensaje, $processedRows);
+
+            return response()->json([
+                'error' => 500,
+                'message' => $mensaje,
+                'details' => array_merge($errors, $incidencias),
+            ], 500);
         }
 
         if (!empty($errors)) {
+            $this->markImportProgressFailed($progressToken, 'Se detectaron errores en el archivo Excel.', $processedRows);
+
             return response()->json([
                 'error' => 422,
                 'message' => 'Se detectaron errores en el archivo Excel.',
-                'details' => $errors,
+                'details' => array_merge($errors, $incidencias),
             ], 422);
         }
 
-        DB::transaction(function () use ($rowsToInsert) {
-            foreach ($rowsToInsert as $row) {
-                $product = new Producto();
-                $product->crearProducto($row);
+        try {
+            DB::transaction(function () use ($rowsToInsert) {
+                foreach ($rowsToInsert as $row) {
+                    $product = new Producto();
+                    $product->crearProducto($row);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error al insertar productos en BD: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            $mensaje = 'Error al insertar los productos en la base de datos.';
+            if (config('app.debug')) {
+                $mensaje .= ' Error: ' . $e->getMessage();
             }
-        });
+
+            $this->markImportProgressFailed($progressToken, $mensaje, $processedRows);
+
+            return response()->json([
+                'error' => 500,
+                'message' => $mensaje,
+            ], 500);
+        }
+
+        $this->markImportProgressDone($progressToken, $totalRows, count($rowsToInsert) . ' productos importados correctamente.');
 
         return response()->json([
             'error' => 200,
             'message' => count($rowsToInsert) . ' productos importados correctamente.',
+            'details' => $incidencias,
         ]);
+    }
+
+    public function importProductsXlsxProgress(Request $request)
+    {
+        $token = trim((string) $request->query('token', ''));
+
+        if ($token === '') {
+            return response()->json([
+                'error' => 422,
+                'message' => 'Token de progreso no proporcionado.',
+            ], 422);
+        }
+
+        $progress = Cache::get($this->getImportProgressCacheKey($token));
+
+        if (!$progress) {
+            return response()->json([
+                'error' => 200,
+                'status' => 'unknown',
+                'total' => 0,
+                'processed' => 0,
+                'message' => null,
+            ]);
+        }
+
+        return response()->json([
+            'error' => 200,
+            'status' => $progress['status'] ?? 'running',
+            'total' => (int) ($progress['total'] ?? 0),
+            'processed' => (int) ($progress['processed'] ?? 0),
+            'message' => $progress['message'] ?? null,
+        ]);
+    }
+
+    private function getImportProgressCacheKey(string $token): string
+    {
+        return 'productos_import_progress_' . sha1($token);
+    }
+
+    private function initImportProgress(string $token, int $total): void
+    {
+        if ($token === '') {
+            return;
+        }
+
+        Cache::put($this->getImportProgressCacheKey($token), [
+            'status' => 'running',
+            'total' => max(0, $total),
+            'processed' => 0,
+            'message' => 'Iniciando procesamiento...',
+        ], now()->addMinutes(15));
+    }
+
+    private function updateImportProgress(string $token, int $processed, ?string $message = null): void
+    {
+        if ($token === '') {
+            return;
+        }
+
+        $cacheKey = $this->getImportProgressCacheKey($token);
+        $current = Cache::get($cacheKey, [
+            'status' => 'running',
+            'total' => 0,
+            'processed' => 0,
+            'message' => null,
+        ]);
+
+        $total = (int) ($current['total'] ?? 0);
+        $processed = max(0, $processed);
+        if ($total > 0) {
+            $processed = min($processed, $total);
+        }
+
+        Cache::put($cacheKey, [
+            'status' => 'running',
+            'total' => $total,
+            'processed' => $processed,
+            'message' => $message,
+        ], now()->addMinutes(15));
+    }
+
+    private function markImportProgressDone(string $token, int $total, ?string $message = null): void
+    {
+        if ($token === '') {
+            return;
+        }
+
+        Cache::put($this->getImportProgressCacheKey($token), [
+            'status' => 'done',
+            'total' => max(0, $total),
+            'processed' => max(0, $total),
+            'message' => $message,
+        ], now()->addMinutes(5));
+    }
+
+    private function markImportProgressFailed(string $token, ?string $message = null, ?int $processed = null): void
+    {
+        if ($token === '') {
+            return;
+        }
+
+        $cacheKey = $this->getImportProgressCacheKey($token);
+        $current = Cache::get($cacheKey, [
+            'status' => 'failed',
+            'total' => 0,
+            'processed' => 0,
+            'message' => null,
+        ]);
+
+        $total = (int) ($current['total'] ?? 0);
+        $processedValue = $processed === null ? (int) ($current['processed'] ?? 0) : max(0, $processed);
+        if ($total > 0) {
+            $processedValue = min($processedValue, $total);
+        }
+
+        Cache::put($cacheKey, [
+            'status' => 'failed',
+            'total' => $total,
+            'processed' => $processedValue,
+            'message' => $message,
+        ], now()->addMinutes(5));
     }
 
     public function showProduct($uuid)
@@ -585,7 +813,8 @@ class ProductosController extends Controller
     public function indexReceipesCreate()
     {
         $categorias = Categoria::where('estado_categoria', 1)->where('id', '<>', 1)->get();
-        return view('almacen.crear_recetas', compact("categorias"));
+        $impresionSeparadaActiva = $this->impresionSeparadaActiva();
+        return view('almacen.crear_recetas', compact("categorias", "impresionSeparadaActiva"));
     }
 
     public function listReceipes(Request $request)
@@ -700,6 +929,12 @@ class ProductosController extends Controller
     {
         try {
             $data = $request->all();
+            if ($this->impresionSeparadaActiva() && !in_array(strtoupper((string) ($data['sector_impresion'] ?? '')), ['B', 'C'], true)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Debe seleccionar si la receta es de Barra o Cocina.'
+                ], 422);
+            }
 
             $codigoExisteEnRecetas = Receta::where('codigo', $data['codigo'])->exists();
             $codigoExisteEnProductos = Producto::where('codigo', $data['codigo'])->exists();
@@ -736,9 +971,11 @@ class ProductosController extends Controller
             ->where('estado_categoria', 1)
             ->where('id', '<>', 1)
             ->get();
+        $impresionSeparadaActiva = $this->impresionSeparadaActiva();
         return view('almacen.editar_recetas', [
             'receta' => $receta,
             'categorias' => $categorias,
+            'impresionSeparadaActiva' => $impresionSeparadaActiva,
         ]);
     }
 
@@ -746,6 +983,12 @@ class ProductosController extends Controller
     {
         try {
             $data = $request->all();
+            if ($this->impresionSeparadaActiva() && !in_array(strtoupper((string) ($data['sector_impresion'] ?? '')), ['B', 'C'], true)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Debe seleccionar si la receta es de Barra o Cocina.'
+                ], 422);
+            }
             Receta::actualizarRecetaConIngredientes($uuid, $data);
 
             return response()->json([
@@ -1197,13 +1440,13 @@ class ProductosController extends Controller
     {
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getSheetByName('Productos') ?? $spreadsheet->getSheet(0);
-        $rows = $worksheet->toArray(null, false, false, false);
+        $rawRows = $worksheet->toArray(null, false, false, false);
 
-        if (empty($rows)) {
+        if (empty($rawRows)) {
             throw new \InvalidArgumentException('La hoja Productos está vacía.');
         }
 
-        $headers = array_map(fn($header) => $this->sanitizeImportHeader($header), $rows[0]);
+        $headers = array_map(fn($header) => $this->sanitizeImportHeader($header), $rawRows[0]);
         $missingHeaders = array_diff(self::PRODUCT_IMPORT_HEADERS, $headers);
 
         if (!empty($missingHeaders)) {
@@ -1212,14 +1455,22 @@ class ProductosController extends Controller
             );
         }
 
+        $headerIndexes = [];
+        foreach (self::PRODUCT_IMPORT_HEADERS as $header) {
+            $headerIndexes[$header] = array_search($header, $headers, true);
+        }
+
         $rows = [];
-        for ($index = 1; $index < count($worksheet->toArray(null, false, false, false)); $index++) {
-            $row = $worksheet->toArray(null, false, false, false)[$index];
+        $highestDataRow = max(1, (int) $worksheet->getHighestDataRow());
+        $lastMeaningfulRow = $this->findLastMeaningfulProductsRowIndex($rawRows, $headerIndexes, $highestDataRow);
+
+        for ($index = 1; $index <= $lastMeaningfulRow; $index++) {
+            $row = $rawRows[$index] ?? [];
 
             $currentRow = [];
             foreach (self::PRODUCT_IMPORT_HEADERS as $header) {
-                $columnIndex = array_search($header, $headers, true);
-                $currentRow[$header] = $columnIndex !== false ? trim((string) ($row[$columnIndex] ?? '')) : null;
+                $columnIndex = $headerIndexes[$header] ?? false;
+                $currentRow[$header] = $columnIndex !== false ? $this->normalizeImportedCellValue($row[$columnIndex] ?? '') : null;
             }
 
             if ($this->isImportedRowEmpty($currentRow)) {
@@ -1235,6 +1486,38 @@ class ProductosController extends Controller
         return ['rows' => $rows];
     }
 
+    private function findLastMeaningfulProductsRowIndex(array $rawRows, array $headerIndexes, int $highestDataRow): int
+    {
+        for ($index = $highestDataRow - 1; $index >= 1; $index--) {
+            $row = $rawRows[$index] ?? [];
+
+            if ($this->rowHasMeaningfulProductData($row, $headerIndexes)) {
+                return $index;
+            }
+        }
+
+        return 0;
+    }
+
+    private function rowHasMeaningfulProductData(array $row, array $headerIndexes): bool
+    {
+        $headersClave = ['codigo', 'descripcion', 'precio_compra_neto', 'precio_venta', 'categoria', 'tipo'];
+
+        foreach ($headersClave as $header) {
+            $idx = $headerIndexes[$header] ?? false;
+            if ($idx === false) {
+                continue;
+            }
+
+            $value = $this->normalizeImportedCellValue($row[$idx] ?? '');
+            if ($value !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function sanitizeImportHeader($header): string
     {
         $header = (string) $header;
@@ -1246,7 +1529,7 @@ class ProductosController extends Controller
     private function isImportedRowEmpty(array $row): bool
     {
         foreach ($row as $value) {
-            if (trim((string) $value) !== '') {
+            if ($this->normalizeImportedCellValue($value) !== '') {
                 return false;
             }
         }
@@ -1254,12 +1537,31 @@ class ProductosController extends Controller
         return true;
     }
 
+    private function normalizeImportedCellValue($value): string
+    {
+        $value = (string) $value;
+        $value = str_replace(["\xC2\xA0", "\u{00A0}", "\u{200B}", "\u{FEFF}"], ' ', $value);
+
+        return trim($value);
+    }
+
+    private function existsExactInTable(string $table, string $column, string $value): bool
+    {
+        $value = strtoupper(trim($value));
+
+        return DB::table($table)
+            ->whereRaw('UPPER(TRIM(' . $column . ')) = ?', [$value])
+            ->exists();
+    }
+
     private function normalizeImportedProductRow(array $row): array
     {
-        $precioCompraNeto = $this->normalizeIntegerValue($row['precio_compra_neto'] ?? null);
+        $tipo = $this->normalizeProductType($row['tipo'] ?? null);
+        $precioCompraNeto = $this->normalizePriceValue($row['precio_compra_neto'] ?? null);
         $impuesto1 = $this->resolveTaxId($row['impuesto_1'] ?? null);
         $impuesto2 = $this->resolveTaxId($row['impuesto_2'] ?? null, true);
-        $precioCompraBruto = $this->normalizeIntegerValue($row['precio_compra_bruto'] ?? null);
+        $precioCompraBruto = $this->normalizePriceValue($row['precio_compra_bruto'] ?? null);
+        $sectorImpresion = strtoupper(trim(Str::ascii((string) ($row['sector_impresion'] ?? ''))));
 
         if (($precioCompraBruto === null || $precioCompraBruto === '') && $precioCompraNeto !== null && $impuesto1 !== null) {
             $precioCompraBruto = $this->calculateGrossPrice($precioCompraNeto, $impuesto1, $impuesto2);
@@ -1273,11 +1575,12 @@ class ProductosController extends Controller
             'impuesto_1' => $impuesto1,
             'impuesto_2' => $impuesto2,
             'precio_compra_bruto' => $precioCompraBruto,
-            'precio_venta' => $this->normalizeIntegerValue($row['precio_venta'] ?? null),
+            'precio_venta' => $this->normalizePriceValue($row['precio_venta'] ?? null),
             'stock_minimo' => $this->normalizeDecimalValue($row['stock_minimo'] ?? null),
             'categoria' => $this->resolveCategoryId($row['categoria'] ?? null),
             'unidad_medida' => $this->normalizeUnit($row['unidad_medida'] ?? null),
-            'tipo' => $this->normalizeProductType($row['tipo'] ?? null),
+            'tipo' => $tipo,
+            'sector_impresion' => $tipo === 'I' ? null : (in_array($sectorImpresion, ['B', 'C'], true) ? $sectorImpresion : null),
             'nom_foto' => $this->normalizeOptionalString($row['nom_foto'] ?? null),
         ];
     }
@@ -1366,11 +1669,29 @@ class ProductosController extends Controller
             return null;
         }
 
+        // Aceptar números con comas (formato europeo: 1000,50) o puntos (formato USA: 1000.50)
+        // o mixtos con separadores de miles (8.403.361.344,50)
         $normalized = preg_replace('/[^0-9,.-]/', '', $value);
-        $normalized = str_replace('.', '', $normalized);
-        $normalized = str_replace(',', '.', $normalized);
+        
+        // Detectar si la última coma o punto es el decimal
+        $lastCommaPos = strrpos($normalized, ',');
+        $lastDotPos = strrpos($normalized, '.');
+        
+        if ($lastCommaPos === false && $lastDotPos === false) {
+            // Sin decimales
+            return (int) $normalized ?: null;
+        }
+        
+        if ($lastCommaPos > $lastDotPos) {
+            // La coma es el separador decimal (formato europeo: 1.000,50 o 1000,50)
+            $normalized = str_replace('.', '', $normalized); // Remover puntos de miles
+            $normalized = str_replace(',', '.', $normalized); // Convertir coma decimal a punto
+        } else {
+            // El punto es el separador decimal (formato USA: 1,000.50)
+            $normalized = str_replace(',', '', $normalized); // Remover comas de miles
+        }
 
-        if ($normalized === '' || !is_numeric($normalized)) {
+        if (!is_numeric($normalized)) {
             return null;
         }
 
@@ -1385,15 +1706,51 @@ class ProductosController extends Controller
             return null;
         }
 
+        // Aceptar números con comas (formato europeo: 1000,50) o puntos (formato USA: 1000.50)
+        // o mixtos con separadores de miles (8.403.361.344,50)
         $normalized = preg_replace('/[^0-9,.-]/', '', $value);
-        $normalized = str_replace('.', '', $normalized);
-        $normalized = str_replace(',', '.', $normalized);
+        
+        // Detectar si la última coma o punto es el decimal
+        $lastCommaPos = strrpos($normalized, ',');
+        $lastDotPos = strrpos($normalized, '.');
+        
+        if ($lastCommaPos === false && $lastDotPos === false) {
+            // Sin decimales
+            return (float) ($normalized ?: 0);
+        }
+        
+        if ($lastCommaPos > $lastDotPos) {
+            // La coma es el separador decimal (formato europeo: 1.000,50 o 1000,50)
+            $normalized = str_replace('.', '', $normalized); // Remover puntos de miles
+            $normalized = str_replace(',', '.', $normalized); // Convertir coma decimal a punto
+        } else {
+            // El punto es el separador decimal (formato USA: 1,000.50)
+            $normalized = str_replace(',', '', $normalized); // Remover comas de miles
+        }
 
-        if ($normalized === '' || !is_numeric($normalized)) {
+        if (!is_numeric($normalized)) {
             return null;
         }
 
         return (float) $normalized;
+    }
+
+    private function normalizePriceValue($value): ?float
+    {
+        /**
+         * Normaliza valores de precios desde el Excel.
+         * Acepta formatos como: 100 | 100,50 | 100.50 | 8.403.361.344,50 | 8,403,361,344.50
+         * Convierte coma decimal a punto, trunca a 1 decimal solamente
+         * Para decimal(10, 1) - máximo 999999999.9
+         */
+        $priceFloat = $this->normalizeDecimalValue($value);
+        
+        if ($priceFloat === null) {
+            return null;
+        }
+        
+        // Truncar/redondear a 1 decimal solamente para decimal(10, 1)
+        return round($priceFloat, 1);
     }
 
     private function normalizeOptionalString($value): ?string

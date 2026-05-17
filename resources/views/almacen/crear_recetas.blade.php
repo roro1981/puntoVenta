@@ -88,6 +88,17 @@
               @endforeach
              </select> 
              <textarea id="desc_receta" style="margin-top:5px" placeholder="Preparacion receta (opcional)" class="md-textarea form-control" rows="5" cols="55"></textarea>
+             @if(!empty($impresionSeparadaActiva))
+             <div class="form-group" style="margin-top:8px; margin-bottom:8px; width:100%;">
+              <label style="font-weight:bold;">Sector de impresión</label>
+              <div style="display:flex; gap:14px; align-items:center;">
+                <label style="margin:0;"><input type="radio" name="sector_impresion_receta" value="B"> Barra</label>
+                  <label style="margin:0;"><input type="radio" name="sector_impresion_receta" value="C"> Cocina</label>
+              </div>
+             </div>
+             @else
+             <input type="hidden" id="sector_impresion_receta" value="C">
+             @endif
               <form enctype="multipart/form-data">
                       <div class="card" style="width: 390px;border:solid 1px">
                         <img class="card-img-top" style="border:1px solid blue" src="/img/fotos_prod/sin_imagen.jpg" width="100" height="100" >

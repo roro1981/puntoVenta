@@ -121,6 +121,17 @@
               <option value="I">INSUMO</option>
             </select>
           </div>
+          @if(!empty($impresionSeparadaActiva))
+          <div class="form-group" id="sector_impresion_wrap_crear">
+            <label>Sector de impresión</label>
+            <div style="display:flex;gap:14px;align-items:center;">
+              <label style="margin:0;"><input type="radio" name="sector_impresion" value="B"> Barra</label>
+              <label style="margin:0;"><input type="radio" name="sector_impresion" value="C"> Cocina</label>
+            </div>
+          </div>
+          @else
+          <input type="hidden" name="sector_impresion" value="C">
+          @endif
           <div class="form-group">
             <label for="image">Foto producto</label>
             <div class="card" style="width: auto;">
@@ -168,8 +179,8 @@
             <input type="text" class="form-control" id="descripcion_editar" name="descripcion_editar" maxlength="255">
           </div>
           <div class="form-group">
-            <label for="descrip_detallada_editar">Descripción detallada (Menú QR)</label>
-            <textarea class="form-control" id="descrip_detallada_editar" name="descrip_detallada_editar" rows="3" maxlength="2000" placeholder="Opcional. Se mostrará en el menú QR para productos tipo P y S."></textarea>
+            <label for="descrip_detallada_editar">Descripción detallada</label>
+            <textarea class="form-control" id="descrip_detallada_editar" name="descrip_detallada_editar" rows="3" maxlength="2000" placeholder="Opcional"></textarea>
           </div>
           <div class="form-group">
             <label for="precio_compra_neto_editar">Precio Compra Neto</label>
@@ -240,6 +251,17 @@
               <option value="I">INSUMO</option>
             </select>
           </div>
+          @if(!empty($impresionSeparadaActiva))
+          <div class="form-group" id="sector_impresion_wrap_editar">
+            <label>Sector de impresión</label>
+            <div style="display:flex;gap:14px;align-items:center;">
+              <label style="margin:0;"><input type="radio" name="sector_impresion_editar" value="B"> Barra</label>
+              <label style="margin:0;"><input type="radio" name="sector_impresion_editar" value="C"> Cocina</label>
+            </div>
+          </div>
+          @else
+          <input type="hidden" name="sector_impresion_editar" value="C">
+          @endif
           <div class="form-group">
             <label for="image_editar">Foto producto</label>
             <div class="card" style="width: auto;">
@@ -270,7 +292,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" id="modalCargaMasivaProductosLabel">Carga Masiva de Productos por Excel</h3>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="btnCloseImportModalHeader">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
@@ -283,10 +305,16 @@
           </div>
         </form>
 
+        <div id="importProductsLoadingIndicator" class="alert alert-primary" style="display:none; margin-top: 12px;">
+          <i class="fa fa-spinner fa-spin"></i>
+          <span id="importProductsLoadingText">Procesando 0 de 1 productos...</span>
+        </div>
+
         <div class="alert alert-info" style="margin-top: 15px;">
           <strong>Columnas que debe completar en la hoja Productos:</strong>
           <br>codigo: obligatorio y único.
           <br>descripcion: obligatoria y única.
+          <br>descrip_detallada: opcional.
           <br>precio_compra_neto: obligatorio.
           <br>impuesto_1: obligatorio. Puede escribir el nombre del impuesto o su ID.
           <br>impuesto_2: opcional. Puede escribir el nombre del impuesto, su ID o dejarlo vacío.
@@ -296,6 +324,7 @@
           <br>categoria: obligatoria. Debe escribir el nombre exacto de la categoría; el sistema la convierte al ID.
           <br>unidad_medida: obligatoria. Acepta UN, L, KG, CJ o los textos UNIDAD, LITRO, KILOGRAMO, CAJA.
           <br>tipo: obligatorio. Acepta P, S, I, PR, R o los textos PRODUCTO, NO AFECTO A STOCK, INSUMO, PROMOCION, RECETA.
+          <br>sector_impresion: opcional. Acepta B o C. Si el producto es tipo INSUMO, este valor se ignora y no se guarda.
           <br>nom_foto: opcional. Solo debe informar una ruta ya existente en el sistema.
         </div>
 
@@ -310,9 +339,29 @@
         </div>
       </div>
       <div class="modal-footer">
-        <a class="btn btn-primary" href="{{ route('productos.plantilla.xlsx') }}">Descargar Plantilla</a>
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        <a class="btn btn-primary" id="btnDownloadTemplateImportModal" href="{{ route('productos.plantilla.xlsx') }}">Descargar Plantilla</a>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" id="btnCloseImportModalFooter">Cerrar</button>
         <button type="button" class="btn btn-success" id="btnImportProductsExcel">Importar Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalResultadoImportacionProductos" tabindex="-1" role="dialog" aria-labelledby="modalResultadoImportacionProductosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="modalResultadoImportacionProductosLabel">Resultado de Carga Masiva</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <p id="importProductsResultMessage" style="font-weight: 600;"></p>
+        <ul id="importProductsResultList" class="mb-0" style="padding-left: 20px;"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Aceptar</button>
       </div>
     </div>
   </div>

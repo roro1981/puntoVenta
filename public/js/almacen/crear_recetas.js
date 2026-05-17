@@ -217,9 +217,15 @@ $(document).ready(function () {
         let categoria = $('#categoria').val().trim();
         let descripcion = $('#desc_receta').val().trim();
         let foto = $('#foto_receta').val().trim();
+        let sectorImpresion = $('input[name="sector_impresion_receta"]:checked').val() || $('#sector_impresion_receta').val() || '';
 
         if (!codigo || !nombre || !precioVenta || isNaN(parseFloat(precioVenta)) || categoria == 0) {
             toastr.error('Debe ingresar los campos obligatorios');
+            return;
+        }
+
+        if ($('input[name="sector_impresion_receta"]').length && !sectorImpresion) {
+            toastr.error('Debe seleccionar sector de impresión');
             return;
         }
 
@@ -237,6 +243,7 @@ $(document).ready(function () {
             categoria: categoria,
             descripcion: descripcion, // opcional
             foto: foto,               // opcional
+            sector_impresion: sectorImpresion,
             ingredientes: []
         };
 

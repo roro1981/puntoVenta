@@ -8,7 +8,6 @@ use App\Models\Promocion;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use App\Exports\ReporteExport;
 use App\Services\ReportesService;
 use App\Exports\MovimientosExport;
 use App\Exports\VentasFechaExport;
@@ -22,6 +21,7 @@ use App\Exports\ProductosRentablesExport;
 use App\Exports\CategoriasVendidasExport;
 use App\Exports\InventarioExport;
 use App\Exports\HistorialPrecioExport;
+use App\Exports\AnulacionesComandaExport;
 use App\Models\Globales;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
@@ -2441,6 +2441,270 @@ class ReportesController extends Controller
             ->limit(10)
             ->get(['id', 'codigo', 'descripcion']);
         return response()->json($data);
+    }
+
+    public function indexAnulacionesComanda()
+    {
+        if ($respuesta = $this->asegurarAccesoReporteAnulaciones()) {
+            return $respuesta;
+        }
+
+        $tipoNegocio = $this->tipoNegocio();
+        return view('reportes.anulaciones_comandas', compact('tipoNegocio'));
+    }
+
+    public function dataAnulacionesComanda(Request $request)
+    {
+        if ($respuesta = $this->asegurarAccesoReporteAnulaciones(true)) {
+            return $respuesta;
+        }
+
+        $request->validate([
+            'desde' => 'required|date',
+            'hasta' => 'required|date|after_or_equal:desde',
+        ]);
+
+        $desde = Carbon::parse($request->query('desde'))->startOfDay();
+        $hasta = Carbon::parse($request->query('hasta'))->endOfDay();
+
+        return response()->json($this->construirResumenAnulacionesComanda($desde, $hasta));
+    }
+
+    public function exportarAnulacionesComanda(Request $request)
+    {
+        if ($respuesta = $this->asegurarAccesoReporteAnulaciones()) {
+            return $respuesta;
+        }
+
+        $request->validate([
+            'desde' => 'required|date',
+            'hasta' => 'required|date|after_or_equal:desde',
+        ]);
+
+        $desde = $request->query('desde');
+        $hasta = $request->query('hasta');
+        $desdeFormat = Carbon::parse($desde)->format('d-m-Y');
+        $hastaFormat = Carbon::parse($hasta)->format('d-m-Y');
+        $fileName = 'anulaciones_comandas_' . $desdeFormat . '_al_' . $hastaFormat . '.xlsx';
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $binary = Excel::raw(new AnulacionesComandaExport($desde, $hasta), \Maatwebsite\Excel\Excel::XLSX);
+
+        return response($binary, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Cache-Control' => 'max-age=0, no-cache, no-store, must-revalidate',
+            'Pragma' => 'public',
+            'Expires' => '0',
+        ]);
+    }
+
+    private function asegurarAccesoReporteAnulaciones(bool $json = false)
+    {
+        if ($this->tipoNegocio() !== 'RESTAURANT') {
+            $mensaje = 'Este modulo solo esta disponible para negocios tipo restaurant.';
+            return $json ? response()->json(['message' => $mensaje], 403) : abort(403, $mensaje);
+        }
+
+        $rol = mb_strtolower(trim((string) optional(auth()->user()->role)->role_name));
+        if (!in_array($rol, ['administrador', 'gerencia', 'superadministrador'], true)) {
+            $mensaje = 'Este reporte esta disponible solo para Administrador y Gerencia.';
+            return $json ? response()->json(['message' => $mensaje], 403) : abort(403, $mensaje);
+        }
+
+        return null;
+    }
+
+    private function construirResumenAnulacionesComanda(Carbon $desde, Carbon $hasta): array
+    {
+        $baseActual = $this->baseAnulacionesComandaQuery($desde, $hasta);
+
+        $diasPeriodo = max(1, $desde->copy()->startOfDay()->diffInDays($hasta->copy()->startOfDay()) + 1);
+        $hastaAnterior = $desde->copy()->subSecond();
+        $desdeAnterior = $hastaAnterior->copy()->subDays($diasPeriodo - 1)->startOfDay();
+        $baseAnterior = $this->baseAnulacionesComandaQuery($desdeAnterior, $hastaAnterior);
+
+        $totalesActual = (clone $baseActual)
+            ->selectRaw('COUNT(*) as eventos, COALESCE(SUM(apc.cantidad), 0) as unidades, COALESCE(SUM(apc.cantidad * COALESCE(p.precio_venta, 0)), 0) as monto, COUNT(DISTINCT apc.comanda_id) as comandas, COUNT(DISTINCT com.mesa_id) as mesas')
+            ->first();
+
+        $totalesAnterior = (clone $baseAnterior)
+            ->selectRaw('COUNT(*) as eventos, COALESCE(SUM(apc.cantidad), 0) as unidades, COALESCE(SUM(apc.cantidad * COALESCE(p.precio_venta, 0)), 0) as monto')
+            ->first();
+
+        $categoriasRaw = (clone $baseActual)
+            ->selectRaw("COALESCE(cat.descripcion_categoria, 'Sin categoría') as categoria, COALESCE(SUM(apc.cantidad), 0) as unidades, COALESCE(SUM(apc.cantidad * COALESCE(p.precio_venta, 0)), 0) as monto")
+            ->groupBy(DB::raw("COALESCE(cat.descripcion_categoria, 'Sin categoría')"))
+            ->orderByDesc(DB::raw('SUM(apc.cantidad)'))
+            ->get();
+
+        $totalUnidades = (float) ($totalesActual->unidades ?? 0);
+        $totalMonto = (float) ($totalesActual->monto ?? 0);
+
+        $categorias = $categoriasRaw->map(function ($item) use ($totalUnidades, $totalMonto) {
+            $unidades = (float) ($item->unidades ?? 0);
+            $monto = (float) ($item->monto ?? 0);
+            return [
+                'categoria' => $item->categoria,
+                'unidades' => $unidades,
+                'monto' => $monto,
+                'participacionUnidades' => $totalUnidades > 0 ? round(($unidades / $totalUnidades) * 100, 1) : 0,
+                'participacionMonto' => $totalMonto > 0 ? round(($monto / $totalMonto) * 100, 1) : 0,
+            ];
+        })->values()->all();
+
+        $productos = (clone $baseActual)
+            ->selectRaw("COALESCE(p.descripcion, CONCAT('Producto #', apc.producto_id)) as producto, COALESCE(MAX(cat.descripcion_categoria), 'Sin categoría') as categoria, COALESCE(SUM(apc.cantidad), 0) as unidades, COALESCE(SUM(apc.cantidad * COALESCE(p.precio_venta, 0)), 0) as monto")
+            ->groupBy('apc.producto_id', 'p.descripcion')
+            ->orderByDesc(DB::raw('SUM(apc.cantidad)'))
+            ->limit(10)
+            ->get()
+            ->map(fn ($item) => [
+                'producto' => $item->producto,
+                'categoria' => $item->categoria,
+                'unidades' => (float) $item->unidades,
+                'monto' => (float) $item->monto,
+            ])->values()->all();
+
+        $usuarios = (clone $baseActual)
+            ->selectRaw("COALESCE(u.name, CONCAT('Usuario #', apc.usuario_id)) as usuario, COUNT(*) as eventos, COALESCE(SUM(apc.cantidad), 0) as unidades")
+            ->groupBy('apc.usuario_id', 'u.name')
+            ->orderByDesc(DB::raw('SUM(apc.cantidad)'))
+            ->limit(5)
+            ->get()
+            ->map(fn ($item) => [
+                'usuario' => $item->usuario,
+                'eventos' => (int) $item->eventos,
+                'unidades' => (float) $item->unidades,
+            ])->values()->all();
+
+        $motivos = (clone $baseActual)
+            ->selectRaw('apc.motivo as motivo, COUNT(*) as eventos, COALESCE(SUM(apc.cantidad), 0) as unidades')
+            ->groupBy('apc.motivo')
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->limit(6)
+            ->get()
+            ->map(fn ($item) => [
+                'motivo' => $item->motivo,
+                'eventos' => (int) $item->eventos,
+                'unidades' => (float) $item->unidades,
+            ])->values()->all();
+
+        $tendenciaRaw = (clone $baseActual)
+            ->selectRaw('DATE(apc.created_at) as fecha, COUNT(*) as eventos, COALESCE(SUM(apc.cantidad), 0) as unidades, COALESCE(SUM(apc.cantidad * COALESCE(p.precio_venta, 0)), 0) as monto')
+            ->groupBy(DB::raw('DATE(apc.created_at)'))
+            ->orderBy('fecha')
+            ->get()
+            ->keyBy(fn ($item) => Carbon::parse($item->fecha)->format('Y-m-d'));
+
+        $fechasTrend = [];
+        $trendEventos = [];
+        $trendUnidades = [];
+        $trendMonto = [];
+        $cursor = $desde->copy()->startOfDay();
+        $ultimoDia = $hasta->copy()->startOfDay();
+        while ($cursor->lte($ultimoDia)) {
+            $key = $cursor->format('Y-m-d');
+            $item = $tendenciaRaw->get($key);
+            $fechasTrend[] = $cursor->format('d/m');
+            $trendEventos[] = (int) ($item->eventos ?? 0);
+            $trendUnidades[] = (float) ($item->unidades ?? 0);
+            $trendMonto[] = (float) ($item->monto ?? 0);
+            $cursor->addDay();
+        }
+
+        $detalles = (clone $baseActual)
+            ->selectRaw("apc.id, apc.created_at, DATE_FORMAT(apc.created_at, '%d/%m/%Y %H:%i') as fecha, COALESCE(com.numero_comanda, CONCAT('COM-', apc.comanda_id)) as numero_comanda, COALESCE(me.nombre, CONCAT('Mesa ', com.mesa_id)) as mesa, COALESCE(g.name, 'Sin garzón') as garzon, COALESCE(u.name, 'Sin usuario') as usuario, COALESCE(p.descripcion, CONCAT('Producto #', apc.producto_id)) as producto, COALESCE(cat.descripcion_categoria, 'Sin categoría') as categoria, apc.cantidad, COALESCE(p.precio_venta, 0) as precio_referencia, (apc.cantidad * COALESCE(p.precio_venta, 0)) as monto_referencia, apc.motivo")
+            ->orderByDesc('apc.created_at')
+            ->get()
+            ->map(fn ($item) => [
+                'fecha' => $item->fecha,
+                'numeroComanda' => $item->numero_comanda,
+                'mesa' => $item->mesa,
+                'garzon' => $item->garzon,
+                'usuario' => $item->usuario,
+                'producto' => $item->producto,
+                'categoria' => $item->categoria,
+                'cantidad' => (float) $item->cantidad,
+                'precioReferencia' => (float) $item->precio_referencia,
+                'montoReferencia' => (float) $item->monto_referencia,
+                'motivo' => $item->motivo,
+            ])->values()->all();
+
+        $variacionUnidades = $this->calcularVariacionPorcentual((float) ($totalesActual->unidades ?? 0), (float) ($totalesAnterior->unidades ?? 0));
+        $variacionMonto = $this->calcularVariacionPorcentual((float) ($totalesActual->monto ?? 0), (float) ($totalesAnterior->monto ?? 0));
+
+        $hallazgos = [];
+        if (!empty($categorias)) {
+            $liderCategoria = $categorias[0];
+            $hallazgos[] = 'La categoría con más anulaciones es ' . $liderCategoria['categoria'] . ', con ' . number_format($liderCategoria['unidades'], 0, ',', '.') . ' unidades (' . $liderCategoria['participacionUnidades'] . '% del total).';
+        }
+        if (!empty($productos)) {
+            $hallazgos[] = 'El producto más eliminado es ' . $productos[0]['producto'] . ' con ' . number_format($productos[0]['unidades'], 0, ',', '.') . ' unidades.';
+        }
+        if (!empty($usuarios)) {
+            $hallazgos[] = 'El usuario con más eliminaciones registradas en el período es ' . $usuarios[0]['usuario'] . ' (' . number_format($usuarios[0]['eventos'], 0, ',', '.') . ' eventos).';
+        }
+        if (!empty($motivos)) {
+            $hallazgos[] = 'El motivo más repetido es “' . $motivos[0]['motivo'] . '”, presente en ' . number_format($motivos[0]['eventos'], 0, ',', '.') . ' eliminaciones.';
+        }
+        if ($variacionUnidades !== null) {
+            $hallazgos[] = 'Comparado con el período anterior equivalente, las unidades eliminadas variaron ' . ($variacionUnidades >= 0 ? '+' : '') . $variacionUnidades . '%.';
+        }
+
+        return [
+            'tipoNegocio' => 'RESTAURANT',
+            'periodo' => [
+                'desde' => $desde->format('d/m/Y'),
+                'hasta' => $hasta->format('d/m/Y'),
+                'dias' => $diasPeriodo,
+            ],
+            'kpis' => [
+                'eventos' => (int) ($totalesActual->eventos ?? 0),
+                'unidades' => (float) ($totalesActual->unidades ?? 0),
+                'monto' => (float) ($totalesActual->monto ?? 0),
+                'comandas' => (int) ($totalesActual->comandas ?? 0),
+                'mesas' => (int) ($totalesActual->mesas ?? 0),
+                'variacionUnidades' => $variacionUnidades,
+                'variacionMonto' => $variacionMonto,
+            ],
+            'categorias' => $categorias,
+            'productos' => $productos,
+            'usuarios' => $usuarios,
+            'motivos' => $motivos,
+            'tendencia' => [
+                'fechas' => $fechasTrend,
+                'eventos' => $trendEventos,
+                'unidades' => $trendUnidades,
+                'monto' => $trendMonto,
+            ],
+            'detalles' => $detalles,
+            'hallazgos' => $hallazgos,
+        ];
+    }
+
+    private function baseAnulacionesComandaQuery(Carbon $desde, Carbon $hasta)
+    {
+        return DB::table('anulaciones_productos_comanda as apc')
+            ->join('comandas as com', 'com.id', '=', 'apc.comanda_id')
+            ->leftJoin('mesas as me', 'me.id', '=', 'com.mesa_id')
+            ->leftJoin('users as u', 'u.id', '=', 'apc.usuario_id')
+            ->leftJoin('users as g', 'g.id', '=', 'com.garzon_id')
+            ->leftJoin('productos as p', 'p.id', '=', 'apc.producto_id')
+            ->leftJoin('categorias as cat', 'cat.id', '=', 'p.categoria_id')
+            ->whereBetween('apc.created_at', [$desde, $hasta]);
+    }
+
+    private function calcularVariacionPorcentual(float $actual, float $anterior): ?float
+    {
+        if ($anterior <= 0) {
+            return null;
+        }
+
+        return round((($actual - $anterior) / $anterior) * 100, 1);
     }
 }
 

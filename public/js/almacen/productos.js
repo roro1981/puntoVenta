@@ -161,6 +161,32 @@ $(document).ready(function () {
 
 });
 
+function toggleSectorImpresionPorTipo(esEdicion) {
+    var tipoSelector = esEdicion ? '#tipo_editar' : '#tipo';
+    var wrapSelector = esEdicion ? '#sector_impresion_wrap_editar' : '#sector_impresion_wrap_crear';
+    var radioName = esEdicion ? 'sector_impresion_editar' : 'sector_impresion';
+    var tipo = $(tipoSelector).val();
+
+    if (!$(wrapSelector).length) {
+        return;
+    }
+
+    if (tipo === 'I') {
+        $(wrapSelector).hide();
+        $('input[name="' + radioName + '"]').prop('checked', false);
+    } else {
+        $(wrapSelector).show();
+    }
+}
+
+$(document).on('change', '#tipo', function () {
+    toggleSectorImpresionPorTipo(false);
+});
+
+$(document).on('change', '#tipo_editar', function () {
+    toggleSectorImpresionPorTipo(true);
+});
+
 function limpiarBackdropModal() {
     $('body').removeClass('modal-open');
     $('.modal-backdrop').remove();
@@ -169,15 +195,79 @@ function limpiarBackdropModal() {
 function cerrarModalSeguro(selectorModal, onClosed) {
     var $modal = $(selectorModal);
     $modal.one('hidden.bs.modal', function () {
+        // Limpiar SINCRÓNICAMENTE el backdrop para que Bootstrap no tenga estado residual
         limpiarBackdropModal();
+        // Pequeño delay antes de abrir otro modal para que Bootstrap
+        // complete su ciclo interno antes de iniciar uno nuevo
         if (typeof onClosed === 'function') {
-            onClosed();
+            setTimeout(function () {
+                onClosed();
+            }, 150);
         }
     });
     $modal.modal('hide');
 }
 
+var importProductsInProgress = false;
+
+function setImportProductsLoadingState(isLoading) {
+    var $modal = $('#modalCargaMasivaProductos');
+
+    importProductsInProgress = isLoading;
+    $('#importProductsLoadingIndicator').toggle(isLoading);
+
+    $modal.find('button, input[type="file"]').prop('disabled', isLoading);
+    $modal.find('a.btn')
+        .toggleClass('disabled', isLoading)
+        .attr('aria-disabled', isLoading ? 'true' : 'false')
+        .css('pointer-events', isLoading ? 'none' : 'auto');
+}
+
+function resetImportProductsProgressText() {
+    $('#importProductsLoadingText').text('Procesando 0 de 1 productos...');
+}
+
+function updateImportProductsProgressText(loaded, total) {
+    var porcentaje = total > 0 ? Math.round((loaded / total) * 100) : 0;
+    porcentaje = Math.max(0, Math.min(100, porcentaje));
+    $('#importProductsLoadingText').text('Procesando ' + loaded + ' de ' + total + ' productos (' + porcentaje + '%)...');
+}
+
+function showImportProductsResultModal(message, details, title) {
+    $('#modalResultadoImportacionProductosLabel').text(title || 'Resultado de Carga Masiva');
+    $('#importProductsResultMessage').text(message || 'Proceso finalizado.');
+
+    var $list = $('#importProductsResultList');
+    $list.empty();
+
+    if (Array.isArray(details) && details.length > 0) {
+        details.forEach(function (item) {
+            $list.append('<li>' + $('<div>').text(item).html() + '</li>');
+        });
+    } else {
+        $list.append('<li>Sin incidencias.</li>');
+    }
+
+    $('#modalResultadoImportacionProductos').modal('show');
+}
+
+$(document).on('click', '#modalCargaMasivaProductos a.disabled', function (event) {
+    event.preventDefault();
+});
+
+$('#modalCargaMasivaProductos').on('hide.bs.modal', function (event) {
+    if (!importProductsInProgress) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+});
+
 $('#modalCargaMasivaProductos').on('hidden.bs.modal', function () {
+    importProductsInProgress = false;
+    setImportProductsLoadingState(false);
+    resetImportProductsProgressText();
     $('#importProductsExcelForm')[0].reset();
 });
 $('#modalNuevoProducto').on('show.bs.modal', function (event) {
@@ -194,7 +284,9 @@ $('#modalNuevoProducto').on('show.bs.modal', function (event) {
     $('#impuesto_2_editar').val('0');
     $('#categoria_editar').val('');
     $('#unidad_medida_editar').val('0');
-    $('#tipo_editar').val('0');
+    $('#tipo').val('0');
+    $('input[name="sector_impresion"]').prop('checked', false);
+    toggleSectorImpresionPorTipo(false);
     $('#imagen_editar').attr('src', '/img/fotos_prod/sin_imagen.jpg');
     $('#image_editar').val('');
     $('#nom_foto_editar').val('');
@@ -227,6 +319,11 @@ $(document).on('click', '.editar_prod', function () {
             $('#stock_minimo_editar').val(parseFloat(response.stock_minimo) || 0);
             $('#tipo_editar').val(response.tipo);
             $('#unidad_medida_editar').val(response.unidad_medida);
+            $('input[name="sector_impresion_editar"]').prop('checked', false);
+            if (response.sector_impresion === 'B' || response.sector_impresion === 'C') {
+                $('input[name="sector_impresion_editar"][value="' + response.sector_impresion + '"]').prop('checked', true);
+            }
+            toggleSectorImpresionPorTipo(true);
             $('#imagen_editar').attr('src', response.imagen ? response.imagen : "/img/fotos_prod/sin_imagen.jpg");
             $('#nom_foto_editar').val(response.imagen);
 
@@ -241,6 +338,7 @@ $(document).on('click', '.editar_prod', function () {
                 categoria: response.categoria_id,
                 stock_minimo: parseFloat(response.stock_minimo) || 0,
                 tipo: response.tipo,
+                sector_impresion: response.sector_impresion || '',
                 nom_foto: response.imagen
             };
 
@@ -254,6 +352,14 @@ $(document).on('click', '.editar_prod', function () {
 $('#guardarCambios').click(function (event) {
     event.preventDefault();
     var uuid = $('#producto_uuid').val();
+    var tipoEditar = $('#tipo_editar').val();
+    var sectorEditar = $('input[name="sector_impresion_editar"]:checked').val() || '';
+
+    if (tipoEditar !== 'I' && $('#sector_impresion_wrap_editar').length && !sectorEditar) {
+        toastr.error('Debe seleccionar sector de impresión');
+        return;
+    }
+
     var datosProducto = {
         descripcion: $('#descripcion_editar').val(),
         descrip_detallada: $('#descrip_detallada_editar').val(),
@@ -265,7 +371,8 @@ $('#guardarCambios').click(function (event) {
         categoria: $('#categoria_editar').val(),
         stock_minimo: $('#stock_minimo_editar').val(),
         unidad_medida: $('#unidad_medida_editar').val(),
-        tipo: $('#tipo_editar').val(),
+        tipo: tipoEditar,
+        sector_impresion: (tipoEditar === 'I' ? '' : sectorEditar),
         nom_foto: $('#nom_foto_editar').val()
     };
 
@@ -345,9 +452,12 @@ function cargaProductos() {
             { "data": "imagen" },
             { "data": { "_": "fec_creacion", "sort": "fec_creacion_sort" } },
             { "data": "fec_modificacion" },
-            { "data": "actions" }
+            { "data": "actions", "className": "text-nowrap" }
         ],
         "order": [[6, "desc"], [4, "asc"]],
+        "columnDefs": [
+            { "targets": 8, "width": "130px", "className": "text-nowrap" }
+        ],
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "pageLength": 10,
         "searching": true,
@@ -429,11 +539,22 @@ $('#createProdForm').submit(function (event) {
     event.preventDefault();
 
     var formData = new FormData(this);
+    var tipoCrear = $('#tipo').val();
+    var sectorCrear = $('input[name="sector_impresion"]:checked').val() || '';
+
+    if (tipoCrear !== 'I' && $('#sector_impresion_wrap_crear').length && !sectorCrear) {
+        toastr.error('Debe seleccionar sector de impresión');
+        return;
+    }
     
     // Validar impuesto_2: si es 0, enviar null
     const impuesto2Value = $('#impuesto_2').val();
     if (impuesto2Value == 0) {
         formData.set('impuesto_2', '');
+    }
+
+    if (tipoCrear === 'I') {
+        formData.delete('sector_impresion');
     }
     
     formData.append("precio_compra_bruto", $("#precio_compra_bruto").val())
@@ -468,6 +589,10 @@ $('#createProdForm').submit(function (event) {
     });
 });
 function importarProductosExcel() {
+    if (importProductsInProgress) {
+        return;
+    }
+
     var inputFile = $('#archivo_excel')[0];
 
     if (!inputFile.files.length) {
@@ -475,36 +600,177 @@ function importarProductosExcel() {
         return;
     }
 
-    var formData = new FormData($('#importProductsExcelForm')[0]);
+    var selectedExcelFile = inputFile.files[0];
+    var progressToken = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    var progressPollingId = null;
+
+    function stopProgressPolling() {
+        if (progressPollingId) {
+            clearInterval(progressPollingId);
+            progressPollingId = null;
+        }
+    }
+
+    function startProgressPolling(totalProductos) {
+        stopProgressPolling();
+        progressPollingId = setInterval(function () {
+            $.ajax({
+                type: 'GET',
+                url: '/almacen/productos/importar-xlsx/progreso',
+                data: { token: progressToken },
+                success: function (progressResp) {
+                    var total = parseInt(progressResp.total, 10) || totalProductos || 0;
+                    var processed = parseInt(progressResp.processed, 10) || 0;
+
+                    if (total > 0) {
+                        updateImportProductsProgressText(Math.min(processed, total), total);
+                    }
+
+                    if (progressResp.status === 'done' || progressResp.status === 'failed') {
+                        stopProgressPolling();
+                    }
+                }
+            });
+        }, 500);
+    }
+
+    resetImportProductsProgressText();
+    setImportProductsLoadingState(true);
+
+    var formDataConteo = new FormData();
+    formDataConteo.append('archivo_excel', selectedExcelFile);
+    formDataConteo.append('solo_conteo', '1');
 
     $.ajax({
         type: 'POST',
         url: '/almacen/productos/importar-xlsx',
-        data: formData,
+        data: formDataConteo,
         headers: {
             'X-CSRF-TOKEN': $('#token').val()
         },
         contentType: false,
         processData: false,
-        success: function (response) {
-            toastr.success(response.message);
-            cerrarModalSeguro('#modalCargaMasivaProductos', function () {
-                $('#contenido').load('/almacen/productos');
-            });
-        },
-        error: function (xhr) {
-            if (xhr.status === 422) {
-                var mensaje = xhr.responseJSON.message || 'El archivo contiene errores de validación.';
+        success: function (conteoResp) {
+            var totalProductos = parseInt(conteoResp.total_productos, 10) || 0;
 
-                if (xhr.responseJSON.details && xhr.responseJSON.details.length) {
-                    mensaje += '<br><br>' + xhr.responseJSON.details.join('<br>');
-                }
-
-                toastr.warning(mensaje, 'Carga masiva no procesada', { timeOut: 12000 });
+            if (totalProductos <= 0) {
+                setImportProductsLoadingState(false);
+                cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                    showImportProductsResultModal('La hoja Productos no contiene filas para importar.', [], 'Carga masiva no procesada');
+                });
                 return;
             }
 
-            toastr.error('Ocurrió un error al importar el archivo Excel.');
+            $('#importProductsLoadingText').text('Se encontraron ' + totalProductos + ' productos. Iniciando procesamiento...');
+            startProgressPolling(totalProductos);
+
+            var formDataImport = new FormData();
+            formDataImport.append('archivo_excel', selectedExcelFile);
+            formDataImport.append('progress_token', progressToken);
+
+            $.ajax({
+                type: 'POST',
+                url: '/almacen/productos/importar-xlsx',
+                data: formDataImport,
+                headers: {
+                    'X-CSRF-TOKEN': $('#token').val()
+                },
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    stopProgressPolling();
+                    updateImportProductsProgressText(totalProductos, totalProductos);
+                    setTimeout(function () {
+                        setImportProductsLoadingState(false);
+                        cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                            $('#modalResultadoImportacionProductos').one('hidden.bs.modal', function () {
+                                limpiarBackdropModal();
+                                $('#contenido').load('/almacen/productos');
+                            });
+
+                            showImportProductsResultModal(
+                                response.message,
+                                response.details || response.incidencias || [],
+                                'Carga masiva completada'
+                            );
+                        });
+                    }, 350);
+                },
+                error: function (xhr) {
+                    stopProgressPolling();
+                    setImportProductsLoadingState(false);
+                    
+                    console.error('Error en importación (segundo AJAX):', xhr.status, xhr.responseJSON);
+                    
+                    if (xhr.status === 422) {
+                        var mensaje = (xhr.responseJSON && xhr.responseJSON.message)
+                            ? xhr.responseJSON.message
+                            : 'El archivo contiene errores de validación.';
+                        var detalles = (xhr.responseJSON && (xhr.responseJSON.details || xhr.responseJSON.incidencias))
+                            ? (xhr.responseJSON.details || xhr.responseJSON.incidencias)
+                            : [];
+
+                        cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                            showImportProductsResultModal(mensaje, detalles, 'Carga masiva con incidencias');
+                        });
+                        return;
+                    }
+                    
+                    // Para otros errores (500, etc.)
+                    var mensajeError = 'Ocurrió un error al importar el archivo Excel.';
+                    var detallesError = [];
+                    
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        mensajeError = xhr.responseJSON.message;
+                    }
+                    
+                    detallesError.push('Error HTTP ' + xhr.status);
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        detallesError.push('Código: ' + xhr.responseJSON.error);
+                    }
+                    
+                    cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                        showImportProductsResultModal(mensajeError, detallesError, 'Carga masiva no procesada');
+                    });
+                }
+            });
+        },
+        error: function (xhr) {
+            stopProgressPolling();
+            setImportProductsLoadingState(false);
+            
+            console.error('Error en preconteo (primer AJAX):', xhr.status, xhr.responseJSON);
+
+            if (xhr.status === 422) {
+                var mensaje = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : 'No se pudo leer el archivo para contar productos.';
+                var detalles = (xhr.responseJSON && (xhr.responseJSON.details || xhr.responseJSON.incidencias))
+                    ? (xhr.responseJSON.details || xhr.responseJSON.incidencias)
+                    : [];
+
+                cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                    showImportProductsResultModal(mensaje, detalles, 'Carga masiva no procesada');
+                });
+                return;
+            }
+            
+            // Para otros errores (500, etc.)
+            var mensajeError = 'No se pudo iniciar la carga masiva.';
+            var detallesError = [];
+            
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                mensajeError = xhr.responseJSON.message;
+            }
+            
+            detallesError.push('Error HTTP ' + xhr.status);
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                detallesError.push('Código: ' + xhr.responseJSON.error);
+            }
+            
+            cerrarModalSeguro('#modalCargaMasivaProductos', function () {
+                showImportProductsResultModal(mensajeError, detallesError, 'Carga masiva no procesada');
+            });
         }
     });
 }

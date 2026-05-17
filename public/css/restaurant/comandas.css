@@ -268,8 +268,10 @@
     background: #fff;
     color: #17a2b8;
     border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 11px;
+    width: 34px;
+    height: 30px;
+    padding: 0;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
 }
@@ -284,10 +286,44 @@
     background: #fff;
     color: #e67e22;
     border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 11px;
+    width: 34px;
+    height: 30px;
+    padding: 0;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.btn-barra-mesa,
+.btn-ambos-mesa {
+    border-radius: 6px;
+    width: 34px;
+    height: 30px;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #fff;
+}
+
+.btn-barra-mesa {
+    border: 1px solid #8e44ad;
+    color: #8e44ad;
+}
+
+.btn-barra-mesa:hover {
+    background: #8e44ad;
+    color: #fff;
+}
+
+.btn-ambos-mesa {
+    border: 1px solid #2c3e50;
+    color: #2c3e50;
+}
+
+.btn-ambos-mesa:hover {
+    background: #2c3e50;
+    color: #fff;
 }
 
 .btn-cocina-mesa:hover {
@@ -1016,11 +1052,14 @@
 .pos-action-buttons {
     display: flex;
     gap: 8px;
+    justify-content: center;
 }
 
 .pos-btn {
-    flex: 1;
-    padding: 10px;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 42px;
+    padding: 0;
     border: none;
     border-radius: 6px;
     font-size: 13px;
@@ -1274,6 +1313,41 @@
     color: #fff;
 }
 
+.badge-estado-libre,
+.badge-estado-reservada,
+.badge-estado-ocupada,
+.badge-estado-pendiente {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.mesas-header-panel {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.mesas-estado-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.mesas-header-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    margin-top: 0;
+}
+
 .badge-estado-ocupada {
     background-color: #dc3545;
     color: #fff;
@@ -1335,6 +1409,53 @@
     color: #333;
     min-width: 30px;
     text-align: center;
+}
+
+/* Plano de mesas */
+#modalPlanoMesas {
+    padding-right: 0 !important;
+}
+
+#modalPlanoMesas .plano-mesas-dialog {
+    width: 92vw;
+    max-width: 1200px;
+    margin: 1rem auto;
+}
+
+#modalPlanoMesas .plano-mesas-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    padding: 12px;
+}
+
+#modalPlanoMesas .plano-mesas-toolbar {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#modalPlanoMesas .plano-mesas-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+#modalPlanoMesas .plano-mesas-hint {
+    font-weight: 600;
+}
+
+#layout_preview_canvas {
+    position: relative;
+    width: 100%;
+    height: 620px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    overflow: auto;
 }
 
 /* ================================================================
@@ -1409,10 +1530,77 @@
         min-height: 0;
         height: auto;
     }
+
+    #modalPlanoMesas .plano-mesas-dialog {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        margin: 8px auto;
+    }
+
+    #modalPlanoMesas .modal-content {
+        max-height: calc(100vh - 16px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    #modalPlanoMesas .plano-mesas-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 10px;
+    }
+
+    #modalPlanoMesas .plano-mesas-actions {
+        width: 100%;
+    }
+
+    #modalPlanoMesas .plano-mesas-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    #layout_preview_canvas {
+        height: 54vh;
+        min-height: 320px;
+    }
 }
 
 /* --- Móvil (≤ 767px) --- */
 @media (max-width: 767px) {
+    #modalPlanoMesas .plano-mesas-dialog {
+        width: calc(100vw - 8px);
+        max-width: calc(100vw - 8px);
+        margin: 4px auto;
+    }
+
+    #modalPlanoMesas .modal-header {
+        padding: 10px 12px;
+    }
+
+    #modalPlanoMesas .modal-title {
+        font-size: 17px;
+    }
+
+    #modalPlanoMesas .plano-mesas-toolbar {
+        align-items: stretch;
+    }
+
+    #layout_text_summary {
+        font-size: 13px;
+    }
+
+    #modalPlanoMesas .plano-mesas-actions .btn {
+        width: 100%;
+        font-size: 13px;
+        padding: 7px 10px;
+    }
+
+    #modalPlanoMesas .plano-mesas-hint {
+        font-size: 12px;
+    }
+
+    #layout_preview_canvas {
+        height: 50vh;
+        min-height: 280px;
+    }
 
     /* Header principal: apilar verticalmente */
     .box-header .d-flex.justify-content-between.align-items-center {
@@ -1426,12 +1614,22 @@
         padding: 6px 10px;
     }
 
-    .box-header .d-flex > div:last-child {
+    .mesas-header-panel {
         width: 100%;
         display: flex;
-        flex-wrap: wrap;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         gap: 6px;
+    }
+
+    .mesas-estado-badges {
+        width: 100%;
+    }
+
+    .mesas-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 0;
     }
 
     #btn_ver_plano_mesas,
@@ -1768,10 +1966,14 @@
     /* Botones de footer del pedido */
     .pos-action-buttons {
         gap: 6px;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
     .pos-btn {
-        padding: 7px 6px;
+        width: 40px;
+        height: 38px;
+        padding: 0;
         font-size: 12px;
     }
 

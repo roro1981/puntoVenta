@@ -42,7 +42,7 @@ class SubmenusTableSeeder extends Seeder
             // -- Productos --
             ['menu_id' => 4, 'submenu_name' => 'Productos más vendidos',   'submenu_route' => '/prods_mas_vendidos','created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 4, 'submenu_name' => 'Productos más rentables',  'submenu_route' => '/prods_rentables',  'created_at' => Carbon::now()->toDateTimeString()],
-            ['menu_id' => 4, 'submenu_name' => 'Categorias más vendidas',  'submenu_route' => '/cat_mas_vendidas', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 4, 'submenu_name' => 'Categorías más vendidas',  'submenu_route' => '/cat_mas_vendidas', 'created_at' => Carbon::now()->toDateTimeString()],
             // -- Inventario --
             ['menu_id' => 4, 'submenu_name' => 'Inventario',               'submenu_route' => '/inventario',       'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 4, 'submenu_name' => 'Movimientos de productos', 'submenu_route' => '/mov_productos',    'created_at' => Carbon::now()->toDateTimeString()],
@@ -61,6 +61,9 @@ class SubmenusTableSeeder extends Seeder
             ['menu_id' => 7, 'submenu_name' => 'Recetas eliminadas', 'submenu_route' => '/recetas_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Promociones eliminadas', 'submenu_route' => '/promos_elim', 'created_at' => Carbon::now()->toDateTimeString()],
             ['menu_id' => 7, 'submenu_name' => 'Proveedores eliminados', 'submenu_route' => '/provs_elim', 'created_at' => Carbon::now()->toDateTimeString()],
+            ['menu_id' => 4, 'submenu_name' => 'Anulaciones de comandas', 'submenu_route' => '/anulaciones_comandas', 'created_at' => Carbon::now()->toDateTimeString()],
         ]);
     }
 }
+
+

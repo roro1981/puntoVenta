@@ -28,6 +28,7 @@ class Producto extends Model
         'stock_minimo',
         'categoria_id',
         'tipo',
+        'sector_impresion',
         'impuesto1',
         'impuesto2',
         'imagen',
@@ -107,6 +108,8 @@ class Producto extends Model
         $this->stock_minimo = $data['stock_minimo'] ?? 0;
         $this->unidad_medida = $data['unidad_medida'];
         $this->tipo = $data['tipo'];
+        $sector = strtoupper((string) ($data['sector_impresion'] ?? ''));
+        $this->sector_impresion = ($this->tipo === 'I') ? null : (in_array($sector, ['B', 'C'], true) ? $sector : null);
         $this->imagen = $data['nom_foto'];
         $this->estado = 'Activo';
         $this->fec_creacion = now();
@@ -137,6 +140,8 @@ class Producto extends Model
         $this->categoria_id = $data['categoria'];
         $this->stock_minimo = $data['stock_minimo'] ?? 0;
         $this->tipo = $data['tipo'];
+        $sector = strtoupper((string) ($data['sector_impresion'] ?? ''));
+        $this->sector_impresion = ($this->tipo === 'I') ? null : (in_array($sector, ['B', 'C'], true) ? $sector : null);
         $this->unidad_medida = $data['unidad_medida'];
         $this->imagen = $data['nom_foto'];
         $this->fec_modificacion = now();

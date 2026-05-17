@@ -8,15 +8,22 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            color: #000 !important;
+        }
+
+        @page {
+            size: 80mm 210mm;
+            margin: 0;
         }
 
         body {
             font-family: 'Courier New', monospace;
             font-size: 13px;
+            font-weight: bold;
             line-height: 1.4;
             color: #000;
             width: 72mm;
-            padding: 2mm 2mm 4mm 2mm;
+            padding: 1mm 2mm 2mm 2mm;
             max-width: 72mm;
         }
 
@@ -112,28 +119,30 @@
             font-size: 11px;
             font-style: italic;
             margin-left: 38px;
-            color: #333;
+            color: #000;
+            font-weight: bold;
         }
 
         .obs-general {
-            border: 2px solid #000;
             padding: 5px 6px;
             margin: 4px 0;
             font-size: 12px;
             font-weight: bold;
+            width: 100%;
         }
 
         .obs-general-title {
-            text-align: center;
+            text-align: left;
             font-size: 11px;
             margin-bottom: 3px;
         }
 
         .total-items {
-            text-align: right;
+            text-align: center;
             font-size: 11px;
             margin-top: 6px;
             font-weight: bold;
+            color: #000;
         }
 
         .footer {
@@ -141,7 +150,9 @@
             margin-top: 10px;
             padding-top: 6px;
             border-top: 2px dashed #000;
-            font-size: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #000;
         }
 
         .print-time {
@@ -153,7 +164,12 @@
 </head>
 <body>
 
-    <div class="title-box">*** COCINA ***</div>
+    @php
+        $detallesLista = isset($detallesTicket) ? $detallesTicket : $comanda->detalles;
+        $titulo = strtoupper((string)($tituloTicket ?? 'COCINA'));
+    @endphp
+
+    <div class="title-box">*** {{ $titulo }} ***</div>
 
     <div class="comanda-num">
         {{ $comanda->numero_comanda ?? ('#' . str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) }}
@@ -186,13 +202,12 @@
 
     @if(!empty($comanda->observaciones))
         <div class="obs-general">
-            <div class="obs-general-title">*** NOTA ***</div>
             <div>{{ $comanda->observaciones }}</div>
         </div>
         <div class="separator"></div>
     @endif
 
-    @foreach($comanda->detalles as $detalle)
+    @forelse($detallesLista as $detalle)
         @php
             $esReceta = ($detalle->tipo_item ?? 'PRODUCTO') === 'RECETA';
             $descripcion = $esReceta
@@ -210,11 +225,15 @@
                 <div class="item-obs">↳ {{ $detalle->observaciones }}</div>
             @endif
         </div>
-    @endforeach
+    @empty
+        <div class="item">
+            <div class="item-desc">SIN PRODUCTOS PARA ESTE SECTOR</div>
+        </div>
+    @endforelse
 
     <div class="separator"></div>
     <div class="total-items">
-        Total ítems: {{ $comanda->detalles->sum('cantidad') }}
+        Total ítems: {{ collect($detallesLista)->sum('cantidad') }}
     </div>
 
     <div class="footer">

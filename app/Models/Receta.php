@@ -23,6 +23,7 @@ class Receta extends Model
         'codigo',
         'nombre',
         'descripcion',
+        'sector_impresion',
         'precio_costo',
         'precio_venta',
         'imagen',
@@ -58,6 +59,9 @@ class Receta extends Model
                 'precio_venta' => $data['precio_venta'],
                 'categoria_id' => $data['categoria'],
                 'descripcion' => $data['descripcion'],
+                'sector_impresion' => in_array(strtoupper((string) ($data['sector_impresion'] ?? '')), ['B', 'C'], true)
+                    ? strtoupper((string) $data['sector_impresion'])
+                    : null,
                 'imagen' => $data['foto'] ?? null,
                 'fec_creacion' => now(),
                 'user_creacion' => auth()->user()->name,
@@ -104,6 +108,9 @@ class Receta extends Model
                 'precio_venta'  => $data['precio_venta'],
                 'categoria_id'  => $data['categoria'],
                 'descripcion'   => $data['descripcion'],
+                'sector_impresion' => in_array(strtoupper((string) ($data['sector_impresion'] ?? '')), ['B', 'C'], true)
+                    ? strtoupper((string) $data['sector_impresion'])
+                    : null,
                 'imagen'        => $data['foto'] ?? $receta->imagen,
                 'fec_modificacion' => now(),
                 'user_modificacion' => auth()->user()->name,

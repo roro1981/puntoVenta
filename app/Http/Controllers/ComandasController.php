@@ -43,6 +43,23 @@ class ComandasController extends Controller
         return max(1, $minutos);
     }
 
+    private function impresionSeparadaActiva(): bool
+    {
+        $valor = Cache::remember('global_IMPRESION_SEPARADA', 300, fn () => Globales::where('nom_var', 'IMPRESION_SEPARADA')->value('valor_var'));
+        return (string) $valor === '1';
+    }
+
+    private function sectorDetalleComanda(DetalleComanda $detalle): string
+    {
+        $esReceta = ($detalle->tipo_item ?? 'PRODUCTO') === 'RECETA';
+        $sector = $esReceta
+            ? (string) (optional($detalle->receta)->sector_impresion ?? 'C')
+            : (string) (optional($detalle->producto)->sector_impresion ?? 'C');
+
+        $sector = strtoupper(trim($sector));
+        return in_array($sector, ['B', 'C'], true) ? $sector : 'C';
+    }
+
     private function limpiarReservasExpiradas(?int $mesaId = null): void
     {
         $limite = now()->subMinutes($this->obtenerMinutosExpiracionReservaMesas());
@@ -271,6 +288,7 @@ class ComandasController extends Controller
         return view('restaurant.comandas', [
             'mesas' => $mesas,
             'porcentajePropina' => $this->obtenerPorcentajePropinaGlobal(),
+            'impresionSeparada' => $this->impresionSeparadaActiva() ? 1 : 0,
         ]);
     }
 
@@ -1341,7 +1359,10 @@ class ComandasController extends Controller
             $comanda->garzon_id = $garzonIdComanda ?? $comanda->garzon_id;
             $comanda->comensales = $request->comensales ?? $comanda->comensales;
             $comanda->incluye_propina = filter_var($request->incluye_propina, FILTER_VALIDATE_BOOLEAN);
-            $comanda->observaciones = $request->filled('observaciones') ? $request->observaciones : $comanda->observaciones;
+            if ($request->has('observaciones')) {
+                $observaciones = trim((string) $request->input('observaciones', ''));
+                $comanda->observaciones = $observaciones !== '' ? $observaciones : null;
+            }
             $comanda->estado = 'EN CONSUMO';
             $comanda->save();
 
@@ -1834,12 +1855,14 @@ class ComandasController extends Controller
             ->get(['id', 'nombre', 'capacidad']);
 
         $layout = [
+            'version' => 2,
             'canvas' => [
                 'width' => 1200,
                 'height' => 700,
                 'grid' => 20,
             ],
             'mesas' => [],
+            'labels' => [],
             'updated_at' => now()->toDateTimeString(),
             'updated_by' => optional(auth()->user())->name ?? 'SISTEMA',
         ];
@@ -1847,8 +1870,8 @@ class ComandasController extends Controller
         $columna = 0;
         $fila = 0;
         $maxColumnas = 6;
-        $separacionX = 180;
-        $separacionY = 140;
+        $separacionX = 160;
+        $separacionY = 118;
 
         foreach ($mesas as $mesa) {
             $layout['mesas'][] = [
@@ -1857,8 +1880,8 @@ class ComandasController extends Controller
                 'capacidad' => $mesa->capacidad,
                 'x' => 40 + ($columna * $separacionX),
                 'y' => 40 + ($fila * $separacionY),
-                'width' => 130,
-                'height' => 90,
+                'width' => 108,
+                'height' => 72,
                 'shape' => 'rect',
                 'rotation' => 0,
             ];
@@ -1948,12 +1971,70 @@ class ComandasController extends Controller
             $comanda = Comanda::with(['mesa', 'detalles.producto', 'detalles.receta', 'garzon'])
                 ->findOrFail($comandaId);
 
-            $pdf = Pdf::loadView('restaurant.ticket_cocina', compact('comanda'));
-            $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+            $impresionSeparada = $this->impresionSeparadaActiva();
+            $detallesTicket = $comanda->detalles;
+            if ($impresionSeparada) {
+                $detallesTicket = $comanda->detalles->filter(function ($detalle) {
+                    return $this->sectorDetalleComanda($detalle) === 'C';
+                })->values();
+            }
+
+            $tituloTicket = $impresionSeparada ? 'COCINA' : 'PREPARACION';
+
+            $pdf = Pdf::loadView('restaurant.ticket_cocina', compact('comanda', 'detallesTicket', 'tituloTicket'));
+            $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
 
             return $pdf->stream('cocina-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
         } catch (\Exception $e) {
             abort(500, 'Error al generar ticket de cocina: ' . $e->getMessage());
+        }
+    }
+
+    public function imprimirTicketBarra($comandaId)
+    {
+        try {
+            $comanda = Comanda::with(['mesa', 'detalles.producto', 'detalles.receta', 'garzon'])
+                ->findOrFail($comandaId);
+
+            $detallesTicket = $comanda->detalles->filter(function ($detalle) {
+                return $this->sectorDetalleComanda($detalle) === 'B';
+            })->values();
+
+            $tituloTicket = 'BARRA';
+
+            $pdf = Pdf::loadView('restaurant.ticket_cocina', compact('comanda', 'detallesTicket', 'tituloTicket'));
+            $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
+
+            return $pdf->stream('barra-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
+        } catch (\Exception $e) {
+            abort(500, 'Error al generar ticket de barra: ' . $e->getMessage());
+        }
+    }
+
+    public function imprimirTicketPreparacionAmbos($comandaId)
+    {
+        try {
+            $comanda = Comanda::with(['mesa', 'detalles.producto', 'detalles.receta', 'garzon'])
+                ->findOrFail($comandaId);
+
+            if (!$this->impresionSeparadaActiva()) {
+                return $this->imprimirTicketCocina($comandaId);
+            }
+
+            $detallesCocina = $comanda->detalles->filter(function ($detalle) {
+                return $this->sectorDetalleComanda($detalle) === 'C';
+            })->values();
+
+            $detallesBarra = $comanda->detalles->filter(function ($detalle) {
+                return $this->sectorDetalleComanda($detalle) === 'B';
+            })->values();
+
+            $pdf = Pdf::loadView('restaurant.ticket_preparacion_ambos', compact('comanda', 'detallesCocina', 'detallesBarra'));
+            $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
+
+            return $pdf->stream('preparacion-ambos-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
+        } catch (\Exception $e) {
+            abort(500, 'Error al generar ticket combinado de cocina y barra: ' . $e->getMessage());
         }
     }
 
@@ -1967,7 +2048,7 @@ class ComandasController extends Controller
             $porcentajePropinaGlobal = $this->obtenerPorcentajePropinaGlobal();
 
             $pdf = Pdf::loadView('restaurant.ticket_comanda', compact('comanda', 'corporateData', 'porcentajePropinaGlobal'));
-            $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+            $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
 
             return $pdf->stream('comanda-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
         } catch (\Exception $e) {
@@ -1989,7 +2070,7 @@ class ComandasController extends Controller
             $esTicketPago = true;
 
             $pdf = Pdf::loadView('restaurant.ticket_comanda', compact('comanda', 'corporateData', 'venta', 'esTicketPago', 'porcentajePropinaGlobal'));
-            $pdf->setPaper([0, 0, 226.77, 841.89], 'portrait');
+            $pdf->setPaper([0, 0, 226.77, 595.28], 'portrait');
 
             return $pdf->stream('ticket-pago-comanda-' . ($comanda->numero_comanda ?? str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) . '.pdf');
         } catch (\Exception $e) {
@@ -1997,3 +2078,6 @@ class ComandasController extends Controller
         }
     }
 }
+
+
+

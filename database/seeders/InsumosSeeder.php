@@ -159,8 +159,8 @@ class InsumosSeeder extends Seeder
         foreach ($chileanIngredients as $ingredient) {
             $productosData[] = [
                 'uuid'                 => Str::uuid(),
-                'codigo'               => $codigoActual++,
-                'descripcion'          => $ingredient,
+                'codigo'               => "I-".$codigoActual++,
+                'descripcion'          => "Insumo ".$ingredient,
                 'precio_compra_neto'   => 1,
                 'precio_compra_bruto'  => 1,
                 'precio_venta'         => 1,

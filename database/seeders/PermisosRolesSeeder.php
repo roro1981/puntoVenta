@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\Globales;
 use App\Models\Permiso;
 use App\Models\PermisoRole;
 use App\Models\Role;
@@ -16,6 +17,13 @@ class PermisosRolesSeeder extends Seeder
      */
     public function run(): void
     {
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $descripcionAnularTickets = 'Anular tickets de cualquier usuario';
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            $descripcionAnularTickets .= ' y también permite eliminar productos de comandas';
+        }
+
         $permisos = [
             [
                 'codigo' => Permiso::PERMISO_CIERRES_CAJA,
@@ -32,7 +40,7 @@ class PermisosRolesSeeder extends Seeder
             [
                 'codigo' => Permiso::PERMISO_ANULAR_TICKETS,
                 'nombre' => 'Anular Tickets',
-                'descripcion' => 'Anular tickets de cualquier usuario',
+                'descripcion' => $descripcionAnularTickets,
                 'modulo' => 'Ventas'
             ],
             [
@@ -153,9 +161,14 @@ class PermisosRolesSeeder extends Seeder
                 Permiso::PERMISO_DASHBOARD_ADMINISTRADOR,
                 Permiso::PERMISO_RETIRO_CAJA,
                 Permiso::PERMISO_DESCUENTO_LIBRE,
+                Permiso::PERMISO_CIERRES_CAJA,
+                Permiso::PERMISO_VER_TODAS_VENTAS,
+                Permiso::PERMISO_ANULAR_TICKETS,
+                Permiso::PERMISO_ELIMINAR_PRODUCTOS,
+                Permiso::PERMISO_MODIFICAR_PRECIOS,
             ],
             'Usuario' => [
-                Permiso::PERMISO_DASHBOARD_USUARIO,
+                Permiso::PERMISO_DASHBOARD_USUARIO  
             ],
             'Cajero' => [
                 Permiso::PERMISO_DASHBOARD_USUARIO,

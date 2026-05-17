@@ -12,7 +12,8 @@
         
         body {
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 12px;
+            font-weight: bold;
             line-height: 1.3;
             color: #000;
             width: 72mm;
@@ -26,8 +27,8 @@
         }
         
         .logo {
-            max-width: 68mm;
-            max-height: 30mm;
+            max-width: 60mm;
+            max-height: 25mm;
             margin: 0 auto 8px;
             display: block;
             height: auto;
@@ -46,10 +47,10 @@
         
         .info-section {
             margin: 8px 0;
-            font-size: 10px;
-            padding: 4px 0;
-            border: 1px solid #ddd;
-            padding: 4px;
+            font-size: 11px;
+            background: #f5f5f5;
+            padding: 6px;
+            border-radius: 3px;
         }
         
         .info-row {
@@ -57,8 +58,6 @@
             justify-content: space-between;
             margin: 2px 0;
             font-weight: bold;
-            padding: 0 1mm;
-            box-sizing: border-box;
         }
         
         .separator {
@@ -72,6 +71,56 @@
             margin: 8px 0 4px 0;
             text-align: center;
             text-decoration: underline;
+        }
+
+        .retiros-section {
+            margin: 6px 0;
+        }
+
+        .retiro-item {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            padding-left: 1mm;
+            padding-right: 1mm;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .retiro-item:last-child {
+            border-bottom: none;
+        }
+
+        .retiro-motivo {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 2px;
+            color: #000;
+        }
+
+        .retiro-line {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            color: #000;
+        }
+
+        .retiro-line td {
+            padding: 0 1mm;
+            vertical-align: middle;
+        }
+
+        .retiro-line .left {
+            width: 64%;
+            text-align: left;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .retiro-line .right {
+            width: 36%;
+            text-align: right;
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 800;
         }
         
         table {
@@ -114,8 +163,6 @@
             font-weight: bold;
             margin: 3px 0;
             font-size: 11px;
-            padding: 0 1mm;
-            box-sizing: border-box;
         }
         
         .total-label {
@@ -156,7 +203,7 @@
             font-size: 13px;
             font-weight: bold;
             padding: 8px 4px;
-            margin: 8px auto;
+            margin: 8px auto 3px;
             text-align: center;
             border-left: none;
             border-right: none;
@@ -181,9 +228,8 @@
         }
         
         .observaciones {
-            margin: 8px auto;
+            margin: 2px auto 6px;
             padding: 6px 4px;
-            border: 1px solid #000;
             font-size: 11px;
             word-wrap: break-word;
             width: 98%;
@@ -194,8 +240,7 @@
             text-align: center;
             margin: 12px auto 0;
             padding-top: 8px;
-            border-top: 2px dashed #000;
-            font-size: 10px;
+            font-size: 11px;
             width: 98%;
             font-weight: bold;
         }
@@ -247,22 +292,10 @@
             <img src="{{ $logoSrc }}" alt="Logo" class="logo">
         @endif
 
-        <div style="font-weight:bold;font-size:13px;margin:4px 0 2px;">{{ $corporateData['name_enterprise'] ?? '' }}</div>
-
         @if(isset($corporateData['fantasy_name_enterprise']) && $corporateData['fantasy_name_enterprise'])
-        <div style="font-size:10px;font-weight:bold;">{{ $corporateData['fantasy_name_enterprise'] }}</div>
-        @endif
-
-        @if(isset($corporateData['address_enterprise']) && $corporateData['address_enterprise'])
-        <div style="font-size:9px;">{{ $corporateData['address_enterprise'] }}</div>
-        @endif
-
-        @if(isset($corporateData['comuna_enterprise']) && $corporateData['comuna_enterprise'])
-        <div style="font-size:9px;">{{ $corporateData['comuna_enterprise'] }}</div>
-        @endif
-
-        @if(isset($corporateData['phone_enterprise']) && $corporateData['phone_enterprise'])
-        <div style="font-size:9px;">Tel: {{ $corporateData['phone_enterprise'] }}</div>
+        <div style="font-weight:bold;font-size:13px;margin:4px 0 2px;">{{ $corporateData['fantasy_name_enterprise'] }}</div>
+        @else
+        <div style="font-weight:bold;font-size:13px;margin:4px 0 2px;">{{ $corporateData['name_enterprise'] ?? '' }}</div>
         @endif
     </div>
 
@@ -274,7 +307,7 @@
     <!-- Información de Caja -->
     <div class="info-section">
         <div class="info-row">
-            <span class="info-label">USUARIO:</span>
+            <span class="info-label">CAJERO:</span>
             <span>{{ $caja->usuario->name ?? 'N/A' }}</span>
         </div>
         <div class="info-row">
@@ -345,46 +378,7 @@
     </div>
     @endif
     
-    @if($desglose['mixto'] > 0)
-    <div class="info-row">
-        <span>MIXTO</span>
-        <span>${{ number_format($desglose['mixto'], 0, ',', '.') }}</span>
-    </div>
-    @endif
-
     <div class="separator"></div>
-
-    @if(isset($retiros) && $retiros->count() > 0)
-    <!-- Retiros de Caja -->
-    <div class="section-title">RETIROS DE CAJA</div>
-
-    <table style="width:100%;font-size:9px;border-collapse:collapse;margin:2px 0;">
-        <thead>
-            <tr style="border-bottom:1px dotted #999;">
-                <th style="text-align:left;padding:1px 0;">Motivo</th>
-                <th style="text-align:center;padding:1px 2px;">Fecha/Hora</th>
-                <th style="text-align:right;padding:1px 0;">Monto</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach($retiros as $retiro)
-            <tr>
-                <td style="padding:2px 0;overflow:hidden;word-break:break-word;max-width:30mm;">{{ strtoupper($retiro->motivo) }}</td>
-                <td style="text-align:center;padding:2px 2px;white-space:nowrap;">{{ \Carbon\Carbon::parse($retiro->created_at)->format('d/m/Y H:i') }}</td>
-                <td style="text-align:right;padding:2px 0;white-space:nowrap;">-${{ number_format($retiro->monto, 0, ',', '.') }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-        <tfoot>
-            <tr style="border-top:1px solid #000;">
-                <td colspan="2" style="padding:2px 0;"><strong>TOTAL RETIROS:</strong></td>
-                <td style="text-align:right;padding:2px 0;"><strong>-${{ number_format($totalRetiros ?? 0, 0, ',', '.') }}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
-
-    <div class="separator"></div>
-    @endif
 
     <!-- Totales de Cierre -->
     <div class="totals-section">
@@ -399,7 +393,7 @@
         </div>
 
         @if(isset($totalRetiros) && $totalRetiros > 0)
-        <div class="total-row" style="color:#c0392b;">
+        <div class="total-row">
             <span class="total-label">TOTAL RETIROS:</span>
             <span>-${{ number_format($totalRetiros, 0, ',', '.') }}</span>
         </div>
@@ -452,16 +446,9 @@
         <div style="margin-top: 5px;">{{ $caja->usuario->name ?? '' }}</div>
     </div>
 
-    <!-- Advertencia -->
-    <div class="warning-text">
-        ESTE DOCUMENTO NO ES VÁLIDO COMO COMPROBANTE TRIBUTARIO
-    </div>
 
     <!-- Pie de página -->
     <div class="footer">
-        @if(isset($corporateData['name_enterprise']) && $corporateData['name_enterprise'])
-        <p>{{ $corporateData['name_enterprise'] }}</p>
-        @endif
         <p>{{ now()->format('d/m/Y H:i:s') }}</p>
     </div>
 </body>

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>{{ !empty($esTicketPago) ? 'Ticket Pago Comanda' : 'Comanda' }} {{ $comanda->numero_comanda ?? ('#' . $comanda->id) }}</title>
+    <title>{{ !empty($esTicketPago) ? 'Ticket Pago' : 'Comanda' }} {{ $comanda->numero_comanda ?? ('#' . $comanda->id) }}</title>
     <style>
         * {
             margin: 0;
@@ -10,14 +10,24 @@
             box-sizing: border-box;
         }
 
+        @page {
+            size: 80mm 210mm;
+            margin: 0;
+        }
+
         body {
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 12px;
+            font-weight: bold;
             line-height: 1.3;
             color: #000;
             width: 72mm;
             padding: 1mm 2mm 2mm 2mm;
             max-width: 72mm;
+        }
+
+        .ticket-wrap {
+            width: 100%;
         }
 
         .header {
@@ -26,8 +36,8 @@
         }
 
         .logo {
-            max-width: 68mm;
-            max-height: 30mm;
+            max-width: 60mm;
+            max-height: 25mm;
             margin: 0 auto 8px;
             display: block;
             height: auto;
@@ -46,9 +56,10 @@
 
         .info-section {
             margin: 8px 0;
-            font-size: 10px;
-            border: 1px solid #ddd;
-            padding: 4px;
+            font-size: 11px;
+            background: #f5f5f5;
+            padding: 6px;
+            border-radius: 3px;
         }
 
         .info-row {
@@ -71,41 +82,54 @@
             text-decoration: underline;
         }
 
-        table {
+        .products-section {
+            margin: 8px 0;
+        }
+
+        .product-item {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            padding-left: 1mm;
+            padding-right: 1mm;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .product-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-line {
             width: 100%;
-            margin: 5px 0;
             border-collapse: collapse;
-            font-size: 10px;
-            table-layout: fixed;
+            font-size: 11px;
+            color: #000;
         }
 
-        table th,
-        table td {
-            padding: 2px 0;
-            vertical-align: top;
-            overflow: hidden;
+        .product-line td {
+            padding: 0 1mm;
+            vertical-align: middle;
+        }
+
+        .product-line .left {
+            width: 72%;
+            text-align: left;
             word-wrap: break-word;
+            word-break: break-word;
         }
 
-        table th {
-            font-weight: bold;
-            border-bottom: 1px dashed #000;
-        }
-
-        .col-cant {
-            width: 15%;
-            text-align: left;
-        }
-
-        .col-desc {
-            width: 55%;
-            text-align: left;
-            padding-right: 4px;
-        }
-
-        .col-total {
-            width: 30%;
+        .product-line .right {
+            width: 28%;
             text-align: right;
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .product-observation {
+            font-size: 10px;
+            margin-top: 2px;
+            color: #000;
+            padding-left: 1mm;
         }
 
         .totals-section {
@@ -124,16 +148,18 @@
 
         .footer {
             text-align: center;
-            margin: 12px auto 0;
+            margin: 12px 0 0 0;
             padding-top: 8px;
             border-top: 2px dashed #000;
-            font-size: 10px;
-            width: 98%;
+            font-size: 11px;
+            width: 100%;
             font-weight: bold;
         }
 
         .footer p {
             margin: 3px 0;
+            width: 100%;
+            text-align: center;
         }
 
         .payment-section {
@@ -159,6 +185,7 @@
     </style>
 </head>
 <body>
+    <div class="ticket-wrap">
     <div class="header">
         @if(isset($corporateData['logo_enterprise']) && $corporateData['logo_enterprise'] && $corporateData['logo_enterprise'] != '/img/fotos_prod/sin_imagen.jpg' && file_exists(public_path($corporateData['logo_enterprise'])))
             <img src="{{ public_path($corporateData['logo_enterprise']) }}" alt="Logo" class="logo">
@@ -166,7 +193,7 @@
     </div>
 
     <div class="title-box">
-        {{ !empty($esTicketPago) ? 'TICKET PAGO COMANDA' : 'COMANDA' }} {{ $comanda->numero_comanda ?? ('#' . str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) }}
+        {{ !empty($esTicketPago) ? 'TICKET PAGO' : 'COMANDA' }} {{ $comanda->numero_comanda ?? ('#' . str_pad($comanda->id, 4, '0', STR_PAD_LEFT)) }}
     </div>
 
     <div class="info-section">
@@ -201,36 +228,27 @@
     <div class="separator"></div>
     <div class="section-title">DETALLE</div>
 
-    <table>
-        <thead>
-            <tr>
-                <th class="col-cant">CANT</th>
-                <th class="col-desc">PRODUCTO</th>
-                <th class="col-total">TOTAL</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($comanda->detalles as $detalle)
-                @php
-                    $esReceta = ($detalle->tipo_item ?? 'PRODUCTO') === 'RECETA';
-                    $nombreDetalle = $esReceta
-                        ? (optional($detalle->receta)->nombre ?? optional($detalle->producto)->descripcion ?? 'Receta')
-                        : (optional($detalle->producto)->descripcion ?? optional($detalle->producto)->nombre_producto ?? optional($detalle->producto)->nombre ?? 'Producto');
-                @endphp
-                <tr>
-                    <td class="col-cant">{{ (int)$detalle->cantidad }}</td>
-                    <td class="col-desc">{{ $nombreDetalle }}</td>
-                    <td class="col-total">${{ number_format((float)$detalle->subtotal, 0, ',', '.') }}</td>
-                </tr>
-                @if(!empty($detalle->observaciones))
+    <div class="products-section">
+        @foreach($comanda->detalles as $detalle)
+            @php
+                $esReceta = ($detalle->tipo_item ?? 'PRODUCTO') === 'RECETA';
+                $nombreDetalle = $esReceta
+                    ? (optional($detalle->receta)->nombre ?? optional($detalle->producto)->descripcion ?? 'Receta')
+                    : (optional($detalle->producto)->descripcion ?? optional($detalle->producto)->nombre_producto ?? optional($detalle->producto)->nombre ?? 'Producto');
+            @endphp
+            <div class="product-item">
+                <table class="product-line">
                     <tr>
-                        <td></td>
-                        <td colspan="2" style="font-size: 9px;">Obs: {{ $detalle->observaciones }}</td>
+                        <td class="left">{{ (int)$detalle->cantidad }} x {{ $nombreDetalle }}</td>
+                        <td class="right"><strong>${{ number_format((float)$detalle->subtotal, 0, ',', '.') }}</strong></td>
                     </tr>
+                </table>
+                @if(!empty($detalle->observaciones))
+                    <div class="product-observation">Obs: {{ $detalle->observaciones }}</div>
                 @endif
-            @endforeach
-        </tbody>
-    </table>
+            </div>
+        @endforeach
+    </div>
 
     <div class="totals-section">
         <div class="total-row">
@@ -274,6 +292,7 @@
         <p>{{ $corporateData['name_enterprise'] ?? 'RESTAURANT' }}</p>
         <p>{{ $corporateData['address_enterprise'] ?? '' }}</p>
         <p>{{ $corporateData['phone_enterprise'] ?? '' }}</p>
+    </div>
     </div>
 </body>
 </html>

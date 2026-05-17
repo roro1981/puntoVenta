@@ -39,6 +39,9 @@ robocopy "%LOCAL_PATH%" "%STAGING%" /E /NFL /NDL /NJH /NJS ^
       "logo_empresa" ^
   /XF ".env" "deploy.bat" ".last_deploy"
 
+:: Evita sobreescribir el layout de mesas del servidor
+if exist "%STAGING%\storage\app\layouts\restaurant_mesas_layout.json" del /f /q "%STAGING%\storage\app\layouts\restaurant_mesas_layout.json"
+
 for /f %%c in ('dir /s /b /a-d "%STAGING%" 2^>nul ^| find /c /v ""') do echo Archivos incluidos: %%c
 echo.
 

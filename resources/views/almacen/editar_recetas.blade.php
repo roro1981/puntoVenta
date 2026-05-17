@@ -48,6 +48,22 @@
                     <textarea id="descripcion" name="descripcion" class="form-control">{{ old('descripcion', $receta->descripcion) }}</textarea>
                 </div>
 
+                @if(!empty($impresionSeparadaActiva))
+                <div class="form-group mb-3">
+                    <label>Sector de impresión</label>
+                    <div style="display:flex;gap:14px;align-items:center;">
+                        <label style="margin:0;">
+                            <input type="radio" name="sector_impresion_receta_editar" value="B" {{ old('sector_impresion', $receta->sector_impresion) === 'B' ? 'checked' : '' }}> Barra
+                        </label>
+                        <label style="margin:0;">
+                            <input type="radio" name="sector_impresion_receta_editar" value="C" {{ old('sector_impresion', $receta->sector_impresion) === 'C' ? 'checked' : '' }}> Cocina
+                        </label>
+                    </div>
+                </div>
+                @else
+                <input type="hidden" id="sector_impresion_receta_editar" value="C">
+                @endif
+
             </div> {{-- col-md-6 --}}
 
             <div class="col-md-6">

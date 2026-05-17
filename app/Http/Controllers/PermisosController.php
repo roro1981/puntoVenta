@@ -10,6 +10,8 @@ use App\Models\Globales;
 
 class PermisosController extends Controller
 {
+    private const TEXTO_EXTRA_ANULACION_COMANDA = ' y también permite eliminar productos de comandas';
+
     /**
      * Mostrar vista de gestión de permisos
      */
@@ -37,7 +39,16 @@ class PermisosController extends Controller
      */
     public function permisosDisponibles()
     {
-        $permisos = Permiso::where('activo', true)->get();
+        $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+        $permisos = Permiso::where('activo', true)->get()->map(function ($permiso) use ($tipoNegocio) {
+            $permiso->descripcion = $this->normalizarDescripcionPorTipoNegocio(
+                $permiso->codigo,
+                (string) $permiso->descripcion,
+                $tipoNegocio
+            );
+            return $permiso;
+        });
+
         return response()->json($permisos);
     }
 
@@ -90,6 +101,12 @@ class PermisosController extends Controller
         }
 
         try {
+            $tipoNegocio = strtoupper(trim((string) Globales::where('nom_var', 'TIPO_NEGOCIO')->value('valor_var')));
+            $codigosPermisos = collect($permisos)->pluck('codigo')->filter()->values()->all();
+            $descripcionesPorCodigo = Permiso::whereIn('codigo', $codigosPermisos)
+                ->get(['codigo', 'descripcion'])
+                ->keyBy('codigo');
+
             // Eliminar todos los permisos existentes del rol
             PermisoRole::where('role_id', $roleId)->delete();
             
@@ -98,10 +115,13 @@ class PermisosController extends Controller
             // Asignar los nuevos permisos
             if (!empty($permisos)) {
                 foreach ($permisos as $permisoData) {
+                    $codigoPermiso = (string) $permisoData['codigo'];
+                    $descripcionBase = (string) optional($descripcionesPorCodigo->get($codigoPermiso))->descripcion;
+
                     PermisoRole::create([
                         'role_id' => $roleId,
-                        'codigo_permiso' => $permisoData['codigo'],
-                        'descripcion' => $permisoData['descripcion'] ?? null,
+                        'codigo_permiso' => $codigoPermiso,
+                        'descripcion' => $this->normalizarDescripcionPorTipoNegocio($codigoPermiso, $descripcionBase, $tipoNegocio),
                         'activo' => true
                     ]);
                     $creados++;
@@ -121,6 +141,21 @@ class PermisosController extends Controller
                 'message' => 'Error al asignar permisos: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function normalizarDescripcionPorTipoNegocio(string $codigo, string $descripcion, string $tipoNegocio): string
+    {
+        if ($codigo !== Permiso::PERMISO_ANULAR_TICKETS) {
+            return $descripcion;
+        }
+
+        $descripcion = trim(str_replace(self::TEXTO_EXTRA_ANULACION_COMANDA, '', $descripcion));
+
+        if ($tipoNegocio === 'RESTAURANT') {
+            return $descripcion . self::TEXTO_EXTRA_ANULACION_COMANDA;
+        }
+
+        return $descripcion;
     }
 }
 

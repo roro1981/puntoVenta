@@ -1,4 +1,4 @@
-<script type="text/javascript" src="/js/restaurant/comandas.js"></script>
+﻿<script type="text/javascript" src="/js/restaurant/comandas.js"></script>
 <link rel="stylesheet" href="/css/restaurant/comandas.css">
 
 <div class='row'>
@@ -14,20 +14,24 @@
                         <span id="total_comensales" class="badge badge-info" style="font-size: 18px;">0</span>
                     </div>
                 </div>
-                <div>
-                    <span class="badge mr-2 badge-estado-libre"><i class="fa fa-circle"></i> Libre: <span id="total_mesas_libres">0</span></span>
-                    <span class="badge mr-2 badge-estado-reservada"><i class="fa fa-circle"></i> Reservada: <span id="total_mesas_reservadas">0</span></span>
-                    <span class="badge mr-2 badge-estado-ocupada"><i class="fa fa-circle"></i> Ocupada: <span id="total_mesas_ocupadas">0</span></span>
-                    <span class="badge mr-2 badge-estado-pendiente"><i class="fa fa-circle"></i> Pendientes pago: <span id="total_mesas_pendientes_pago">0</span></span>
-                    <button class="btn btn-info" id="btn_ver_plano_mesas" style="margin-right:6px;">
-                        <i class="fa fa-map"></i> Ver plano de mesas
-                    </button>
-                    <button class="btn btn-warning" id="btn_abrir_cambio_mesa" style="margin-right:6px;">
-                        <i class="fa fa-random"></i> Cambiar mesa
-                    </button>
-                    <button class="btn btn-primary" id="refrescar_mesas">
-                        <i class="fa fa-sync"></i> Actualizar
-                    </button>
+                <div class="mesas-header-panel">
+                    <div class="mesas-estado-badges">
+                        <span class="badge mr-2 badge-estado-libre"><i class="fa fa-circle"></i> Libre: <span id="total_mesas_libres">0</span></span>
+                        <span class="badge mr-2 badge-estado-reservada"><i class="fa fa-circle"></i> Reservada: <span id="total_mesas_reservadas">0</span></span>
+                        <span class="badge mr-2 badge-estado-ocupada"><i class="fa fa-circle"></i> Ocupada: <span id="total_mesas_ocupadas">0</span></span>
+                        <span class="badge mr-2 badge-estado-pendiente"><i class="fa fa-circle"></i> Pendientes pago: <span id="total_mesas_pendientes_pago">0</span></span>
+                    </div>
+                    <div class="mesas-header-actions">
+                        <button class="btn btn-info" id="btn_ver_plano_mesas" style="margin-right:6px;">
+                            <i class="fa fa-map"></i> Ver plano de mesas
+                        </button>
+                        <button class="btn btn-warning" id="btn_abrir_cambio_mesa" style="margin-right:6px;">
+                            <i class="fa fa-random"></i> Cambiar mesa
+                        </button>
+                        <button class="btn btn-primary" id="refrescar_mesas">
+                            <i class="fa fa-sync"></i> Actualizar
+                        </button>
+                    </div>
                 </div>
             </div>
             <hr style="height:1px;background-color: brown;width:100%;margin-top: 2pt;" />
@@ -167,10 +171,25 @@
                             title="Imprimir comanda">
                             <i class="fa fa-print"></i>
                         </button>
-                        <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
-                            title="Enviar ticket a cocina">
-                            <i class="fa fa-bell"></i>
-                        </button>
+                        @if((int)($impresionSeparada ?? 0) === 1)
+                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
+                                title="Imprimir ticket de cocina">
+                                <i class="fa fa-cutlery"></i>
+                            </button>
+                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_barra" disabled
+                                title="Imprimir ticket de barra">
+                                <i class="fa fa-glass"></i>
+                            </button>
+                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_ambos" disabled
+                                title="Imprimir tickets de cocina y barra">
+                                <i class="fa fa-clone"></i>
+                            </button>
+                        @else
+                            <button type="button" class="pos-btn pos-btn-cocina" id="btn_ticket_cocina" disabled
+                                title="Imprimir ticket de preparacion">
+                                <i class="fa fa-bell"></i>
+                            </button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -221,7 +240,7 @@
             <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
                 <h4 class="modal-title" id="tituloTicketComanda">Ticket Comanda</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body" style="padding: 0;">
@@ -237,7 +256,7 @@
             <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
                 <h4 class="modal-title" id="tituloTicketCocina"><i class="fa fa-cutlery"></i> Ticket Cocina</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body" style="padding: 0;">
@@ -247,23 +266,114 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalTicketBarra" tabindex="-1" aria-labelledby="tituloTicketBarra" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 400px;">
+        <div class="modal-content">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
+                <h4 class="modal-title" id="tituloTicketBarra"><i class="fa fa-glass"></i> Ticket Barra</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <iframe id="ticketFrameBarra" style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTicketAmbos" tabindex="-1" aria-labelledby="tituloTicketAmbos" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 860px;">
+        <div class="modal-content">
+            <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between;">
+                <h4 class="modal-title" id="tituloTicketAmbos"><i class="fa fa-clone"></i> Tickets Cocina y Barra</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-top:0;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="display:flex; gap:10px; padding: 8px;">
+                <div style="flex:1; min-width:0; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+                    <div style="padding:6px 8px; font-weight:700; border-bottom:1px solid #e5e7eb;"><i class="fa fa-cutlery"></i> Cocina</div>
+                    <iframe id="ticketFrameAmbosCocina" style="width: 100%; height: 600px; border: none;"></iframe>
+                </div>
+                <div style="flex:1; min-width:0; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+                    <div style="padding:6px 8px; font-weight:700; border-bottom:1px solid #e5e7eb;"><i class="fa fa-glass"></i> Barra</div>
+                    <iframe id="ticketFrameAmbosBarra" style="width: 100%; height: 600px; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalPlanoMesas" tabindex="-1" role="dialog" aria-labelledby="tituloPlanoMesas" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document" style="width: 92vw; max-width: 1200px; margin: 1rem auto;">
+    <div class="modal-dialog modal-lg plano-mesas-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title" id="tituloPlanoMesas"><i class="fa fa-map"></i> Plano de Mesas</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;align-items:stretch;">
-                <div style="display:flex;gap:8px;justify-content:flex-end;">
-                    <button type="button" class="btn btn-success" id="btn_guardar_layout_json">
-                        <i class="fa fa-save"></i> Guardar cambios
-                    </button>
+            <div class="modal-body plano-mesas-body">
+                <div class="plano-mesas-toolbar">
+                    <div id="layout_text_summary" style="font-weight:600;color:#374151;">Mesas: 0 | Textos: 0</div>
+                    <div class="plano-mesas-actions">
+                        <button type="button" class="btn btn-info" id="btn_agregar_texto_layout">
+                            <i class="fa fa-font"></i> Agregar texto
+                        </button>
+                        <button type="button" class="btn btn-default" id="btn_agregar_linea_layout" title="Agrega una línea divisoria horizontal o vertical al plano">
+                            <i class="fa fa-minus"></i> Agregar línea
+                        </button>
+                        <button type="button" class="btn btn-warning" id="btn_uniformizar_mesas_layout" title="Iguala el ancho y alto de todas las mesas al tamaño de la mesa seleccionada o al promedio">
+                            <i class="fa fa-expand"></i> Uniformizar tamaños
+                        </button>
+                        <button type="button" class="btn btn-success" id="btn_guardar_layout_json">
+                            <i class="fa fa-save"></i> Guardar cambios
+                        </button>
+                    </div>
                 </div>
-                <div style="font-weight:600;">Arrastra las mesas y luego guarda los cambios</div>
-                <div id="layout_preview_canvas" style="position:relative;width:100%;height:620px;border:1px solid #ddd;background:#f8f9fa;overflow:auto;"></div>
+                <div class="plano-mesas-hint">Arrastra mesas, textos y líneas. Doble clic en texto o línea para editar.</div>
+                <div id="layout_preview_canvas"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTextoLayout" tabindex="-1" role="dialog" aria-labelledby="tituloTextoLayout" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 460px; margin: 1.25rem auto;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="tituloTextoLayout"><i class="fa fa-font"></i> Texto del plano</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="layout_text_edit_index" value="">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="layout_text_input" style="font-weight: 600;">Texto</label>
+                    <input type="text" class="form-control" id="layout_text_input" maxlength="80" placeholder="Ej: Caja, Baño, Entrada" autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="layout_text_bg_color" style="font-weight: 600; display:block;">Color de fondo</label>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <input type="color" id="layout_text_bg_color" value="#fff7d6" style="width: 56px; height: 38px; border: 1px solid #d1d5db; border-radius: 6px; padding: 2px; cursor: pointer;">
+                        <div id="layout_text_color_palette" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <button type="button" class="layout-color-swatch" data-color="#fff7d6" title="Amarillo suave" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#fff7d6;padding:0;"></button>
+                            <button type="button" class="layout-color-swatch" data-color="#dbeafe" title="Celeste" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#dbeafe;padding:0;"></button>
+                            <button type="button" class="layout-color-swatch" data-color="#dcfce7" title="Verde suave" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#dcfce7;padding:0;"></button>
+                            <button type="button" class="layout-color-swatch" data-color="#ffe4e6" title="Rosa" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#ffe4e6;padding:0;"></button>
+                            <button type="button" class="layout-color-swatch" data-color="#ede9fe" title="Lila" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#ede9fe;padding:0;"></button>
+                            <button type="button" class="layout-color-swatch" data-color="#e5e7eb" title="Gris" style="width:22px;height:22px;border-radius:50%;border:1px solid #d1d5db;background:#e5e7eb;padding:0;"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn_guardar_texto_layout_modal">
+                    <i class="fa fa-check"></i> Guardar texto
+                </button>
             </div>
         </div>
     </div>
@@ -271,6 +381,7 @@
 
 <script>
     window.posPropinaPorcentaje = @json((float)($porcentajePropina ?? 10));
+    window.posImpresionSeparada = @json((int)($impresionSeparada ?? 0));
 </script>
 
 <script>
@@ -334,5 +445,8 @@
 }());
 </script>
 
+@include('restaurant.partials.modal_anular_producto_comanda')
 @include('partials.modal_ayuda', ['modulo' => 'comandas'])
+
+
 

@@ -42,6 +42,8 @@ class ProductosPlantillaExport implements WithMultipleSheets
             ['categoria', 'Obligatoria. Debe escribir el nombre exacto de la categoría; el sistema la convierte al ID.'],
             ['unidad_medida', 'Obligatoria. Acepta UN, L, KG, CJ o UNIDAD, LITRO, KILOGRAMO, CAJA.'],
             ['tipo', 'Obligatorio. Acepta P, S, I, PR o PRODUCTO, NO AFECTO A STOCK, INSUMO, PROMOCION.'],
+            ['descrip_detallada', 'Opcional. Se usa como descripción detallada del producto.'],
+            ['sector_impresion', 'Opcional. Acepta B o C. Si el tipo es INSUMO, este valor se ignora y no se guarda.'],
             ['nom_foto', 'Opcional. Debe ser una ruta existente en el sistema, con este formato => /img/fotos_prod/nombre_foto.jpg.'],
             [''],
             ['CATEGORÍAS ACTIVAS'],
